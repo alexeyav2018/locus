@@ -1,0 +1,8 @@
+# Serena: кеш индексов языковых серверов, пересоздаётся сам
+.serena/cache/
+
+# Локальные настройки Claude Code (проектные .claude/ и .mcp.json — коммитим)
+.claude/settings.local.json
+
+# IDE
+.idea/
