@@ -5,24 +5,81 @@ context: |
   All artifacts must be written in ru.
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Продукт: платформа поддержки учителя математики. Система — рабочий инструмент
+  учителя; ученик в ней не пользователь, а объект учёта. Учителей несколько,
+  библиотека задач общая; роли — Администратор (владеет общим) и Учитель
+  (владеет личным).
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Доменный инвариант — граница общего и личного. Общее: рубрикатор (дерево
+  Разделов и Тем), словари Методов и Характеристик, Задачи, Теория. Личное:
+  Ученики, Группы, Задания, Работы, отметки Владения. Фильтр по владельцу
+  применяется только к личному; к библиотеке — никогда. Каждое предложение
+  обязано явно сказать, где живут его данные, кто их правит и фильтруются ли
+  они по владельцу.
+
+  Кода нет: openspec/specs/ пуст, документы контекста описывают замысел,
+  а не существующую систему.
+
+  Документы проекта — в openspec/context/. Читать целиком по назначению:
+    glossary.md       термины; читать перед любым артефактом
+    domain-model.md   сущности, связи, инварианты модели
+    scenarios.md      рабочие сценарии учителя
+    architecture.md   стек (Java 21, Spring, Thymeleaf, PostgreSQL, VPS), слои
+    adr/README.md     журнал решений: индекс, статусы, обоснования
+    strategy.md       этапы, не-цели, отложенное и условия возврата
+    standards.md      правила работы с кодом
+    antipatterns.md   чего делать нельзя и почему
+  Очередь работ — openspec/backlog.md.
+
+# Правила по артефактам: применяются только при написании соответствующего
+# артефакта. Маршрутизируют к документам openspec/context/.
+rules:
+  proposal:
+    - Проверить openspec/context/adr/README.md — нет ли по теме уже принятого
+      решения; если предложение его пересматривает, сказать об этом явно
+    - Сверить объём с openspec/context/strategy.md — не входит ли
+      предложенное в раздел не-целей
+    - Если изменение принимает новое решение либо пересматривает прежнее,
+      завести запись в openspec/context/adr/ со статусом «Предложено»
+      и сослаться на неё в предложении
+  specs:
+    - Термины строго по openspec/context/glossary.md; новых слов не вводить
+    - Требования формулировать по сценариям openspec/context/scenarios.md
+    - У изменения, правящего только документы проекта, дельты спек может
+      не быть — это допустимо и не считается признаком потери знания
+  design:
+    - Прочитать openspec/context/domain-model.md и architecture.md
+    - Явно указать, где живут данные предложения — в общей библиотеке или
+      в личном контуре учителя, кто имеет право их менять и фильтруются ли
+      они по владельцу
+    - Проверить предложение по openspec/context/antipatterns.md
+  tasks:
+    - Прочитать openspec/context/standards.md и antipatterns.md
+    - Для правил изоляции по владельцу предусмотреть отдельные тесты
+    - Явно назвать документы openspec/context/ и CLAUDE.md, которые изменение
+      затрагивает, и включить их правку в задачи; ответ «не затрагивают»
+      допустим, но должен быть произнесён
+
+# Руководство по операциям: советующее, не проверяемое инструментом.
+operations:
+  apply:
+    guidance:
+      - Решение, принятое по ходу реализации и не описанное в change,
+        оформляется записью в openspec/context/adr/, а не остаётся в коде
+        без объяснения
+  archive:
+    guidance:
+      - После применения дельт в openspec/specs/ проверить актуальность
+        документов openspec/context — новые термины в glossary.md,
+        изменения модели или её инвариантов в domain-model.md
+      - Если изменение приняло новое решение, отменило или заменило прежнее —
+        завести запись в openspec/context/adr/ и проставить статусы связанных
+      - Если обнаружились грабли или устоялся приём — дописать standards.md
+        или antipatterns.md
+      - Перевести записи openspec/context/adr/, заведённые этим изменением,
+        из статуса «Предложено» в «Принято»
+      - Прогнать python3 openspec/context/adr/build_index.py
+      - Проверить openspec/context/strategy.md — не сработало ли условие
+        возврата отложенного, не достигнут ли горизонт редакции и не
+        опровергнута ли какая-либо из её предпосылок
+      - Отметить закрытый элемент в openspec/backlog.md
