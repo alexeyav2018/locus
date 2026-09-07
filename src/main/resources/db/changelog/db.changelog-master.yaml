@@ -1,0 +1,21 @@
+# Корневой changelog. Сами миграции лежат в migrations/ отдельными файлами,
+# имя начинается с номера — по нему и определяется порядок применения.
+#
+# Миграции описываются АБСТРАКТНЫМИ операциями Liquibase (createTable,
+# addColumn, createIndex): для них Liquibase умеет сгенерировать откат сам.
+# Сырой SQL — только там, где иначе нельзя (расширения PostgreSQL, ltree,
+# частичные индексы); в таких changeset'ах отката нет, и это ожидаемо.
+# Основание — ADR-0023.
+#
+# Обратная совместимость миграций не требуется: обновление живой системы
+# идёт с остановкой (ADR-0024).
+#
+# errorIfMissingOrEmpty: false — потому что миграций пока нет ни одной.
+# Первая придёт с auth-roles.
+# endsWithFilter — чтобы includeAll не пытался разобрать .gitkeep и любой
+# другой посторонний файл, попавший в папку.
+databaseChangeLog:
+  - includeAll:
+      path: db/changelog/migrations/
+      endsWithFilter: .yaml
+      errorIfMissingOrEmpty: false

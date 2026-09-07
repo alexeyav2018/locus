@@ -1,0 +1,24 @@
+# База для локальной разработки. Приложение поднимает её само:
+# spring-boot-docker-compose стартует этот файл при `mvn spring-boot:run`.
+#
+# Версия образа задаётся ЗДЕСЬ и больше нигде: тесты читают её из этого файла
+# (см. PostgresImage в тестах). Разъехавшиеся версии — тихая ошибка.
+#
+# Учётные данные локальные и лежат открытым текстом сознательно: защищать
+# в базе разработки нечего. Боевые приходят из окружения — deployment-backup.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: locus
+      POSTGRES_USER: locus
+      POSTGRES_PASSWORD: locus
+    ports:
+      - "5432:5432"
+    volumes:
+      # В образе postgres:18 данные лежат под /var/lib/postgresql (PGDATA —
+      # /var/lib/postgresql/18/docker), а не под /var/lib/postgresql/data.
+      - locus-postgres-data:/var/lib/postgresql
+
+volumes:
+  locus-postgres-data:
