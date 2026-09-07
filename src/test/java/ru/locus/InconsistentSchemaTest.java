@@ -12,18 +12,18 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
  * Приложение не должно подняться и начать обслуживать запросы на схеме,
  * о которой неизвестно, соответствует ли она коду.
  */
-class NesoglasovannayaShemaTest {
+class InconsistentSchemaTest {
 
     /** Порт, на котором заведомо никто не слушает. */
-    private static final String NEDOSTUPNAYA_BAZA = "jdbc:postgresql://localhost:1/net_takoj_bazy";
+    private static final String UNREACHABLE_DATABASE = "jdbc:postgresql://localhost:1/no-such-database";
 
     @Test
-    void priNedostupnojBazePrilozhenieNeStartuet() {
+    void applicationDoesNotStartOnAnUnreachableDatabase() {
         assertThatThrownBy(() -> new SpringApplicationBuilder(LocusApplication.class)
                 .properties(
-                        "spring.datasource.url=" + NEDOSTUPNAYA_BAZA,
-                        "spring.datasource.username=net",
-                        "spring.datasource.password=net",
+                        "spring.datasource.url=" + UNREACHABLE_DATABASE,
+                        "spring.datasource.username=none",
+                        "spring.datasource.password=none",
                         "spring.docker.compose.enabled=false",
                         "server.port=0")
                 .run()

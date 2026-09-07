@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Locus</title>
+</head>
+<body>
+<h1>Locus</h1>
+
+<p>Вошли как <span th:text="${login}">admin</span>.</p>
+<p>Прикладных возможностей пока нет: рубрикатор, задачи и ученики появятся позже.</p>
+
+<ul>
+    <li th:if="${administrator}"><a th:href="@{/users}">Учётные записи</a></li>
+    <li><a th:href="@{/password}">Сменить пароль</a></li>
+</ul>
+
+<form method="post" th:action="@{/logout}">
+    <button type="submit">Выйти</button>
+</form>
+</body>
+</html>

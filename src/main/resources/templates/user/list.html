@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Учётные записи — Locus</title>
+</head>
+<body>
+<h1>Учётные записи</h1>
+
+<p th:if="${error}" th:text="${error}">Имя входа занято</p>
+
+<table>
+    <thead>
+    <tr>
+        <th>Имя входа</th>
+        <th>Роли</th>
+        <th>Пароль</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.login}">admin</td>
+        <td>
+            <form method="post" th:each="role : ${roles}"
+                  th:action="@{/users/{id}/roles(id=${user.id.value})}">
+                <input type="hidden" name="role" th:value="${role}">
+                <input type="hidden" name="assign" th:value="${!user.hasRole(role)}">
+                <button type="submit"
+                        th:text="${user.hasRole(role) ? 'Снять ' + role : 'Назначить ' + role}">Назначить</button>
+            </form>
+        </td>
+        <td>
+            <form method="post" th:action="@{/users/{id}/password(id=${user.id.value})}">
+                <input type="password" name="newPassword">
+                <button type="submit">Сбросить пароль</button>
+            </form>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<h2>Завести учётную запись</h2>
+<form method="post" th:action="@{/users}">
+    <p>
+        <label for="login">Имя входа</label>
+        <input type="text" id="login" name="login">
+    </p>
+    <p>
+        <label for="initialPassword">Начальный пароль</label>
+        <input type="password" id="initialPassword" name="initialPassword">
+    </p>
+    <button type="submit">Завести</button>
+</form>
+
+<p><a th:href="@{/}">На главную</a></p>
+</body>
+</html>

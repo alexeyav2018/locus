@@ -1,0 +1,108 @@
+# Первые доменные таблицы системы: учётные записи и их роли.
+#
+# Имена выведены из словаря (openspec/context/glossary.md, «Имена в коде
+# и в базе»): класс User → таблица user_ (подчёркивание потому, что USER
+# зарезервировано в PostgreSQL), связующая таблица — user_role.
+#
+# Роли лежат значениями перечисления Role — ADMINISTRATOR и TEACHER, как
+# в словаре. Префикс ROLE_, которого требует Spring Security, добавляется
+# в коде и в базу не попадает.
+databaseChangeLog:
+  - changeSet:
+      id: 0001-user
+      author: locus
+      comment: Учётные записи входа
+      changes:
+        - createTable:
+            tableName: user_
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_user
+              - column:
+                  name: login
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: password_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              # Пароль, назначенный не владельцем записи, подлежит смене
+              # при первом входе (ADR-0026).
+              - column:
+                  name: password_change_required
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: user_
+            columnNames: login
+            constraintName: uq_user_login
+
+  - changeSet:
+      id: 0001-user-role
+      author: locus
+      comment: Роли учётной записи; набор произвольный, вплоть до пустого
+      changes:
+        - createTable:
+            tableName: user_role
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_role
+            columnNames: user_id, role
+            constraintName: pk_user_role
+        - addForeignKeyConstraint:
+            baseTableName: user_role
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_user_role_user
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 0001-first-administrator
+      author: locus
+      comment: >-
+        Первый Администратор (ADR-0026). Пароль известен всем, кто видел
+        репозиторий, и это допустимо только вместе с обязательной сменой
+        при первом входе: до неё учётной записью нельзя сделать ничего,
+        кроме смены пароля. Начальный пароль назван в CLAUDE.md.
+      changes:
+        - insert:
+            tableName: user_
+            columns:
+              - column:
+                  name: login
+                  value: admin
+              - column:
+                  name: password_hash
+                  value: '{bcrypt}$2a$10$pYvDlan2cw/lPMkVBABS7O/hCJvng8lqfF/sgZjug4hElry51DoaG'
+              - column:
+                  name: password_change_required
+                  valueBoolean: true
+        - insert:
+            tableName: user_role
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: (select id from user_ where login = 'admin')
+              - column:
+                  name: role
+                  value: ADMINISTRATOR

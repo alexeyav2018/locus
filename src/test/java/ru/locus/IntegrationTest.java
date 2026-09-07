@@ -17,10 +17,10 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * видимость проверки. Нет Docker — сборка падает.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public abstract class IntegracionnyjTest {
+public abstract class IntegrationTest {
 
     @ServiceConnection
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(ObrazPostgres.izComposeFile());
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresImage.fromComposeFile());
 
     static {
         POSTGRES.start();

@@ -11,51 +11,51 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 /**
  * Требование «Схема базы приводится в актуальное состояние при старте».
  */
-class MigraciiPriStarteTest extends IntegracionnyjTest {
+class MigrationsOnStartupTest extends IntegrationTest {
 
     @Autowired
-    private JdbcClient bazaDannyh;
+    private JdbcClient database;
 
     @Autowired
     private SpringLiquibase liquibase;
 
     @Test
-    void naPustojBazeMigraciiNakatyvayutsya() {
-        assertThat(sushchestvuetTablica("databasechangeloglock"))
+    void migrationsApplyOnEmptyDatabase() {
+        assertThat(tableExists("databasechangeloglock"))
                 .as("Liquibase отработал на пустой базе и создал таблицу блокировки")
                 .isTrue();
-        assertThat(sushchestvuetTablica("databasechangelog"))
+        assertThat(tableExists("databasechangelog"))
                 .as("Liquibase завёл журнал применённых миграций")
                 .isTrue();
     }
 
     @Test
-    void povtornyjZapuskNichegoNePrimenyaetZanovo() {
-        long bylo = primeneno();
+    void repeatedStartupAppliesNothingAgain() {
+        long before = appliedCount();
 
         assertThatCode(() -> liquibase.afterPropertiesSet())
                 .as("повторный накат на актуальной базе проходит без ошибки")
                 .doesNotThrowAnyException();
 
-        assertThat(primeneno())
+        assertThat(appliedCount())
                 .as("ни одна миграция не применена повторно")
-                .isEqualTo(bylo);
+                .isEqualTo(before);
     }
 
-    private boolean sushchestvuetTablica(String imya) {
-        return bazaDannyh.sql("""
+    private boolean tableExists(String name) {
+        return database.sql("""
                         select exists (
                             select 1 from pg_tables
                             where schemaname = 'public' and lower(tablename) = lower(?)
                         )
                         """)
-                .param(imya)
+                .param(name)
                 .query(Boolean.class)
                 .single();
     }
 
-    private long primeneno() {
-        return bazaDannyh.sql("select count(*) from databasechangelog")
+    private long appliedCount() {
+        return database.sql("select count(*) from databasechangelog")
                 .query(Long.class)
                 .single();
     }

@@ -13,25 +13,25 @@ import org.yaml.snakeyaml.Yaml;
  * поднимается база разработки. Одно место, а не два: разъехавшиеся версии
  * тихая ошибка, при которой тесты зелёные, а на боевой базе поведение другое.
  */
-final class ObrazPostgres {
+public final class PostgresImage {
 
     private static final Path COMPOSE = Path.of("compose.yaml");
 
-    private ObrazPostgres() {
+    private PostgresImage() {
     }
 
     @SuppressWarnings("unchecked")
-    static String izComposeFile() {
-        try (InputStream potok = Files.newInputStream(COMPOSE)) {
-            Map<String, Object> koren = new Yaml().load(potok);
-            Map<String, Object> servisy = (Map<String, Object>) koren.get("services");
-            Map<String, Object> postgres = servisy == null ? null : (Map<String, Object>) servisy.get("postgres");
-            Object obraz = postgres == null ? null : postgres.get("image");
-            if (obraz == null) {
+    public static String fromComposeFile() {
+        try (InputStream stream = Files.newInputStream(COMPOSE)) {
+            Map<String, Object> root = new Yaml().load(stream);
+            Map<String, Object> services = (Map<String, Object>) root.get("services");
+            Map<String, Object> postgres = services == null ? null : (Map<String, Object>) services.get("postgres");
+            Object image = postgres == null ? null : postgres.get("image");
+            if (image == null) {
                 throw new IllegalStateException(
                         "В " + COMPOSE.toAbsolutePath() + " нет services.postgres.image");
             }
-            return obraz.toString();
+            return image.toString();
         } catch (IOException e) {
             throw new UncheckedIOException("Не прочитать " + COMPOSE.toAbsolutePath(), e);
         }
