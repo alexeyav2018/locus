@@ -47,6 +47,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(staticResources).permitAll()
                         .requestMatchers(Addresses.LOGIN).permitAll()
+                        // Отдача файла: пропуском служит подпись ссылки, а не сеанс.
+                        // Так же устроено объектное хранилище, куда запрос идёт мимо
+                        // приложения; требуй здесь входа — и два варианта хранилища
+                        // повели бы себя по-разному.
+                        .requestMatchers(Addresses.FILE + "/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(login -> login
                         .loginPage(Addresses.LOGIN)

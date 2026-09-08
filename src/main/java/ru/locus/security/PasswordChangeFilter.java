@@ -50,6 +50,10 @@ public class PasswordChangeFilter extends OncePerRequestFilter {
         return Addresses.PASSWORD_CHANGE.equals(path)
                 || Addresses.LOGIN.equals(path)
                 || Addresses.LOGOUT.equals(path)
+                // Подписанная ссылка не про сеанс: она открывается и тем, кому
+                // предстоит сменить пароль, — иначе поведение зависело бы
+                // от того, какой вариант хранилища включён.
+                || path.startsWith(Addresses.FILE + "/")
                 || staticResources.matches(request);
     }
 

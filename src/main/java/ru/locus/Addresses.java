@@ -13,6 +13,13 @@ public final class Addresses {
     public static final String PASSWORD_CHANGE = "/password";
     public static final String USERS = "/users";
 
+    /**
+     * Отдача файла по подписанной ссылке. Адрес открыт без входа: пропуск даёт
+     * подпись, а не сеанс — ровно как у объектного хранилища, куда запрос идёт
+     * мимо приложения.
+     */
+    public static final String FILE = "/file";
+
     private Addresses() {
     }
 }

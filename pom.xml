@@ -20,7 +20,26 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!--
+            Версией AWS SDK Spring Boot не управляет: в его спецификации этой
+            библиотеки нет. Поэтому здесь спецификация самого SDK — она
+            согласует версии его частей между собой.
+        -->
+        <awssdk.version>2.54.13</awssdk.version>
+        <thumbnailator.version>0.4.21</thumbnailator.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -50,6 +69,26 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!--
+            Файлы: объектное хранилище (ADR-0021). SDK виден только пакету
+            ru.locus.file; выше него о S3 не знает никто.
+        -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+
+        <!--
+            Пережатие снимков. Взят ради разворота по сведениям о съёмке (EXIF):
+            чистый ImageIO этого не делает, и забытый разворот — тихая ошибка,
+            при которой файл цел, объём уменьшился, а фотография лежит на боку.
+        -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
+        </dependency>
+
         <!-- Разработка: приложение само поднимает базу из compose.yaml -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -76,6 +115,16 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+            Тесты: MinIO как S3-совместимое хранилище. Объектная реализация —
+            единственная, которая пойдёт в бой, и проверяться она обязана
+            по-настоящему, а не через файловую подмену.
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-minio</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -9,3 +9,6 @@ target/
 
 # IDE
 .idea/
+
+# Файлы, положенные в локальное хранилище при разработке (locus.file.local.directory)
+.locus-files/
