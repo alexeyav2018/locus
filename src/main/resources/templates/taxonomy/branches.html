@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--/*
+    Левая панель: ветвь дерева, вызывающая сама себя — дерево произвольной
+    глубины иначе не показать. Здесь только структура: имена узлов и их
+    вложенность. Действия живут в правой панели и относятся к выбранному узлу;
+    формы, вставленные между узлами, прятали бы структуру, ради которой
+    Администратор и пришёл.
+
+    Вычислений нет: дерево собрано сервисом, шаблон раскладывает его списками.
+
+    Свёртка нужна только там, где есть что сворачивать: у листа
+    раскрывающийся треугольник не открывал бы ничего. Условие показа стоит
+    на обёртке, а не на самой ссылке: th:replace выполняется РАНЬШЕ th:if,
+    и условие, написанное на том же теге, молча теряется — ссылка выводится
+    и в summary, и после details.
+
+    Комментарии здесь в форме Thymeleaf: обычные HTML-комментарии повторялись
+    бы в выдаче у каждого узла дерева.
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<ul th:fragment="branches(branches)">
+    <li th:each="branch : ${branches}" th:id="'node-' + ${branch.node.id.value}">
+        <details open th:if="${!#lists.isEmpty(branch.children)}">
+            <summary>
+                <a th:replace="~{taxonomy/branches :: link(${branch})}">Алгебра</a>
+            </summary>
+            <ul th:replace="~{taxonomy/branches :: branches(${branch.children})}"></ul>
+        </details>
+        <span th:if="${#lists.isEmpty(branch.children)}">
+            <a th:replace="~{taxonomy/branches :: link(${branch})}">Уравнения</a>
+        </span>
+    </li>
+</ul>
+
+<a th:fragment="link(branch)"
+   th:href="@{/taxonomy(node=${branch.node.id.value})}"
+   th:classappend="${branch.node.id.value == selectedId} ? 'selected'"
+   th:text="${branch.node.name}">Алгебра</a>
+</body>
+</html>

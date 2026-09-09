@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Рубрикатор — Locus</title>
+    <!--/*
+        Две колонки, подсветка выбранного узла и воздух между действиями.
+        Оформления сверх этого нет: внешний вид в работу не входит. Расстояния
+        здесь не украшение — четыре формы подряд без промежутков читаются как
+        одна, и кнопка удаления оказывается вплотную к чужому полю ввода.
+        CSS — не внешняя библиотека и не код, исполняемый в браузере; запрет
+        ADR-0020 его не касается.
+
+        Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
+        разработчику и в выдачу попадать не должен. Обычный комментарий уходит
+        в страницу вместе с названиями действий — и Учитель, которому действий
+        не предлагают, всё равно читает их в исходном тексте.
+    */-->
+    <style>
+        .screen { display: flex; gap: 3rem; align-items: flex-start; }
+        .screen .tree { flex: 2 1 0; }
+        .screen .actions { flex: 1 1 0; }
+        .selected { font-weight: bold; }
+
+        .screen .actions > div { margin-bottom: 2.5rem; }
+        .screen .actions h2 { margin: 0 0 0.5rem; }
+        .screen .actions > div > p { margin: 0 0 1.5rem; }
+        .screen .actions form {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.6rem;
+            margin: 0 0 1.75rem;
+        }
+        .screen .actions label { display: block; }
+        .screen .actions input[type=text],
+        .screen .actions select {
+            display: block;
+            margin-top: 0.35rem;
+            padding: 0.35rem;
+            min-width: 16rem;
+            max-width: 100%;
+        }
+        .screen .actions button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1>Рубрикатор</h1>
+
+<p th:if="${error}" th:text="${error}">Имя занято</p>
+
+<div class="screen">
+    <div class="tree">
+        <p th:if="${#lists.isEmpty(tree)}">Дерево пусто.</p>
+        <ul th:replace="~{taxonomy/branches :: branches(${tree})}"></ul>
+    </div>
+
+    <div class="actions">
+        <div th:if="${selected}">
+            <h2 th:text="${selected.name}">Уравнения</h2>
+            <p th:text="${selectedPath}">Алгебра / Уравнения</p>
+            <p th:if="${selected.section}">Раздел: несёт теорию, но не задачи</p>
+            <p th:if="${selected.topic}">Тема: несёт задачи и отметки владения</p>
+
+            <div th:if="${administrator}">
+                <form method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">
+                    <label>Новое имя <input type="text" name="name"></label>
+                    <button type="submit">Переименовать</button>
+                </form>
+
+                <form method="post" th:action="@{/taxonomy}">
+                    <input type="hidden" name="parentId" th:value="${selected.id.value}">
+                    <label>Имя потомка <input type="text" name="name"></label>
+                    <button type="submit">Добавить потомка</button>
+                </form>
+
+                <!--/* Список выбора родителя один на страницу: повторённый
+                       у каждого узла, он рос бы квадратично. */-->
+                <form method="post" th:action="@{/taxonomy/{id}/parent(id=${selected.id.value})}">
+                    <label>Перенести под
+                        <select name="parentId">
+                            <option value="">— в корень —</option>
+                            <option th:each="path : ${paths}"
+                                    th:value="${path.id.value}"
+                                    th:text="${path.path}">Алгебра / Уравнения</option>
+                        </select>
+                    </label>
+                    <button type="submit">Перенести</button>
+                </form>
+
+                <form method="post" th:action="@{/taxonomy/{id}/deletion(id=${selected.id.value})}">
+                    <button type="submit">Удалить</button>
+                </form>
+            </div>
+        </div>
+
+        <p th:unless="${selected}">Выберите узел в дереве, чтобы работать с ним.</p>
+
+        <div th:if="${administrator}">
+            <h2>Завести корневой узел</h2>
+            <form method="post" th:action="@{/taxonomy}">
+                <label>Имя <input type="text" name="name"></label>
+                <button type="submit">Завести</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<p><a th:href="@{/}">На главную</a></p>
+</body>
+</html>

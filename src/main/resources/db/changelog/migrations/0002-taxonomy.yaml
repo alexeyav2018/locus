@@ -1,0 +1,79 @@
+# Рубрикатор — дерево Разделов и Тем (ADR-0006).
+#
+# Имена выведены из словаря (openspec/context/glossary.md): Рубрикатор →
+# Taxonomy, узел дерева — класс TaxonomyNode, значит таблица taxonomy_node.
+#
+# Вида узла в схеме НЕТ и быть не должно: Раздел и Тема — не два вида записи,
+# а два состояния одной. Есть потомки — Раздел, нет потомков — Тема. Хранимый
+# признак был бы вторым источником правды о том, лист ли узел, и разошёлся
+# бы с первым молча — в тот момент, когда у Темы появляется потомок.
+#
+# Иерархия хранится связью «родитель»: одно поле parent_id, перемещение узла
+# есть изменение одной строки. Материализованный путь и ltree отвергнуты —
+# обоснование в изменении rubricator-tree и в architecture.md.
+databaseChangeLog:
+  - changeSet:
+      id: 0002-taxonomy-node
+      author: locus
+      comment: Узел рубрикатора; parent_id NULL означает корень
+      changes:
+        - createTable:
+            tableName: taxonomy_node
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_taxonomy_node
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              # NULL — корневой узел. Корней может быть несколько.
+              - column:
+                  name: parent_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        # Каскада здесь намеренно нет: ON DELETE CASCADE снёс бы поддерево
+        # одним запросом — ровно то поведение, которое спецификация запрещает.
+        # Пусть попытка удалить узел с потомками падает нарушением внешнего
+        # ключа, даже если проверка в сервисе однажды окажется обойдённой.
+        - addForeignKeyConstraint:
+            baseTableName: taxonomy_node
+            baseColumnNames: parent_id
+            referencedTableName: taxonomy_node
+            referencedColumnNames: id
+            constraintName: fk_taxonomy_node_parent
+
+  - changeSet:
+      id: 0002-taxonomy-node-unique-name-among-siblings
+      author: locus
+      comment: Имя узла не повторяется среди потомков одного родителя
+      changes:
+        - createIndex:
+            tableName: taxonomy_node
+            indexName: uq_taxonomy_node_parent_name
+            unique: true
+            columns:
+              - column:
+                  name: parent_id
+              - column:
+                  name: name
+
+  - changeSet:
+      id: 0002-taxonomy-node-unique-root-name
+      author: locus
+      comment: >-
+        Уникальность имён среди корней. Индекс выше их не покрывает: NULL
+        в PostgreSQL не равен NULL, поэтому два корня с одинаковым именем
+        прошли бы. Лечится частичным индексом, а он выражается только сырым
+        SQL — отката у changeset'а нет, и это ожидаемо (standards.md, «Данные»).
+      changes:
+        - sql:
+            sql: >-
+              create unique index uq_taxonomy_node_root_name
+              on taxonomy_node (name) where parent_id is null

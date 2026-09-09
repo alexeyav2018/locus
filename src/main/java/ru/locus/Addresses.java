@@ -12,6 +12,7 @@ public final class Addresses {
     public static final String LOGOUT = "/logout";
     public static final String PASSWORD_CHANGE = "/password";
     public static final String USERS = "/users";
+    public static final String TAXONOMY = "/taxonomy";
 
     /**
      * Отдача файла по подписанной ссылке. Адрес открыт без входа: пропуск даёт
