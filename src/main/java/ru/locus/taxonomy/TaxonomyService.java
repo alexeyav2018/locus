@@ -6,6 +6,7 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,8 +29,16 @@ public class TaxonomyService {
 
     private final TaxonomyRepository nodes;
 
-    public TaxonomyService(TaxonomyRepository nodes) {
+    /**
+     * Области, что-то на узлы вешающие, — источник ответа на вопрос «что лежит
+     * на этом узле». Собираются списком: дерево не знает ни одной из них
+     * по имени, и появление следующей его не касается.
+     */
+    private final List<NodeContent> content;
+
+    public TaxonomyService(TaxonomyRepository nodes, List<NodeContent> content) {
         this.nodes = nodes;
+        this.content = content;
     }
 
     /** Всё дерево, собранное от корней; братья — по алфавиту. */
@@ -74,6 +83,21 @@ public class TaxonomyService {
     }
 
     /**
+     * Пути только до Тем — листьев дерева. То, из чего выбирают Тему разметки.
+     *
+     * Отдельный метод, а не отсев в шаблоне или в контроллере: «узел — лист»
+     * вычисляется из числа потомков, и вычисление это предметное. Уехав
+     * в шаблон, оно разъехалось бы с проверкой в сервисе Задачи — и форма
+     * предлагала бы Раздел, на который Задачу всё равно не привязать
+     * (инвариант 1).
+     */
+    public List<TaxonomyPath> topicPaths() {
+        return paths().stream()
+                .filter(path -> node(path.id()).isTopic())
+                .toList();
+    }
+
+    /**
      * Узел, названный полным путём от корня, — то, что показывает правая
      * панель экрана.
      *
@@ -104,7 +128,8 @@ public class TaxonomyService {
      *
      * Вид узла при этом не назначается и нигде не сохраняется: новый узел
      * потомков не имеет, значит он Тема; появится потомок — станет Разделом
-     * сам собой.
+     * сам собой. Ровно поэтому родителю, несущему Задачи, потомка добавить
+     * нельзя — см. {@link #refuseIfDeepeningLosesContent}.
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
@@ -112,6 +137,7 @@ public class TaxonomyService {
         String trimmed = requireName(name);
         if (parent != null) {
             existing(parent);
+            refuseIfDeepeningLosesContent(parent);
         }
         refuseIfNameTaken(parent, trimmed, null);
         return nodes.create(trimmed, parent);
@@ -161,13 +187,17 @@ public class TaxonomyService {
      * условие, и искать его потом надо в одном месте, а не по всем вызовам
      * удаления.
      *
-     * <p>Сегодня условие одно — у узла нет потомков. Оно неполно, и это
-     * известно заранее. Содержимым узла считается всё, что на нём висит,
-     * и <b>появление каждой из трёх сущностей обязано пополнить эту
-     * проверку</b>:
+     * <p>Условий два: у узла нет потомков и на узле нет содержимого. О втором
+     * дерево спрашивает {@link NodeContent} — вопрос, на который отвечают
+     * области, что-то на узлы вешающие; сам {@code TaxonomyService} ни одну
+     * из них не знает по имени (design.md, «Проверки в чужих областях»).
+     *
+     * <p>Содержимым узла считается всё, что на нём висит, и <b>появление
+     * каждой из трёх сущностей обязано пополнить эту проверку</b>:
      *
      * <ul>
-     *   <li>Задачи — на Теме; приходят с работой {@code problem-catalog};</li>
+     *   <li>Задачи — на Теме; <b>пришли</b> с работой {@code problem-catalog},
+     *       отвечает {@code ProblemsOnNode};</li>
      *   <li>Теоретические материалы — на любом узле; работа
      *       {@code theory-materials};</li>
      *   <li>отметки Владения — на паре «Тема × Метод»; работа
@@ -185,6 +215,36 @@ public class TaxonomyService {
         if (children > 0) {
             throw new NodeNotEmptyException("У узла «" + node.name() + "» есть потомки (" + children
                     + "): узлы снимаются по одному, снизу вверх");
+        }
+        for (NodeContent kind : content) {
+            Optional<String> held = kind.on(node.id());
+            if (held.isPresent()) {
+                throw new NodeNotEmptyException("Узел «" + node.name() + "» не пуст: " + held.get());
+            }
+        }
+    }
+
+    /**
+     * Углубить узел, несущий содержимое, которое живёт только на Теме,
+     * нельзя: с появлением потомка узел становится Разделом, а на Разделе
+     * Задач и отметок Владения не бывает никогда (инвариант 1).
+     *
+     * Молча выполненная операция дала бы Задачи на Разделе: в дереве они
+     * больше не находятся, в статистике не участвуют, и никакой ошибки
+     * при этом не выдано (antipatterns.md, «Задачи или отметки на Разделе»).
+     *
+     * Отказ временный и назван прямо: перенос на Тему-приёмник (ADR-0007)
+     * принадлежит работе {@code rubricator-restructure} и здесь не строится.
+     */
+    private void refuseIfDeepeningLosesContent(TaxonomyNodeId parent) {
+        TaxonomyNode node = existing(parent);
+        for (NodeContent kind : content) {
+            Optional<String> held = kind.requiringTopic(node.id());
+            if (held.isPresent()) {
+                throw new TopicCarriesContentException("Узлу «" + node.name() + "» нельзя добавить потомка: "
+                        + held.get() + ", а с потомком он станет Разделом. Сначала нужно перенести их —"
+                        + " перенос появится вместе с механикой Темы-приёмника");
+            }
         }
     }
 

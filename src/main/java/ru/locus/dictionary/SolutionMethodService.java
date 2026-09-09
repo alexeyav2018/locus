@@ -1,6 +1,7 @@
 package ru.locus.dictionary;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +24,16 @@ public class SolutionMethodService {
 
     private final SolutionMethodRepository methods;
 
-    public SolutionMethodService(SolutionMethodRepository methods) {
+    /**
+     * Области, ссылающиеся на записи словаря, — источник ответа на вопрос
+     * «употреблена ли запись». Собираются списком: словарь не знает ни одной
+     * из них по имени, и появление следующей его не касается.
+     */
+    private final List<DictionaryUsage> usages;
+
+    public SolutionMethodService(SolutionMethodRepository methods, List<DictionaryUsage> usages) {
         this.methods = methods;
+        this.usages = usages;
     }
 
     /** Весь словарь, по алфавиту. */
@@ -73,14 +82,17 @@ public class SolutionMethodService {
      * дописывается каждое новое условие, и искать его потом надо в одном
      * месте, а не по всем вызовам удаления.
      *
-     * <p>Сегодня условие выполняется тождественно: ссылаться на Метод нечему,
-     * Задач в системе нет. Это не заглушка «на будущее», а честное состояние —
-     * и оно временное. <b>Появление каждой из двух сущностей обязано пополнить
-     * эту проверку</b>:
+     * <p>Условие спрашивается у {@link DictionaryUsage} — вопроса, на который
+     * отвечают области, ссылающиеся на записи словаря; сам сервис ни одну
+     * из них не знает по имени (design.md, «Проверки в чужих областях»).
+     *
+     * <p><b>Появление каждой из двух сущностей обязано пополнить эту
+     * проверку</b>:
      *
      * <ul>
-     *   <li>разметка Задачи — связь {@code problem_solution_method}; приходит
-     *       с работой {@code problem-catalog};</li>
+     *   <li>разметка Задачи — связь {@code problem_solution_method};
+     *       <b>пришла</b> с работой {@code problem-catalog}, отвечает
+     *       {@code ProblemMarkupUsage};</li>
      *   <li>отметки Владения — на паре «Тема × Метод», их ячейки опираются
      *       на удаляемый Метод; работа {@code mastery-marks}.</li>
      * </ul>
@@ -95,7 +107,13 @@ public class SolutionMethodService {
      * бэклога {@code method-edit-impact}.
      */
     private void refuseUnlessUnused(SolutionMethod method) {
-        // Ссылаться на запись нечему: таблиц разметки не существует.
+        for (DictionaryUsage usage : usages) {
+            Optional<String> used = usage.ofMethod(method.id());
+            if (used.isPresent()) {
+                throw new EntryInUseException("Метод «" + method.name() + "» используется: "
+                        + used.get() + ". Пока это так, удалить его нельзя");
+            }
+        }
     }
 
     /**

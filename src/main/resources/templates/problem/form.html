@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${problem} ? 'Правка Задачи — Locus' : 'Новая Задача — Locus'">Новая Задача — Locus</title>
+    <!--/*
+        Одна страница на заведение и правку: поля те же, и разъехались бы они
+        молча — сначала порядком, потом составом. Различает их наличие
+        ${problem}; файлы при правке заменяются отдельными формами, потому что
+        заменяют обычно один из двух, а не оба сразу.
+
+        Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
+        разработчику и в выдачу попадать не должен.
+    */-->
+    <style>
+        form { max-width: 46rem; }
+        fieldset { margin: 0 0 1.75rem; padding: 0.75rem 1rem 1rem; }
+        legend { padding: 0 0.35rem; }
+        label { display: block; margin: 0.35rem 0; }
+        input[type=text], select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
+        select[multiple] { min-height: 8rem; }
+        button { padding: 0.35rem 0.9rem; }
+        .hint { margin: 0.25rem 0 0.75rem; }
+    </style>
+</head>
+<body>
+<h1 th:if="${problem}" th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+<h1 th:unless="${problem}">Новая Задача</h1>
+
+<p th:if="${error}" th:text="${error}">Задаче нужен хотя бы один Метод</p>
+
+<form method="post"
+      enctype="multipart/form-data"
+      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value})} : @{/problems}">
+
+    <label>Подпись
+        <input type="text" name="caption" th:value="${problem} ? ${problem.caption} : ''">
+    </label>
+    <p class="hint">Необязательна: без неё Задача различается номером.</p>
+
+    <fieldset>
+        <legend>Часть ЕГЭ</legend>
+        <label th:each="examPart : ${parts}">
+            <input type="radio" name="part" th:value="${examPart}"
+                   th:checked="${problem != null and problem.part == examPart}">
+            <span th:text="${examPart.title}">первая часть</span>
+        </label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Темы</legend>
+        <p class="hint">Только Темы — листья дерева: Задач на Разделах не бывает.</p>
+        <select name="topics" multiple size="8">
+            <option th:each="path : ${topicPaths}"
+                    th:value="${path.id.value}"
+                    th:text="${path.path}"
+                    th:selected="${(problem != null and problem.topics.contains(path.id))
+                                   or (problem == null and path.id.value == chosenTopic)}">Алгебра / Уравнения</option>
+        </select>
+    </fieldset>
+
+    <fieldset>
+        <legend>Методы</legend>
+        <!--/* Методы Темы — первыми, полный словарь — отдельным списком
+               (ADR-0010). Выбор не ограничен ни тем, ни другим списком. */-->
+        <div th:if="${not #lists.isEmpty(topicMethods)}">
+            <p class="hint">Уже встречались в этой Теме:</p>
+            <select name="methodIds" multiple size="5">
+                <option th:each="method : ${topicMethods}"
+                        th:value="${method.id.value}"
+                        th:text="${method.name}"
+                        th:selected="${problem != null and problem.methods.contains(method.id)}">Замена переменной</option>
+            </select>
+        </div>
+        <p class="hint">Весь словарь Методов:</p>
+        <select name="methodIds" multiple size="8">
+            <option th:each="method : ${methods}"
+                    th:value="${method.id.value}"
+                    th:text="${method.name}"
+                    th:selected="${problem != null and problem.methods.contains(method.id)}">Разложение на множители</option>
+        </select>
+    </fieldset>
+
+    <fieldset>
+        <legend>Характеристики</legend>
+        <p class="hint">Необязательны.</p>
+        <select name="characteristicIds" multiple size="6">
+            <option th:each="characteristic : ${characteristics}"
+                    th:value="${characteristic.id.value}"
+                    th:text="${characteristic.name}"
+                    th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
+        </select>
+    </fieldset>
+
+    <fieldset th:unless="${problem}">
+        <legend>Файлы</legend>
+        <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
+            неполноту в момент проверки Работы, когда искать его будет поздно.</p>
+        <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+    </fieldset>
+
+    <button type="submit" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+</form>
+
+<div th:if="${problem}">
+    <h2>Замена файлов</h2>
+    <form method="post" enctype="multipart/form-data"
+          th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
+        <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <button type="submit">Заменить условие</button>
+    </form>
+    <form method="post" enctype="multipart/form-data"
+          th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
+        <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <button type="submit">Заменить решение</button>
+    </form>
+</div>
+
+<p th:if="${problem}"><a th:href="@{/problems/{id}(id=${problem.id.value})}">К Задаче</a></p>
+<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+</body>
+</html>

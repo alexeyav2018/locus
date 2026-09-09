@@ -21,6 +21,8 @@
         .screen .tree { flex: 2 1 0; }
         .screen .actions { flex: 1 1 0; }
         .selected { font-weight: bold; }
+        .screen .actions .problems h3 { margin: 0 0 0.5rem; }
+        .screen .actions .problems ul { margin: 0 0 0.75rem; padding-left: 1.25rem; }
 
         .screen .actions > div { margin-bottom: 2.5rem; }
         .screen .actions h2 { margin: 0 0 0.5rem; }
@@ -61,6 +63,31 @@
             <p th:text="${selectedPath}">Алгебра / Уравнения</p>
             <p th:if="${selected.section}">Раздел: несёт теорию, но не задачи</p>
             <p th:if="${selected.topic}">Тема: несёт задачи и отметки владения</p>
+
+            <!--/* Задачи Темы — здесь, а не отдельным экраном со вторым
+                   деревом: «выбрать Тему» — единственная навигация, которая
+                   у библиотеки сегодня есть (design.md, «Экран»). */-->
+            <div class="problems" th:if="${selected.topic}">
+                <h3>Задачи Темы</h3>
+                <p th:if="${#lists.isEmpty(problems)}">Задач на этой Теме нет.</p>
+                <ul th:unless="${#lists.isEmpty(problems)}">
+                    <li th:each="problem : ${problems}">
+                        <a th:href="@{/problems/{id}(id=${problem.id.value})}"
+                           th:text="'№ ' + ${problem.number}">№ 12</a>
+                        <span th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
+                        <span th:text="${problem.part.title}">вторая часть</span>
+                    </li>
+                </ul>
+                <p th:if="${administrator}">
+                    <a th:href="@{/problems/new(topic=${selected.id.value})}">Завести Задачу</a>
+                </p>
+            </div>
+
+            <!--/* У Раздела — объяснение, а не пустой список: пустой список
+                   читался бы как «здесь ничего нет», и Администратор завёл бы
+                   дубли уже существующих Задач (design.md, «Экран»). */-->
+            <p class="problems" th:if="${selected.section}">Задачи несут только Темы —
+                листья дерева. Выберите Тему, чтобы увидеть её Задачи.</p>
 
             <div th:if="${administrator}">
                 <form method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">

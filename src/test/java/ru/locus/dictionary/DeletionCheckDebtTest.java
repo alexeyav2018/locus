@@ -9,19 +9,20 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Задача 3.5: долг «пополнить проверку удаления» записан там, где его найдут.
+ * Долг «пополнить проверку удаления» записан там, где его найдут.
  *
- * Сегодня условие «запись не используется» выполняется тождественно —
- * ссылаться на запись нечему. Проверка существует отдельным методом ровно
- * для того, чтобы будущее условие дописывалось в одно место; но метод, чьё
- * тело пусто, при следующей уборке кода выглядит лишним и удаляется молча,
+ * Проверка «запись не используется» живёт отдельным методом ровно для того,
+ * чтобы каждое новое условие дописывалось в одно место. Метод, чьё тело
+ * пусто, при следующей уборке кода выглядит лишним и удаляется молча,
  * а вместе с ним уходит и единственная подсказка о том, что сюда надо
- * вернуться.
+ * вернуться. Поэтому проверяется сам исходный текст.
  *
- * Поэтому проверяется сам исходный текст: метод на месте и назван, а его
- * пояснение называет работы, с которыми условие обязано пополниться. Долг
- * записан и требованием спеки, и карточкой бэклога — здесь третий, самый
- * близкий к коду рубеж.
+ * <b>Часть долга погашена.</b> Разметка Задачи пришла с {@code problem-catalog}:
+ * условие теперь настоящее, и его срабатывание проверяется отдельно
+ * ({@code ProblemsGuardTheDictionariesTest}). Остаётся долг по отметкам
+ * Владения — их ячейки опираются на Метод, и {@code mastery-marks} обязан
+ * добавить свой ответ. Долг записан и требованием спеки, и карточкой
+ * бэклога — здесь третий, самый близкий к коду рубеж.
  */
 class DeletionCheckDebtTest {
 
@@ -33,7 +34,7 @@ class DeletionCheckDebtTest {
                 .as("проверка использования — отдельный названный метод, а не условие внутри удаления")
                 .contains("refuseUnlessUnused");
         assertThat(source)
-                .as("разметка Задачи придёт с problem-catalog и обязана пополнить условие")
+                .as("разметка Задачи пришла с problem-catalog — условие названо погашенным")
                 .contains("problem-catalog");
         assertThat(source)
                 .as("ячейки владения опираются на Метод — mastery-marks обязан пополнить условие")
@@ -46,8 +47,24 @@ class DeletionCheckDebtTest {
 
         assertThat(source).contains("refuseUnlessUnused");
         assertThat(source)
-                .as("разметка Задачи придёт с problem-catalog")
+                .as("разметка Задачи пришла с problem-catalog")
                 .contains("problem-catalog");
+    }
+
+    /**
+     * Условие пополняется ответом на вопрос, а не строкой внутри сервиса:
+     * следующая работа обязана добавить реализацию {@link DictionaryUsage},
+     * ничего в словарях не правя. Исчезни вопрос — и пополнять станет некуда.
+     */
+    @Test
+    void theCheckAsksTheQuestionInsteadOfKnowingTheAnswerItself() throws IOException {
+        assertThat(sourceOf(SolutionMethodService.class))
+                .as("проверка спрашивает DictionaryUsage")
+                .contains("DictionaryUsage");
+        assertThat(sourceOf(CharacteristicService.class)).contains("DictionaryUsage");
+        assertThat(sourceOf(SolutionMethodService.class))
+                .as("словарь не знает области Задач по имени")
+                .doesNotContain("ru.locus.problem");
     }
 
     private static String sourceOf(Class<?> type) throws IOException {

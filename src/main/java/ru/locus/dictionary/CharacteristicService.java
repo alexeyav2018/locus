@@ -1,6 +1,7 @@
 package ru.locus.dictionary;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,8 +22,12 @@ public class CharacteristicService {
 
     private final CharacteristicRepository characteristics;
 
-    public CharacteristicService(CharacteristicRepository characteristics) {
+    /** Области, ссылающиеся на записи словаря, — как и у {@link SolutionMethodService}. */
+    private final List<DictionaryUsage> usages;
+
+    public CharacteristicService(CharacteristicRepository characteristics, List<DictionaryUsage> usages) {
         this.characteristics = characteristics;
+        this.usages = usages;
     }
 
     /** Весь словарь, по алфавиту. */
@@ -67,10 +72,9 @@ public class CharacteristicService {
      * дописывается каждое новое условие, и искать его потом надо в одном
      * месте, а не по всем вызовам удаления.
      *
-     * <p>Сегодня условие выполняется тождественно: ссылаться на Характеристику
-     * нечему, Задач в системе нет. <b>Появление разметки Задачи обязано
-     * пополнить эту проверку</b>: связь {@code problem_characteristic}
-     * приходит с работой {@code problem-catalog}.
+     * <p>Условие спрашивается у {@link DictionaryUsage}, как и у Метода.
+     * <b>Разметка Задачи пришла</b> с работой {@code problem-catalog}: связь
+     * {@code problem_characteristic}, отвечает {@code ProblemMarkupUsage}.
      *
      * <p>Ячеек владения Характеристика не порождает — в измерении она
      * не участвует (ADR-0009), — поэтому {@code mastery-marks} эту проверку
@@ -80,7 +84,13 @@ public class CharacteristicService {
      * признаку, по которому их искали.
      */
     private void refuseUnlessUnused(Characteristic characteristic) {
-        // Ссылаться на запись нечему: таблиц разметки не существует.
+        for (DictionaryUsage usage : usages) {
+            Optional<String> used = usage.ofCharacteristic(characteristic.id());
+            if (used.isPresent()) {
+                throw new EntryInUseException("Характеристика «" + characteristic.name() + "» используется: "
+                        + used.get() + ". Пока это так, удалить её нельзя");
+            }
+        }
     }
 
     /**

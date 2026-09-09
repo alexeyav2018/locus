@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Задача — Locus</title>
+    <!--/*
+        Ссылки на файлы временные и подписанные: постоянного адреса у PDF
+        Задачи нет ни в одной реализации хранилища. Ссылка, выданная здесь,
+        через несколько минут перестаёт работать — и это требование, а не
+        неудобство: PDF с решениями не должны попадать к ученикам.
+    */-->
+    <style>
+        dt { font-weight: bold; margin-top: 0.75rem; }
+        dd { margin: 0.25rem 0 0 1.5rem; }
+        form { display: inline-block; margin-right: 1rem; }
+        button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1 th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+
+<p th:if="${error}" th:text="${error}">Задача уже используется</p>
+
+<p th:if="${problem.hasCaption}" th:text="${problem.caption}">Сборник Ященко, вариант 12, № 8</p>
+<p th:unless="${problem.hasCaption}">Подписи нет: Задача различается номером.</p>
+
+<dl>
+    <dt>Часть ЕГЭ</dt>
+    <dd th:text="${problem.part.title}">вторая часть</dd>
+
+    <dt>Темы</dt>
+    <dd th:each="topic : ${topicNames}" th:text="${topic}">Алгебра / Уравнения</dd>
+
+    <dt>Методы</dt>
+    <dd th:each="method : ${methodNames}" th:text="${method}">Замена переменной</dd>
+
+    <dt>Характеристики</dt>
+    <dd th:if="${#lists.isEmpty(characteristicNames)}">не указаны</dd>
+    <dd th:each="characteristic : ${characteristicNames}" th:text="${characteristic}">Двойной угол</dd>
+</dl>
+
+<h2>Файлы</h2>
+<p>Ссылки действуют ограниченное время; постоянного адреса у файла нет.</p>
+<ul>
+    <li><a th:href="${conditionLink}">PDF условия</a></li>
+    <li><a th:href="${solutionLink}">PDF решения</a></li>
+</ul>
+
+<div th:if="${administrator}">
+    <h2>Действия</h2>
+    <p><a th:href="@{/problems/{id}/edit(id=${problem.id.value})}">Править Задачу</a></p>
+    <form method="post" th:action="@{/problems/{id}/deletion(id=${problem.id.value})}">
+        <button type="submit">Удалить Задачу</button>
+    </form>
+</div>
+
+<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+</body>
+</html>

@@ -68,6 +68,62 @@ public final class Browser {
                 .build());
     }
 
+    /**
+     * Отправка формы с файлами — тем же multipart, каким её шлёт браузер.
+     *
+     * Своя сборка тела, а не библиотека: части здесь две-три, а подмена
+     * отправки означала бы, что разбор запроса приложением никто не проверял.
+     *
+     * @param files имя поля -> пара «имя файла, содержимое»; пустое содержимое
+     *              означает незаполненное поле выбора файла
+     */
+    public Page postMultipart(String action, Map<String, String> fields, Map<String, byte[]> files) {
+        String boundary = "----locus" + java.util.UUID.randomUUID();
+        var body = new java.io.ByteArrayOutputStream();
+        Map<String, String> withToken = new LinkedHashMap<>(fields);
+        withToken.put("_csrf", csrfTokenFrom(action));
+
+        withToken.forEach((name, value) -> write(body, "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n"
+                + value + "\r\n"));
+        files.forEach((name, content) -> {
+            write(body, "--" + boundary + "\r\n"
+                    + "Content-Disposition: form-data; name=\"" + name + "\"; filename=\"" + name + ".pdf\"\r\n"
+                    + "Content-Type: application/pdf\r\n\r\n");
+            write(body, content);
+            write(body, "\r\n");
+        });
+        write(body, "--" + boundary + "--\r\n");
+
+        return send(HttpRequest.newBuilder(URI.create(baseUrl + action))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
+                .build());
+    }
+
+    /** Содержимое по ссылке — байтами, как их получил бы браузер. */
+    public byte[] getBytes(String path) {
+        try {
+            HttpResponse<byte[]> response = http.send(
+                    HttpRequest.newBuilder(URI.create(baseUrl + path)).GET().build(),
+                    HttpResponse.BodyHandlers.ofByteArray());
+            return response.statusCode() == 200 ? response.body() : new byte[0];
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void write(java.io.ByteArrayOutputStream body, String text) {
+        write(body, text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void write(java.io.ByteArrayOutputStream body, byte[] bytes) {
+        body.writeBytes(bytes);
+    }
+
     /** Вход формой — ровно так, как его выполняет человек. */
     public Page logIn(String login, String password) {
         return postForm("/login", Map.of("username", login, "password", password));

@@ -1,5 +1,6 @@
 package ru.locus.taxonomy;
 
+import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -7,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
+import ru.locus.problem.ProblemService;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.Role;
 
@@ -38,10 +40,20 @@ public class TaxonomyController {
     private static final long NOTHING_SELECTED = 0;
 
     private final TaxonomyService taxonomy;
+
+    /**
+     * Задачи выбранной Темы. Зависимость от области Задач — только здесь,
+     * в контроллере: сервис дерева о Задачах не знает и знать не должен,
+     * иначе области связались бы в кольцо (design.md, «Проверки в чужих
+     * областях»).
+     */
+    private final ProblemService problems;
+
     private final CurrentUser currentUser;
 
-    public TaxonomyController(TaxonomyService taxonomy, CurrentUser currentUser) {
+    public TaxonomyController(TaxonomyService taxonomy, ProblemService problems, CurrentUser currentUser) {
         this.taxonomy = taxonomy;
+        this.problems = problems;
         this.currentUser = currentUser;
     }
 
@@ -104,6 +116,11 @@ public class TaxonomyController {
      * Узел, которого нет, отказом не считается: его могли удалить в соседней
      * вкладке или прислать ссылкой на исчезнувшее. Дерево при этом показать
      * можно и нужно — а действий над несуществующим узлом не предлагается.
+     *
+     * Задачи выбранной Темы читаются здесь же: библиотека живёт на этом экране
+     * (design.md, «Экран»). Зависимость от области Задач есть только у
+     * контроллера — {@link TaxonomyService} о них по-прежнему не знает, и это
+     * проверяется отдельно.
      */
     private String render(Long node, Model model) {
         model.addAttribute("tree", taxonomy.tree());
@@ -111,12 +128,16 @@ public class TaxonomyController {
         model.addAttribute("administrator", currentUser.account().hasRole(Role.ADMINISTRATOR));
 
         long selected = NOTHING_SELECTED;
+        model.addAttribute("problems", List.of());
         if (node != null) {
             try {
                 TaxonomyNode chosen = taxonomy.node(new TaxonomyNodeId(node));
                 model.addAttribute("selected", chosen);
                 model.addAttribute("selectedPath", taxonomy.path(chosen.id()).path());
                 selected = chosen.id().value();
+                if (chosen.isTopic()) {
+                    model.addAttribute("problems", problems.problemsOf(chosen.id()));
+                }
             } catch (IllegalArgumentException gone) {
                 model.addAttribute("error", gone.getMessage());
             }

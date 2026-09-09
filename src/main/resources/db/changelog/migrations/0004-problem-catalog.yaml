@@ -1,0 +1,171 @@
+# Задача — единица общей библиотеки: два PDF и разметка (ADR-0008, ADR-0009).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): Problem → problem; связующие таблицы — имена связываемых таблиц
+# через подчёркивание, первой та сущность, которой связь принадлежит:
+# problem_topic, problem_solution_method, problem_characteristic. Выбирать
+# здесь нечего.
+#
+# Отдельного поля «номер» НЕТ: номер Задачи — её id. Идентификатор и так
+# монотонно растёт, а второе поле с тем же смыслом пришлось бы держать
+# согласованным с первым, и разошлись бы они молча (ADR-0029).
+#
+# Обязательность обоих PDF выражена схемой (NOT NULL на обоих ключах), а не
+# одной лишь проверкой в сервисе: Задача без решения обнаружит свою неполноту
+# только в момент проверки Работы ученика, когда искать решение уже поздно.
+#
+# Владельца у Задачи нет ни в одной таблице: библиотека общая, и колонка
+# «чей» здесь была бы началом фильтра, который сделал бы её невидимой
+# (ADR-0027).
+databaseChangeLog:
+  - changeSet:
+      id: 0004-problem
+      author: locus
+      comment: Задача — подпись, Часть и ключи двух файлов; id служит номером
+      changes:
+        - createTable:
+            tableName: problem
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_problem
+              # Подпись необязательна: пустая подпись — законное состояние
+              # Задачи, различить её тогда позволяет номер (ADR-0029).
+              - column:
+                  name: caption
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: true
+              # Имя константы перечисления ExamPart, как role в
+              # 0001-users-and-roles.yaml: значение читается в базе глазами
+              # и не требует сверки с таблицей кодов.
+              - column:
+                  name: exam_part
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: condition_file_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: solution_file_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0004-problem-topic
+      author: locus
+      comment: >-
+        Разметка Задачи Темами. Ссылка идёт на taxonomy_node: отдельной таблицы
+        Тем нет и быть не может — вид узла не хранится, а вычисляется по
+        наличию потомков. Отсюда следствие: «ссылка только на лист» внешним
+        ключом не выражается и проверяется в сервисе.
+      changes:
+        - createTable:
+            tableName: problem_topic
+            columns:
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_topic
+            columnNames: problem_id, topic_id
+            constraintName: pk_problem_topic
+        - addForeignKeyConstraint:
+            baseTableName: problem_topic
+            baseColumnNames: problem_id
+            referencedTableName: problem
+            referencedColumnNames: id
+            constraintName: fk_problem_topic_problem
+        # Каскада нет намеренно: удаление Темы с Задачами должно падать,
+        # а не уносить разметку. Проверку ставит сервис, ключ — второй рубеж.
+        - addForeignKeyConstraint:
+            baseTableName: problem_topic
+            baseColumnNames: topic_id
+            referencedTableName: taxonomy_node
+            referencedColumnNames: id
+            constraintName: fk_problem_topic_node
+
+  - changeSet:
+      id: 0004-problem-solution-method
+      author: locus
+      comment: Разметка Задачи Методами — ось измерения владения (ADR-0011)
+      changes:
+        - createTable:
+            tableName: problem_solution_method
+            columns:
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: solution_method_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_solution_method
+            columnNames: problem_id, solution_method_id
+            constraintName: pk_problem_solution_method
+        - addForeignKeyConstraint:
+            baseTableName: problem_solution_method
+            baseColumnNames: problem_id
+            referencedTableName: problem
+            referencedColumnNames: id
+            constraintName: fk_problem_solution_method_problem
+        - addForeignKeyConstraint:
+            baseTableName: problem_solution_method
+            baseColumnNames: solution_method_id
+            referencedTableName: solution_method
+            referencedColumnNames: id
+            constraintName: fk_problem_solution_method_method
+
+  - changeSet:
+      id: 0004-problem-characteristic
+      author: locus
+      comment: Разметка Задачи Характеристиками — только для поиска (ADR-0009)
+      changes:
+        - createTable:
+            tableName: problem_characteristic
+            columns:
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: characteristic_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_characteristic
+            columnNames: problem_id, characteristic_id
+            constraintName: pk_problem_characteristic
+        - addForeignKeyConstraint:
+            baseTableName: problem_characteristic
+            baseColumnNames: problem_id
+            referencedTableName: problem
+            referencedColumnNames: id
+            constraintName: fk_problem_characteristic_problem
+        - addForeignKeyConstraint:
+            baseTableName: problem_characteristic
+            baseColumnNames: characteristic_id
+            referencedTableName: characteristic
+            referencedColumnNames: id
+            constraintName: fk_problem_characteristic_characteristic
