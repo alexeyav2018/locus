@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Батч бэклога locus: одна задача за запуск, замок — имя tmux-сессии.
+set -uo pipefail
+
+REPO=/home/vorotovalexey/projects/locus
+SESSION=locus-backlog
+TIMER=locus-backlog.timer
+PROMPT="$REPO/.claude/backlog-batch/task-prompt.md"
+KEY="$HOME/.ssh/locus_backlog"
+SELF="$(readlink -f "$0")"
+
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+usage() {
+    cat <<'USAGE'
+locus-backlog — периодический прогон бэклога locus
+
+  start    включить периодические запуски (переживает перезагрузку)
+  stop     выключить их; текущая задача при этом доигрывает до конца
+  status   расписание, текущая задача, активное изменение, история
+  attach   подключиться к живой сессии в терминале
+  kill     прервать текущую задачу (незакоммиченное останется как есть)
+
+Внутренние: run (вызывается таймером), _session (вызывается внутри tmux).
+USAGE
+}
+
+case "${1:-status}" in
+
+start)
+    systemctl --user enable --now "$TIMER" || exit 1
+    systemctl --user list-timers "$TIMER" --no-pager
+    ;;
+
+stop)
+    systemctl --user disable --now "$TIMER"
+    echo "Расписание остановлено. Текущая задача, если идёт, доигрывает до конца."
+    ;;
+
+attach)
+    exec tmux attach -t "$SESSION"
+    ;;
+
+kill)
+    if tmux kill-session -t "$SESSION" 2>/dev/null; then
+        echo "Сессия прервана. Проверьте git status в $REPO."
+    else
+        echo "Живой сессии нет."
+    fi
+    ;;
+
+status)
+    echo "== расписание =="
+    if systemctl --user is-active --quiet "$TIMER"; then
+        systemctl --user list-timers "$TIMER" --no-pager | sed -n '1,2p'
+    else
+        echo "остановлено (locus-backlog start — включить)"
+    fi
+
+    echo
+    echo "== текущая задача =="
+    if tmux has-session -t "$SESSION" 2>/dev/null; then
+        echo "идёт; смотреть — locus-backlog attach"
+    else
+        echo "не идёт"
+    fi
+
+    echo
+    echo "== активное изменение =="
+    ( cd "$REPO" && npx -y @fission-ai/openspec@latest list 2>/dev/null ) || echo "не определено"
+
+    echo
+    echo "== репозиторий =="
+    ( cd "$REPO" \
+      && echo "ветка:  $(git branch --show-current)" \
+      && echo "правки: $(git status --short | wc -l) файлов не закоммичено" \
+      && git log --oneline -3 )
+    ;;
+
+run)
+    # Замок: tmux откажется создать сессию с занятым именем — это и есть проверка.
+    if tmux new-session -d -s "$SESSION" -c "$REPO" "$SELF _session" 2>/dev/null; then
+        echo "запущена задача, сессия $SESSION"
+    else
+        echo "сессия $SESSION уже идёт — запуск пропущен"
+    fi
+    ;;
+
+_session)
+    cd "$REPO" || exit 1
+    unset CLAUDE_CODE_CHILD_SESSION
+    export CLAUDE_CODE_FORCE_SESSION_PERSISTENCE=1
+    export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes"
+    exec claude --dangerously-skip-permissions \
+                --remote-control "$SESSION" \
+                "$(cat "$PROMPT")"
+    ;;
+
+*)
+    usage
+    exit 1
+    ;;
+esac
