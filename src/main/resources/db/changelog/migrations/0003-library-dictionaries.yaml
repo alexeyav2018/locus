@@ -1,0 +1,86 @@
+# Словари Методов и Характеристик — плоские общие списки (ADR-0010).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): SolutionMethod → solution_method, Characteristic →
+# characteristic. Method в Java занято, поэтому класс назван SolutionMethod
+# (ADR-0025), и таблица следует за ним. Слово characteristic в PostgreSQL
+# не зарезервировано, завершающего подчёркивания не требует.
+#
+# Ни родителя, ни ссылки на узел рубрикатора у записи НЕТ и быть не должно:
+# Метод описывает приём, а приём кочует между разделами математики.
+# Расщеплённый по разделам Метод обратно уже не собрать — история отметок
+# к тому моменту разложена по разным ячейкам (ADR-0010).
+#
+# Две таблицы, а не одна с колонкой «вид словаря»: связи с Задачей у словарей
+# появятся разные (problem_solution_method и problem_characteristic), и общий
+# внешний ключ пришлось бы в каждом запросе дополнять условием на вид.
+# Забытое условие дало бы не ошибку, а Характеристику в списке методов задачи.
+databaseChangeLog:
+  - changeSet:
+      id: 0003-solution-method
+      author: locus
+      comment: Словарь Методов — плоский список «идентификатор и имя»
+      changes:
+        - createTable:
+            tableName: solution_method
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_solution_method
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0003-characteristic
+      author: locus
+      comment: Словарь Характеристик — устроен так же, но в измерении владения не участвует
+      changes:
+        - createTable:
+            tableName: characteristic
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_characteristic
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0003-solution-method-unique-name
+      author: locus
+      comment: >-
+        Имя Метода уникально по всему словарю и без учёта регистра:
+        «Разложение на множители» и «разложение на множители» — одна запись,
+        а не две. У плоского списка братья — весь список, и разошедшийся
+        по регистру дубль расщепляет статистику владения (ADR-0010).
+        Функциональный индекс абстрактными операциями Liquibase не выражается,
+        поэтому сырой SQL — отката у changeset'а нет, и это ожидаемо
+        (standards.md, «Данные»).
+      changes:
+        - sql:
+            sql: >-
+              create unique index uq_solution_method_name
+              on solution_method (lower(name))
+
+  - changeSet:
+      id: 0003-characteristic-unique-name
+      author: locus
+      comment: Имя Характеристики уникально по своему словарю, тем же правилом
+      changes:
+        - sql:
+            sql: >-
+              create unique index uq_characteristic_name
+              on characteristic (lower(name))

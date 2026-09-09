@@ -1,4 +1,4 @@
-package ru.locus.taxonomy;
+package ru.locus;
 
 import java.util.List;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -11,16 +11,16 @@ import ru.locus.user.Role;
  *
  * Права проверяются на методах сервиса, поэтому вызов без контекста
  * безопасности отклоняется — и правильно делает. Тесту, проверяющему правила
- * дерева, а не права, нужен вошедший, и здесь он ставится минимальным
+ * области, а не права, нужен вошедший, и здесь он ставится минимальным
  * способом: роль в контексте, без учётной записи и без входа формой.
  * Сами права проверяются отдельно и по-настоящему, через HTTP.
  */
-final class LoggedIn {
+public final class LoggedIn {
 
     private LoggedIn() {
     }
 
-    static void as(Role... roles) {
+    public static void as(Role... roles) {
         List<SimpleGrantedAuthority> authorities = List.of(roles).stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
                 .toList();
@@ -28,7 +28,7 @@ final class LoggedIn {
                 UsernamePasswordAuthenticationToken.authenticated("тест", null, authorities));
     }
 
-    static void nobody() {
+    public static void nobody() {
         SecurityContextHolder.clearContext();
     }
 }
