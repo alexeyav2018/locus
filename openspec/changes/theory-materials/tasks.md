@@ -1,6 +1,6 @@
 ## 1. Схема
 
-- [ ] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0005-theory-materials.yaml`:
+- [x] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0005-theory-materials.yaml`:
       таблица `theory_material` — `id` (autoIncrement, PK), `title` (VARCHAR(300),
       NOT NULL), `node_id` (BIGINT, NOT NULL), `file_key` (VARCHAR(200), nullable),
       `link` (VARCHAR(2000), nullable); внешний ключ на `taxonomy_node` **без

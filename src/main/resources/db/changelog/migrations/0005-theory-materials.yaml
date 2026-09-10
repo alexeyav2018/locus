@@ -1,0 +1,87 @@
+# Теоретические материалы — вторая начинка рубрикатора после Задач (ADR-0018).
+#
+# Имя выведено из имени класса (openspec/context/glossary.md, «Имена в коде
+# и в базе»): TheoryMaterial → theory_material. Выбирать здесь нечего.
+#
+# Узел один, и связующей таблицы поэтому нет: материал крепится ровно
+# к одному узлу и виден на всём его поддереве (ADR-0032). Наследование
+# нигде не хранится — оно вычисляется подъёмом по родителям в запросе,
+# и перенос узла меняет видимость сам собой.
+#
+# Узел любой — и Раздел, и Тема. Ограничения «только лист» здесь нет и быть
+# не может: вид узла не хранится, а вычисляется по наличию потомков. Но даже
+# будь он выразим, его не поставили бы: правило «смысл только в листьях»
+# введено ради корректности измерения владения, а у теории измерения нет.
+#
+# Владельца у материала нет ни в одной колонке: теория — общая библиотека,
+# и колонка «чей» здесь была бы началом фильтра, который сделал бы её
+# невидимой (ADR-0027).
+databaseChangeLog:
+  - changeSet:
+      id: 0005-theory-material
+      author: locus
+      comment: >-
+        Теоретический материал — название, узел и содержимое: ключ файла
+        либо внешний адрес
+      changes:
+        - createTable:
+            tableName: theory_material
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_theory_material
+              # Название обязательно: текста материала система не хранит,
+              # и в списке материал различается только им.
+              - column:
+                  name: title
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: node_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Обе колонки nullable поодиночке: заполнена ровно одна,
+              # и это выражено проверочным ограничением ниже.
+              - column:
+                  name: file_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: link
+                  type: VARCHAR(2000)
+                  constraints:
+                    nullable: true
+        # Каскада нет намеренно: удаление узла с материалами должно падать,
+        # а не уносить их. Проверку ставит сервис, ключ — второй рубеж.
+        # Так же сделано у разметки Задачи (0004-problem-catalog.yaml).
+        - addForeignKeyConstraint:
+            baseTableName: theory_material
+            baseColumnNames: node_id
+            referencedTableName: taxonomy_node
+            referencedColumnNames: id
+            constraintName: fk_theory_material_node
+
+  - changeSet:
+      id: 0005-theory-material-content-is-one-of-two
+      author: locus
+      comment: >-
+        Содержимое ровно одно: либо файл, либо ссылка. Ограничение стоит
+        в схеме, а не только в конструкторе записи: материал без содержимого
+        показывался бы в списке настоящим, а открыть его было бы нечем,
+        и держаться такой инвариант на том, что никто не пишет в таблицу
+        мимо кода, не должен (standards.md, «Данные»). Проверочное
+        ограничение выражается только сырым SQL — отката у changeset'а нет,
+        и это ожидаемо (ADR-0023).
+      changes:
+        - sql:
+            sql: >-
+              alter table theory_material
+              add constraint ck_theory_material_content
+              check ((file_key is null) <> (link is null))
