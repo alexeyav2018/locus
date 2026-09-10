@@ -52,6 +52,19 @@ class TaxonomyKnowsNothingOfTheoryTest {
                 .doesNotContain("TheoryMaterial");
     }
 
+    /**
+     * Экрана это не касается: список материалов узла живёт в правой части
+     * экрана дерева, и контроллер о теории знает намеренно (design.md,
+     * «Экран»). Зависимость там односторонняя и не создаёт кольца между
+     * сервисами — ровно как с Задачами.
+     */
+    @Test
+    void theScreenIsTheOneAllowedException() {
+        assertThat(sourceOf(TaxonomyController.class))
+                .as("список материалов узла собирается здесь — это осознанное исключение")
+                .contains("ru.locus.theory");
+    }
+
     private static String sourceOf(Class<?> type) {
         Path source = Path.of("src/main/java", type.getName().replace('.', '/') + ".java");
         assertThat(source).as("исходный текст %s найден", type.getSimpleName()).exists();

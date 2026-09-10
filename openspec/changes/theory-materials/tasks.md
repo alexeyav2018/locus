@@ -74,13 +74,13 @@
 
 ## 6. Экран
 
-- [ ] 6.1 Добавить `Addresses.THEORY = "/theory"` и `TheoryController` — формы
+- [x] 6.1 Добавить `Addresses.THEORY = "/theory"` и `TheoryController` — формы
       заведения и правки, сохранение, замена содержимого, удаление, переход
       по ссылке на файл; контроллер тонкий. Проверка:
       `TheoryControllerIsThinTest` по образцу `ProblemControllerIsThinTest`.
-- [ ] 6.2 Шаблоны `templates/theory/form.html` и `templates/theory/material.html`
+- [x] 6.2 Шаблоны `templates/theory/form.html` и `templates/theory/material.html`
       по образцу `problem/`. Проверка: `ServerRenderedPageTest` зелёный.
-- [ ] 6.3 Показать материалы выбранного узла в правой части экрана дерева:
+- [x] 6.3 Показать материалы выбранного узла в правой части экрана дерева:
       `TaxonomyController` получает `TheoryService`, `taxonomy/tree.html` —
       список с названием, видом содержимого и узлом-источником; список
       показывается и на Разделе. Проверка: `TheoryScreenTest` — список на Теме
@@ -90,7 +90,7 @@
       проверку «зависимость `taxonomy` → `theory` есть только у контроллера,
       и это осознанное исключение» — по образцу
       `TaxonomyKnowsNothingOfProblemsTest.theScreenIsTheOneAllowedException`.
-- [ ] 6.4 Тест доступа `TheoryAccessTest` по образцу `ProblemAccessTest`:
+- [x] 6.4 Тест доступа `TheoryAccessTest` по образцу `ProblemAccessTest`:
       невошедший не видит материалов, Учитель читает, но не правит,
       Администратор правит.
 
