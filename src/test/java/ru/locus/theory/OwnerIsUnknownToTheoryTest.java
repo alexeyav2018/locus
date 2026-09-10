@@ -36,9 +36,12 @@ import ru.locus.user.UserId;
 class OwnerIsUnknownToTheoryTest extends IntegrationTest {
 
     private static final List<Class<?>> THEORY = List.of(
+            TheoryService.class,
             TheoryMaterialRepository.class,
             TheoryMaterial.class,
-            TheoryMaterialId.class);
+            TheoryMaterialId.class,
+            UploadedContent.class,
+            NodeTheory.class);
 
     /** Слова, которыми назвали бы колонку владельца. */
     private static final List<String> OWNER_WORDS = List.of("owner", "user", "teacher", "account");

@@ -48,7 +48,7 @@ public record TheoryMaterial(TheoryMaterialId id,
             throw new IllegalArgumentException("Теоретический материал должен лежать на узле рубрикатора");
         }
         link = normalizedLink(link);
-        requireContent(file, link);
+        requireContent(file != null, link);
     }
 
     /**
@@ -56,15 +56,19 @@ public record TheoryMaterial(TheoryMaterialId id,
      * пользуется и сервис теории до того, как материал заведён и записи
      * ещё нет.
      *
+     * Спрашивается не ключ, а <b>наличие</b> файла: в сервисе проверка идёт
+     * до укладки в хранилище, когда ключа ещё не существует, — а отказ
+     * не должен оставлять в хранилище ничего.
+     *
      * Одна проверка на оба случая, а не две одинаковые: разойдясь, они дали бы
      * материал, который сохраняется, но не читается обратно.
      */
-    static void requireContent(FileKey file, String link) {
-        if (file == null && link == null) {
+    static void requireContent(boolean hasFile, String link) {
+        if (!hasFile && link == null) {
             throw new IllegalArgumentException(
                     "Теоретическому материалу нужен файл либо ссылка");
         }
-        if (file != null && link != null) {
+        if (hasFile && link != null) {
             throw new IllegalArgumentException(
                     "У Теоретического материала содержимое бывает только одно: файл либо ссылка");
         }

@@ -15,6 +15,8 @@ import ru.locus.problem.ProblemId;
 import ru.locus.problem.ProblemRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyRepository;
+import ru.locus.theory.TheoryMaterialId;
+import ru.locus.theory.TheoryMaterialRepository;
 
 /**
  * Обстановка для тестов библиотеки: узлы дерева, записи словарей и Задачи.
@@ -33,17 +35,20 @@ public class TestLibrary {
     private final SolutionMethodRepository methods;
     private final CharacteristicRepository characteristics;
     private final ProblemRepository problems;
+    private final TheoryMaterialRepository materials;
     private final FileStorage storage;
 
     public TestLibrary(TaxonomyRepository nodes,
                        SolutionMethodRepository methods,
                        CharacteristicRepository characteristics,
                        ProblemRepository problems,
+                       TheoryMaterialRepository materials,
                        FileStorage storage) {
         this.nodes = nodes;
         this.methods = methods;
         this.characteristics = characteristics;
         this.problems = problems;
+        this.materials = materials;
         this.storage = storage;
     }
 
@@ -100,6 +105,22 @@ public class TestLibrary {
                              ExamPart part) {
         return problems.create(null, part, storedPdf(), storedPdf(),
                 topics, methods, characteristics);
+    }
+
+    /**
+     * Теоретический материал с приложенным файлом на указанном узле.
+     *
+     * Узел любой — и Раздел, и Тема: правило «только листья» на теорию
+     * не распространяется (ADR-0032), и обстановке незачем притворяться,
+     * будто распространяется.
+     */
+    public TheoryMaterialId material(TaxonomyNodeId node, String title) {
+        return materials.create(title, node, storedPdf(), null);
+    }
+
+    /** Материал-ссылка: содержимое бывает и таким. */
+    public TheoryMaterialId linkedMaterial(TaxonomyNodeId node, String title) {
+        return materials.create(title, node, null, "https://example.org/" + UUID.randomUUID());
     }
 
     /** Файл, уже лежащий в хранилище, — как если бы его положил сервис. */
