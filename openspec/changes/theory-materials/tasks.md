@@ -11,12 +11,12 @@
 
 ## 2. Подъём по предкам в дереве
 
-- [ ] 2.1 Добавить `TaxonomyService.ancestry(TaxonomyNodeId)` — узлы от корня
+- [x] 2.1 Добавить `TaxonomyService.ancestry(TaxonomyNodeId)` — узлы от корня
       до запрошенного включительно, с тем же пределом `TaxonomyRepository.MAX_DEPTH`
       и той же ошибкой при его достижении, что стоит сегодня в `path`. Проверка:
       новые случаи в `TaxonomyServiceTest` — цепочка на четырёх уровнях, цепочка
       корня, испорченные данные дают ошибку, а не вечный цикл.
-- [ ] 2.2 Перестроить `TaxonomyService.path` на `ancestry`, второй копии подъёма
+- [x] 2.2 Перестроить `TaxonomyService.path` на `ancestry`, второй копии подъёма
       не оставлять. Проверка: `TaxonomyServiceTest` и `TaxonomyScreenTest` зелёные;
       тест по образцу `SubtreeWalkIsNotDuplicatedTest` — подъём по родителям
       в исходниках встречается один раз.

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.user.Role;
@@ -24,6 +25,9 @@ class TaxonomyServiceTest extends IntegrationTest {
 
     @Autowired
     private TaxonomyService taxonomy;
+
+    @Autowired
+    private JdbcClient database;
 
     @BeforeEach
     void logIn() {
@@ -301,6 +305,67 @@ class TaxonomyServiceTest extends IntegrationTest {
 
         assertThat(taxonomy.path(grandchild).path()).isEqualTo(algebra + " / Уравнения / Квадратные");
         assertThat(taxonomy.path(root).path()).as("у корня путь — он сам").isEqualTo(algebra);
+    }
+
+    /** Сценарий «Цепочка предков глубокого узла». */
+    @Test
+    void ancestryNamesEveryNodeFromTheRootDownToTheOneAsked() {
+        TaxonomyNodeId root = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId second = taxonomy.create("Уравнения", root);
+        TaxonomyNodeId third = taxonomy.create("Квадратные", second);
+        TaxonomyNodeId fourth = taxonomy.create("Неполные", third);
+
+        assertThat(taxonomy.ancestry(fourth))
+                .as("цепочка идёт от корня к запрошенному узлу и включает его самого")
+                .extracting(TaxonomyNode::id)
+                .containsExactly(root, second, third, fourth);
+    }
+
+    /** Сценарий «Цепочка предков корня». */
+    @Test
+    void ancestryOfARootIsTheRootAlone() {
+        TaxonomyNodeId root = taxonomy.create(unique("Алгебра"), null);
+
+        assertThat(taxonomy.ancestry(root))
+                .extracting(TaxonomyNode::id)
+                .containsExactly(root);
+    }
+
+    @Test
+    void ancestryOfAnUnknownNodeIsAnError() {
+        List<TaxonomyNode> roots = taxonomy.roots();
+        long free = roots.stream().mapToLong(node -> node.id().value()).max().orElse(0) + 1_000_000;
+
+        assertThatThrownBy(() -> taxonomy.ancestry(new TaxonomyNodeId(free)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("не существует");
+    }
+
+    /**
+     * Цикл в дереве сервис создать не даёт, поэтому испорченные данные
+     * подкладываются мимо него — прямо в таблицу. Без предела шагов подъём
+     * по такому дереву не кончился бы никогда: тест ждёт ошибки, а сам
+     * его провал выглядел бы как зависшая сборка.
+     */
+    @Test
+    void ancestryOverACycleInTheDataFailsInsteadOfSpinningForever() {
+        TaxonomyNodeId root = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId child = taxonomy.create("Уравнения", root);
+        parentInDatabase(root, child);
+        try {
+            assertThatThrownBy(() -> taxonomy.ancestry(child))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("предела глубины");
+        } finally {
+            parentInDatabase(root, null);
+        }
+    }
+
+    /** Ставит родителя мимо сервиса — так, как сервис поставить не позволил бы. */
+    private void parentInDatabase(TaxonomyNodeId id, TaxonomyNodeId parent) {
+        database.sql("update taxonomy_node set parent_id = ? where id = ?")
+                .params(parent == null ? null : parent.value(), id.value())
+                .update();
     }
 
     private static String unique(String name) {
