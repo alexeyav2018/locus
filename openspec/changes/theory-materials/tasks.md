@@ -63,12 +63,12 @@
 
 ## 5. Долг дерева
 
-- [ ] 5.1 Завести `TheoryOnNode implements NodeContent`: `on` считает **свои**
+- [x] 5.1 Завести `TheoryOnNode implements NodeContent`: `on` считает **свои**
       материалы узла и называет их числом, `requiringTopic` не переопределяется.
       Проверка: `TheoryGuardsTheTreeTest` — узел со своими материалами
       не удаляется, узел с одними унаследованными удаляется, потомок у Темы
       с материалами создаётся.
-- [ ] 5.2 Тест `TaxonomyKnowsNothingOfTheoryTest` по образцу
+- [x] 5.2 Тест `TaxonomyKnowsNothingOfTheoryTest` по образцу
       `TaxonomyKnowsNothingOfProblemsTest`: `TaxonomyService` о теории не знает,
       зависимость есть только у контроллера.
 
@@ -85,7 +85,11 @@
       список с названием, видом содержимого и узлом-источником; список
       показывается и на Разделе. Проверка: `TheoryScreenTest` — список на Теме
       и на Разделе, унаследованное с источником, пустой узел, Учителю действий
-      не предлагают.
+      не предлагают. Сюда же переносится случай из задачи 5.2, который там
+      написать было не на чем: в `TaxonomyKnowsNothingOfTheoryTest` добавить
+      проверку «зависимость `taxonomy` → `theory` есть только у контроллера,
+      и это осознанное исключение» — по образцу
+      `TaxonomyKnowsNothingOfProblemsTest.theScreenIsTheOneAllowedException`.
 - [ ] 6.4 Тест доступа `TheoryAccessTest` по образцу `ProblemAccessTest`:
       невошедший не видит материалов, Учитель читает, но не правит,
       Администратор правит.

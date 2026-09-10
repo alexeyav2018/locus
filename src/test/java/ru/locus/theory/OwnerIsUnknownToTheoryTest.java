@@ -41,7 +41,8 @@ class OwnerIsUnknownToTheoryTest extends IntegrationTest {
             TheoryMaterial.class,
             TheoryMaterialId.class,
             UploadedContent.class,
-            NodeTheory.class);
+            NodeTheory.class,
+            TheoryOnNode.class);
 
     /** Слова, которыми назвали бы колонку владельца. */
     private static final List<String> OWNER_WORDS = List.of("owner", "user", "teacher", "account");
