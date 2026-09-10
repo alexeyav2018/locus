@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, рубрикатор, словари, Задачи и поиск по ним; учеников нет
+## Статус: есть каркас, вход, роли, хранилище файлов, рубрикатор, словари, Задачи с поиском и Теория; учеников нет
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -29,14 +29,22 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 ([ADR-0031](openspec/context/adr/0031-uslovija-poiska-po-biblioteke.md));
 разные условия соединяются по «и» всегда. Библиотека общая, поэтому фильтра
 по владельцу здесь нет и быть не должно — это сторожат тесты.
+Затем `theory-materials` — Теоретические материалы: название, узел дерева
+и содержимое, которым служит либо файл, либо ссылка. Материал крепится
+к **любому** узлу — и к Разделу, и к Теме, — а виден на всём его поддереве,
+с указанием, откуда пришёл ([ADR-0032](openspec/context/adr/0032-teoriya-na-odnom-uzle-i-nasledovanie.md));
+заморозки после использования у теории нет ([ADR-0033](openspec/context/adr/0033-teoriya-ne-zamorazhivaetsya.md)).
+Показываются материалы там же, где Задачи, — в правой части экрана дерева.
+Ею же погашен второй долг рубрикатора: узел со своими материалами
+не удаляется, а углублению материалы не мешают.
 
-Теории, отметок владения и Учеников по-прежнему нет.
+Отметок владения и Учеников по-прежнему нет.
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока семь возможностей: `application-startup`, `users-and-roles`,
-`file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`
-и `library-search`.
+а там пока восемь возможностей: `application-startup`, `users-and-roles`,
+`file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
+`library-search` и `theory-materials`.
 
 ### Первый вход
 

@@ -96,18 +96,18 @@
 
 ## 7. Приёмка и документы
 
-- [ ] 7.1 Прогнать `mvn clean package`. Проверка: сборка зелёная.
-- [ ] 7.2 Проверить признак готовности карточки вручную: материал крепится
+- [x] 7.1 Прогнать `mvn clean package`. Проверка: сборка зелёная.
+- [x] 7.2 Проверить признак готовности карточки вручную: материал крепится
       и к Разделу, и к Теме, запрет «только листья» на теорию не действует —
       покрыто сценариями в `TheoryGuardsTheTreeTest` и `TheoryScreenTest`.
-- [ ] 7.3 Правка документов контекста: `domain-model.md` — теория из замысла
+- [x] 7.3 Правка документов контекста: `domain-model.md` — теория из замысла
       становится существующей сущностью, инвариант 9 подтверждается кодом;
       `CLAUDE.md` — раздел «Статус» и список возможностей `openspec/specs/`;
       `openspec/backlog.md` — строка 10 получает ✅ и ссылку на архив.
       `glossary.md` правки не требует: `TheoryMaterial` в нём уже назван.
       `architecture.md`, `standards.md`, `antipatterns.md` и `strategy.md`
       изменение не затрагивает.
-- [ ] 7.4 Перевести [ADR-0032](../../context/adr/0032-teoriya-na-odnom-uzle-i-nasledovanie.md)
+- [x] 7.4 Перевести [ADR-0032](../../context/adr/0032-teoriya-na-odnom-uzle-i-nasledovanie.md)
       и [ADR-0033](../../context/adr/0033-teoriya-ne-zamorazhivaetsya.md)
       в статус «Принято», пересобрать индекс:
       `python3 openspec/context/adr/build_index.py --check` зелёный.
