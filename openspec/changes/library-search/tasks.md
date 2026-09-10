@@ -126,15 +126,15 @@
 
 ## 4. Граница общего и личного, слои
 
-- [ ] 4.1 Дописать новые классы (`ProblemFilter`, `MatchMode`,
+- [x] 4.1 Дописать новые классы (`ProblemFilter`, `MatchMode`,
   `FoundProblem`, `ProblemSearchController`) в список
   `OwnerIsUnknownToProblemsTest`: ни один метод и ни одно поле поиска
   не принимает `UserId`. Проверка:
   `mvn test -Dtest=OwnerIsUnknownToProblemsTest`.
-- [ ] 4.2 Дописать `ProblemSearchController` в
+- [x] 4.2 Дописать `ProblemSearchController` в
   `ProblemControllerIsThinTest`: контроллер поиска не держит ни репозитория,
   ни `FileStorage`. Проверка: `mvn test -Dtest=ProblemControllerIsThinTest`.
-- [ ] 4.3 `SearchIsNotFilteredByOwnerTest` (на `IntegrationTest`): два разных
+- [x] 4.3 `SearchIsNotFilteredByOwnerTest` (на `IntegrationTest`): два разных
   Учителя входят по-настоящему и по одинаковым условиям получают один и тот же
   набор Задач; невошедший на `/problems` попадает на форму входа, а не
   на результаты. Проверка через настоящий вход, а не вызов сервиса: забытый

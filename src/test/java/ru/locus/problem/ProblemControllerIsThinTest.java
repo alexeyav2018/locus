@@ -22,8 +22,16 @@ import ru.locus.taxonomy.TaxonomyRepository;
  * Хранилище проверяется отдельным пунктом: файл, положенный контроллером
  * напрямую, обошёл бы и проверку состава Задачи, и уборку при неудаче —
  * и остался бы в хранилище сиротой (standards.md, «Файлы»).
+ *
+ * Смотрятся оба контроллера области: у поиска соблазн сходить в репозиторий
+ * прямо больше прочих — отбор он и так собирает из параметров запроса,
+ * и мимо сервиса ушёл бы вместе с ним обход поддерева.
  */
 class ProblemControllerIsThinTest {
+
+    private static final List<Class<?>> CONTROLLERS = List.of(
+            ProblemController.class,
+            ProblemSearchController.class);
 
     private static final List<Class<?>> FORBIDDEN = List.of(
             ProblemRepository.class,
@@ -34,19 +42,24 @@ class ProblemControllerIsThinTest {
 
     @Test
     void controllerHoldsNeitherRepositoryNorStorage() {
-        for (Field field : ProblemController.class.getDeclaredFields()) {
-            assertThat(FORBIDDEN)
-                    .as("поле %s не должно быть репозиторием или хранилищем", field.getName())
-                    .doesNotContain(field.getType());
+        for (Class<?> controller : CONTROLLERS) {
+            for (Field field : controller.getDeclaredFields()) {
+                assertThat(FORBIDDEN)
+                        .as("поле %s.%s не должно быть репозиторием или хранилищем",
+                                controller.getSimpleName(), field.getName())
+                        .doesNotContain(field.getType());
+            }
         }
     }
 
     @Test
     void controllerIsNotEvenGivenOne() {
-        for (Constructor<?> constructor : ProblemController.class.getDeclaredConstructors()) {
-            assertThat(constructor.getParameterTypes())
-                    .as("репозитории и хранилище контроллеру не передаются")
-                    .doesNotContain(FORBIDDEN.toArray(Class<?>[]::new));
+        for (Class<?> controller : CONTROLLERS) {
+            for (Constructor<?> constructor : controller.getDeclaredConstructors()) {
+                assertThat(constructor.getParameterTypes())
+                        .as("репозитории и хранилище контроллеру %s не передаются", controller.getSimpleName())
+                        .doesNotContain(FORBIDDEN.toArray(Class<?>[]::new));
+            }
         }
     }
 }
