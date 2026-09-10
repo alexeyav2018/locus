@@ -54,6 +54,8 @@
 | --- | --- | --- |
 | `ExamPart` | первая часть ЕГЭ | `FIRST` |
 | | вторая часть ЕГЭ | `SECOND` |
+| `MatchMode` | все сразу | `ALL` |
+| | любое из | `ANY` |
 | `MasteryStatus` | неизвестно | `UNKNOWN` |
 | | не владеет | `NOT_MASTERED` |
 | | владеет неуверенно | `UNCERTAIN` |
