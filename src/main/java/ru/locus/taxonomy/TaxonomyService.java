@@ -98,29 +98,46 @@ public class TaxonomyService {
     }
 
     /**
-     * Узел, названный полным путём от корня, — то, что показывает правая
-     * панель экрана.
+     * Узел и все его предки — от корня до запрошенного включительно.
      *
-     * Путь собирается подъёмом по родителям, а не построением всего дерева:
+     * Обратная сторона {@link #subtree}: там спуск, здесь подъём. На этой
+     * цепочке держится наследование Теоретических материалов вниз по дереву
+     * (ADR-0032): материал Раздела виден на каждой Теме внутри него.
+     *
+     * Цепочка собирается подъёмом по родителям, а не рекурсивным запросом:
      * ради одного узла обходить дерево незачем, а глубина измеряется
      * единицами уровней. Подъём ограничен по числу шагов — по той же причине,
      * что и рекурсивный спуск: испорченные данные должны давать ошибку,
      * а не вечный цикл.
      */
-    public TaxonomyPath path(TaxonomyNodeId id) {
-        TaxonomyNode node = existing(id);
-        Deque<String> names = new ArrayDeque<>();
-        TaxonomyNode current = node;
+    public List<TaxonomyNode> ancestry(TaxonomyNodeId id) {
+        Deque<TaxonomyNode> chain = new ArrayDeque<>();
+        TaxonomyNode current = existing(id);
         for (int step = 0; step < TaxonomyRepository.MAX_DEPTH; step++) {
-            names.addFirst(current.name());
+            chain.addFirst(current);
             TaxonomyNodeId parent = current.parent();
             if (parent == null) {
-                return new TaxonomyPath(node.id(), String.join(" / ", names));
+                return List.copyOf(chain);
             }
             current = existing(parent);
         }
         throw new IllegalStateException("Подъём от узла " + id.value() + " к корню достиг предела глубины "
                 + TaxonomyRepository.MAX_DEPTH + ": похоже на цикл в дереве");
+    }
+
+    /**
+     * Узел, названный полным путём от корня, — то, что показывает правая
+     * панель экрана.
+     *
+     * Подъём здесь не свой: путь — это имена узлов из {@link #ancestry},
+     * склеенные разделителем. Второй копии подъёма в проекте нет и быть
+     * не должно — разойдясь, копии теряют узлы молча, и стережёт это
+     * {@code AncestryWalkIsNotDuplicatedTest}.
+     */
+    public TaxonomyPath path(TaxonomyNodeId id) {
+        List<TaxonomyNode> chain = ancestry(id);
+        List<String> names = chain.stream().map(TaxonomyNode::name).toList();
+        return new TaxonomyPath(chain.getLast().id(), String.join(" / ", names));
     }
 
     /**

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${material} ? 'Правка материала — Locus' : 'Новый материал — Locus'">Новый материал — Locus</title>
+    <!--/*
+        Одна страница на заведение и правку — как у Задачи: поля те же,
+        и разъехались бы они молча, сначала порядком, потом составом.
+        Различает их наличие ${material}.
+
+        Содержимое при заведении спрашивается здесь же, а при правке —
+        отдельной формой ниже: меняют обычно название или узел, а замена файла
+        на ссылку (или наоборот) — другое по смыслу действие, и путать его
+        с переименованием не стоит.
+
+        Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
+        разработчику и в выдачу попадать не должен.
+    */-->
+    <style>
+        form { max-width: 46rem; }
+        fieldset { margin: 0 0 1.75rem; padding: 0.75rem 1rem 1rem; }
+        legend { padding: 0 0.35rem; }
+        label { display: block; margin: 0.35rem 0; }
+        input[type=text], select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
+        button { padding: 0.35rem 0.9rem; }
+        .hint { margin: 0.25rem 0 0.75rem; }
+    </style>
+</head>
+<body>
+<h1 th:if="${material}" th:text="${material.title}">Тригонометрические тождества</h1>
+<h1 th:unless="${material}">Новый Теоретический материал</h1>
+
+<p th:if="${error}" th:text="${error}">Теоретическому материалу нужен файл либо ссылка</p>
+
+<form method="post"
+      enctype="multipart/form-data"
+      th:action="${material} ? @{/theory/{id}(id=${material.id.value})} : @{/theory}">
+
+    <label>Название
+        <input type="text" name="title" th:value="${material} ? ${material.title} : ''">
+    </label>
+    <p class="hint">Обязательно: в списке материал различается только названием.</p>
+
+    <fieldset>
+        <legend>Узел рубрикатора</legend>
+        <!--/* Любой узел, а не только листья: правило «смысл только
+               в листьях» на теорию не распространяется (ADR-0032).
+               Материал виден на всём поддереве своего узла. */-->
+        <p class="hint">Материал ложится на любой узел — и на Раздел, и на Тему,
+            и виден на всём его поддереве.</p>
+        <select name="node">
+            <option value="">— узел не выбран —</option>
+            <option th:each="path : ${nodePaths}"
+                    th:value="${path.id.value}"
+                    th:text="${path.path}"
+                    th:selected="${path.id.value == chosenNode}">Алгебра / Уравнения</option>
+        </select>
+    </fieldset>
+
+    <fieldset th:unless="${material}">
+        <legend>Содержимое</legend>
+        <p class="hint">Ровно одно из двух: приложенный файл либо внешний адрес.
+            Ни того, ни другого — материал нечем открыть; и то, и другое сразу —
+            непонятно, что открывается.</p>
+        <label>Файл <input type="file" name="file"></label>
+        <label>Либо ссылка
+            <input type="text" name="link" placeholder="https://">
+        </label>
+    </fieldset>
+
+    <button type="submit" th:text="${material} ? 'Сохранить' : 'Завести материал'">Завести материал</button>
+</form>
+
+<div th:if="${material}">
+    <h2>Замена содержимого</h2>
+    <p class="hint">Файл на другой файл, файл на ссылку, ссылка на файл — это
+        одна и та же правка. Прежний файл уносится вместе с заменой.</p>
+    <form method="post" enctype="multipart/form-data"
+          th:action="@{/theory/{id}/content(id=${material.id.value})}">
+        <label>Новый файл <input type="file" name="file"></label>
+        <label>Либо новая ссылка
+            <input type="text" name="link" placeholder="https://">
+        </label>
+        <button type="submit">Заменить содержимое</button>
+    </form>
+</div>
+
+<p th:if="${material}"><a th:href="@{/theory/{id}(id=${material.id.value})}">К материалу</a></p>
+<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+</body>
+</html>

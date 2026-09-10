@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Теоретический материал — Locus</title>
+    <!--/*
+        Приложенный файл открывается через /theory/{id}/file: подписанная
+        ссылка выдаётся в момент перехода, а не подставляется в разметку.
+        Постоянного адреса у файла нет ни в одной реализации хранилища.
+
+        Внешний адрес, наоборот, стоит здесь как есть: подписывать чужой адрес
+        нечем и незачем.
+    */-->
+    <style>
+        dt { font-weight: bold; margin-top: 0.75rem; }
+        dd { margin: 0.25rem 0 0 1.5rem; }
+        form { display: inline-block; margin-right: 1rem; }
+        button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1 th:text="${material.title}">Тригонометрические тождества</h1>
+
+<p th:if="${error}" th:text="${error}">Теоретического материала не существует</p>
+
+<dl>
+    <dt>Узел рубрикатора</dt>
+    <dd th:text="${nodePath}">Алгебра / Тригонометрия</dd>
+
+    <dt>Содержимое</dt>
+    <dd th:if="${material.hasFile}">
+        <a th:href="@{/theory/{id}/file(id=${material.id.value})}">Открыть файл</a>
+        <span>Ссылка действует ограниченное время; постоянного адреса у файла нет.</span>
+    </dd>
+    <dd th:unless="${material.hasFile}">
+        <a th:href="${material.link}" th:text="${material.link}">https://example.org/конспект</a>
+        <span>Внешний адрес: система не проверяет, отвечает ли он.</span>
+    </dd>
+</dl>
+
+<div th:if="${administrator}">
+    <h2>Действия</h2>
+    <p><a th:href="@{/theory/{id}/edit(id=${material.id.value})}">Править материал</a></p>
+    <form method="post" th:action="@{/theory/{id}/deletion(id=${material.id.value})}">
+        <button type="submit">Удалить материал</button>
+    </form>
+</div>
+
+<p><a th:href="@{/taxonomy(node=${material.node.value})}">К узлу в рубрикаторе</a></p>
+</body>
+</html>

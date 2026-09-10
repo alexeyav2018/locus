@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
 import ru.locus.problem.ProblemService;
+import ru.locus.theory.TheoryService;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.Role;
 
@@ -49,11 +50,23 @@ public class TaxonomyController {
      */
     private final ProblemService problems;
 
+    /**
+     * Теоретические материалы выбранного узла — свои и унаследованные
+     * от предков. Зависимость от области теории живёт здесь по той же причине
+     * и на тех же правах, что и зависимость от области Задач: односторонняя
+     * связь контроллера, а не сервиса.
+     */
+    private final TheoryService theory;
+
     private final CurrentUser currentUser;
 
-    public TaxonomyController(TaxonomyService taxonomy, ProblemService problems, CurrentUser currentUser) {
+    public TaxonomyController(TaxonomyService taxonomy,
+                              ProblemService problems,
+                              TheoryService theory,
+                              CurrentUser currentUser) {
         this.taxonomy = taxonomy;
         this.problems = problems;
+        this.theory = theory;
         this.currentUser = currentUser;
     }
 
@@ -117,10 +130,14 @@ public class TaxonomyController {
      * вкладке или прислать ссылкой на исчезнувшее. Дерево при этом показать
      * можно и нужно — а действий над несуществующим узлом не предлагается.
      *
-     * Задачи выбранной Темы читаются здесь же: библиотека живёт на этом экране
-     * (design.md, «Экран»). Зависимость от области Задач есть только у
-     * контроллера — {@link TaxonomyService} о них по-прежнему не знает, и это
-     * проверяется отдельно.
+     * Задачи выбранной Темы и Теоретические материалы выбранного узла читаются
+     * здесь же: библиотека живёт на этом экране (design.md, «Экран»).
+     * Зависимость от обеих областей есть только у контроллера — {@link
+     * TaxonomyService} о них по-прежнему не знает, и это проверяется отдельно.
+     *
+     * Материалы спрашиваются на любом узле, а не только на Теме: теория лежит
+     * и на Разделе (ADR-0032), и наследуется вниз — пустой список у Раздела
+     * означал бы, что положенное на него никому не показывают.
      */
     private String render(Long node, Model model) {
         model.addAttribute("tree", taxonomy.tree());
@@ -129,6 +146,7 @@ public class TaxonomyController {
 
         long selected = NOTHING_SELECTED;
         model.addAttribute("problems", List.of());
+        model.addAttribute("materials", List.of());
         if (node != null) {
             try {
                 TaxonomyNode chosen = taxonomy.node(new TaxonomyNodeId(node));
@@ -138,6 +156,7 @@ public class TaxonomyController {
                 if (chosen.isTopic()) {
                     model.addAttribute("problems", problems.problemsOf(chosen.id()));
                 }
+                model.addAttribute("materials", theory.materialsOn(chosen.id()));
             } catch (IllegalArgumentException gone) {
                 model.addAttribute("error", gone.getMessage());
             }

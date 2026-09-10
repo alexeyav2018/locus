@@ -23,6 +23,8 @@
         .selected { font-weight: bold; }
         .screen .actions .problems h3 { margin: 0 0 0.5rem; }
         .screen .actions .problems ul { margin: 0 0 0.75rem; padding-left: 1.25rem; }
+        .screen .actions .materials h3 { margin: 0 0 0.5rem; }
+        .screen .actions .materials ul { margin: 0 0 0.75rem; padding-left: 1.25rem; }
 
         .screen .actions > div { margin-bottom: 2.5rem; }
         .screen .actions h2 { margin: 0 0 0.5rem; }
@@ -95,6 +97,28 @@
                    дубли уже существующих Задач (design.md, «Экран»). */-->
             <p class="problems" th:if="${selected.section}">Задачи несут только Темы —
                 листья дерева. Выберите Тему, чтобы увидеть её Задачи.</p>
+
+            <!--/* Теория показывается на любом узле, а не только на Теме:
+                   материал ложится и на Раздел, и наследуется вниз по дереву
+                   (ADR-0032). У унаследованного назван узел-источник —
+                   правится материал там, где лежит, и без источника на глубоком
+                   листе непонятно, куда идти. */-->
+            <div class="materials">
+                <h3>Теоретические материалы</h3>
+                <p th:if="${#lists.isEmpty(materials)}">Материалов на этом узле нет.</p>
+                <ul th:unless="${#lists.isEmpty(materials)}">
+                    <li th:each="item : ${materials}">
+                        <a th:href="@{/theory/{id}(id=${item.material.id.value})}"
+                           th:text="${item.material.title}">Тригонометрические тождества</a>
+                        <span th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
+                        <span th:unless="${item.own}"
+                              th:text="'унаследован с узла: ' + ${item.source}">унаследован с узла: Тригонометрия</span>
+                    </li>
+                </ul>
+                <p th:if="${administrator}">
+                    <a th:href="@{/theory/new(node=${selected.id.value})}">Завести материал</a>
+                </p>
+            </div>
 
             <div th:if="${administrator}">
                 <form method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">

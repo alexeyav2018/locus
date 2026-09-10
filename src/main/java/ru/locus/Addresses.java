@@ -15,6 +15,7 @@ public final class Addresses {
     public static final String TAXONOMY = "/taxonomy";
     public static final String DICTIONARIES = "/dictionaries";
     public static final String PROBLEMS = "/problems";
+    public static final String THEORY = "/theory";
 
     /**
      * Отдача файла по подписанной ссылке. Адрес открыт без входа: пропуск даёт
