@@ -52,6 +52,17 @@ public class TestLibrary {
         return nodes.create(unique("Тема"), null);
     }
 
+    /**
+     * Тема под указанным узлом.
+     *
+     * Нужна там, где проверяется обход поддерева: чтобы отличить «нашли
+     * потому, что обошли» от «нашли потому, что узел и есть Тема», Задача
+     * должна висеть глубже выбранного узла, а не на нём.
+     */
+    public TaxonomyNodeId topic(TaxonomyNodeId parent) {
+        return nodes.create(unique("Тема"), parent);
+    }
+
     /** Узел с потомком — то есть Раздел. */
     public TaxonomyNodeId section() {
         TaxonomyNodeId section = nodes.create(unique("Раздел"), null);
@@ -73,8 +84,22 @@ public class TestLibrary {
     }
 
     public ProblemId problem(TaxonomyNodeId topic, SolutionMethodId method) {
-        return problems.create(null, ExamPart.SECOND, storedPdf(), storedPdf(),
-                List.of(topic), List.of(method), List.of());
+        return problem(List.of(topic), List.of(method), List.of(), ExamPart.SECOND);
+    }
+
+    /**
+     * Задача с полной разметкой — для тестов поиска.
+     *
+     * Отбор различает Задачи по каждому из четырёх условий, поэтому строить
+     * обстановку приходится по всем четырём сразу: Задача, у которой Часть
+     * всегда одна и та же, не отличит «отобрано по Части» от «отобрано всё».
+     */
+    public ProblemId problem(List<TaxonomyNodeId> topics,
+                             List<SolutionMethodId> methods,
+                             List<CharacteristicId> characteristics,
+                             ExamPart part) {
+        return problems.create(null, part, storedPdf(), storedPdf(),
+                topics, methods, characteristics);
     }
 
     /** Файл, уже лежащий в хранилище, — как если бы его положил сервис. */

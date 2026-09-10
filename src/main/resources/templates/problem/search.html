@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск Задач — Locus</title>
+    <!--/*
+        Форма идёт методом GET: условия уходят в адрес, и найденное получает
+        собственную ссылку — её можно сохранить, переслать и вернуться к ней
+        кнопкой «назад». Отправка POST дала бы страницу без адреса
+        (design.md, «Экран — GET /problems, условия в адресе»).
+
+        Выбранные значения и отмеченные способы возвращаются в форму
+        не для удобства: один и тот же набор условий даёт при «все сразу»
+        и при «любое из» разные списки, и оба выглядят правдоподобно. Не видя
+        способа, учитель не знает, каким прочтением получил тридцать строк.
+
+        Вычислений здесь нет: имена разметки собраны сервисом
+        (FoundProblem), число найденных передано моделью. В шаблоне
+        вычислений не бывает (standards.md, «Слои и границы»).
+
+        Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет
+        решение разработчику и в выдачу попадать не должен.
+    */-->
+    <style>
+        form { max-width: 52rem; }
+        fieldset { margin: 0 0 1.5rem; padding: 0.75rem 1rem 1rem; }
+        legend { padding: 0 0.35rem; }
+        label { display: block; margin: 0.35rem 0; }
+        select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
+        select[multiple] { min-height: 7rem; }
+        button { padding: 0.35rem 0.9rem; }
+        .hint { margin: 0.25rem 0 0.5rem; }
+        .modes label { display: inline-block; margin-right: 1.25rem; }
+        .results { margin: 0; padding-left: 1.25rem; }
+        .results li { margin-bottom: 0.5rem; }
+        .results .marks { margin: 0.15rem 0 0; }
+    </style>
+</head>
+<body>
+<h1>Поиск Задач</h1>
+
+<p th:if="${error}" th:text="${error}">Узла не существует</p>
+
+<form method="get" th:action="@{/problems}">
+    <fieldset>
+        <legend>Где искать</legend>
+        <!--/* Узлы все, а не только Темы: Раздел здесь не носитель Задач,
+               а способ назвать их множество — поиск по нему идёт по всему
+               поддереву на любую глубину. */-->
+        <label>Узел рубрикатора — вместе со всем поддеревом
+            <select name="node">
+                <option value="">— любой —</option>
+                <option th:each="path : ${paths}"
+                        th:value="${path.id.value}"
+                        th:text="${path.path}"
+                        th:selected="${filter.node == path.id}">Алгебра / Уравнения</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Методы</legend>
+        <select name="method" multiple size="7">
+            <option th:each="method : ${methods}"
+                    th:value="${method.id.value}"
+                    th:text="${method.name}"
+                    th:selected="${filter.methods.contains(method.id)}">Замена переменной</option>
+        </select>
+        <p class="modes">
+            <label th:each="mode : ${modes}">
+                <input type="radio" name="methodMode" th:value="${mode}"
+                       th:checked="${filter.methodMode == mode}">
+                <span th:text="${mode.title}">любое из</span>
+            </label>
+        </p>
+    </fieldset>
+
+    <fieldset>
+        <legend>Характеристики</legend>
+        <select name="characteristic" multiple size="7">
+            <option th:each="characteristic : ${characteristics}"
+                    th:value="${characteristic.id.value}"
+                    th:text="${characteristic.name}"
+                    th:selected="${filter.characteristics.contains(characteristic.id)}">Двойной угол</option>
+        </select>
+        <p class="modes">
+            <label th:each="mode : ${modes}">
+                <input type="radio" name="characteristicMode" th:value="${mode}"
+                       th:checked="${filter.characteristicMode == mode}">
+                <span th:text="${mode.title}">любое из</span>
+            </label>
+        </p>
+    </fieldset>
+
+    <fieldset>
+        <legend>Часть ЕГЭ</legend>
+        <label>
+            <select name="part">
+                <option value="">— любая —</option>
+                <option th:each="examPart : ${parts}"
+                        th:value="${examPart}"
+                        th:text="${examPart.title}"
+                        th:selected="${filter.part == examPart}">вторая часть</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <button type="submit">Искать</button>
+</form>
+
+<div th:if="${found != null}">
+    <h2>Найденное</h2>
+
+    <!--/* Пустой результат называется словами, а не пустотой под заголовком:
+           «все сразу» на двух Методах законно возвращает пусто, и учитель
+           должен видеть, что поиск состоялся, а не сломался. */-->
+    <p th:if="${#lists.isEmpty(found)}">По этим условиям Задач нет.</p>
+
+    <div th:unless="${#lists.isEmpty(found)}">
+        <p th:text="'Найдено Задач: ' + ${foundCount}">Найдено Задач: 3</p>
+        <ul class="results">
+            <li th:each="problem : ${found}">
+                <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+                   th:text="'№ ' + ${problem.number}">№ 12</a>
+                <span th:if="${problem.problem.hasCaption}"
+                      th:text="${problem.problem.caption}">Ященко, вариант 12</span>
+                <span th:text="${problem.problem.part.title}">вторая часть</span>
+                <!--/* Каждая строка разметки — одним th:text, а не текстом
+                       вперемешку с тегами: разорванный тегами текст видно
+                       человеку слитно, а тесту — по кускам, и проверять его
+                       пришлось бы по разметке (antipatterns.md). */-->
+                <p class="marks"
+                   th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
+                <p class="marks"
+                   th:text="'Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Методы: Замена переменной</p>
+                <p class="marks" th:if="${not #lists.isEmpty(problem.characteristicNames)}"
+                   th:text="'Характеристики: ' + ${#strings.listJoin(problem.characteristicNames, ', ')}">Характеристики: Двойной угол</p>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+<p><a th:href="@{/}">На главную</a></p>
+</body>
+</html>

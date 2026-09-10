@@ -30,8 +30,12 @@ class OwnerIsUnknownToProblemsTest {
             ProblemRepository.class,
             ProblemService.class,
             ProblemController.class,
+            ProblemSearchController.class,
             Problem.class,
             ProblemId.class,
+            ProblemFilter.class,
+            MatchMode.class,
+            FoundProblem.class,
             UploadedFile.class,
             ProblemsOnNode.class,
             ProblemMarkupUsage.class);

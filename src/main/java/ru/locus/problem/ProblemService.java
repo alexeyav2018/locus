@@ -2,10 +2,13 @@ package ru.locus.problem;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.locus.dictionary.Characteristic;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
 import ru.locus.dictionary.SolutionMethod;
@@ -15,6 +18,7 @@ import ru.locus.file.FileKey;
 import ru.locus.file.FileStorage;
 import ru.locus.taxonomy.TaxonomyNode;
 import ru.locus.taxonomy.TaxonomyNodeId;
+import ru.locus.taxonomy.TaxonomyPath;
 import ru.locus.taxonomy.TaxonomyService;
 
 /**
@@ -72,6 +76,93 @@ public class ProblemService {
     /** Задачи, размеченные этой Темой, по номеру. */
     public List<Problem> problemsOf(TaxonomyNodeId topic) {
         return problems.findByTopic(topic);
+    }
+
+    /**
+     * Поиск Задач по разметке: узел рубрикатора, Методы, Характеристики,
+     * Часть (ADR-0031).
+     *
+     * <p>Узел разворачивается в список Тем поддерева обходом рубрикатора —
+     * {@link TaxonomyService#subtree}. Своего обхода здесь <b>не заводится</b>,
+     * и это не вопрос вкуса: второй обход завёл бы второй предел глубины,
+     * а разошлись бы они молча, в глубоком дереве, потеряв узлы
+     * (standards.md, «Данные»). Заодно оттуда же берётся отказ
+     * на несуществующем узле — искать по узлу, которого нет, нельзя,
+     * а пустой результат был бы правдоподобным и неотличимым от честного
+     * «ничего не нашлось».
+     *
+     * <p>Остальные условия уходят в репозиторий как есть: разбирается их
+     * пустота там, в одном месте на все три измерения
+     * ({@link ProblemRepository#search}).
+     *
+     * <p>Без {@code @PreAuthorize} — как и остальное чтение общей библиотеки:
+     * вход уже потребован грубым рубежом {@code SecurityConfig}, а роль
+     * Администратора запретила бы поиск Учителю, то есть тому, ради кого
+     * он делается. Фильтра по владельцу здесь нет и быть не может: Задачи
+     * общие (ADR-0027).
+     */
+    public List<FoundProblem> search(ProblemFilter filter) {
+        List<TaxonomyNodeId> topics = filter.node() == null ? null : subtreeOf(filter.node());
+        List<Problem> found = problems.search(topics,
+                filter.methods(), filter.methodMode(),
+                filter.characteristics(), filter.characteristicMode(),
+                filter.part());
+        return named(found);
+    }
+
+    /** Узел и всё его поддерево — идентификаторами, как их ждёт отбор. */
+    private List<TaxonomyNodeId> subtreeOf(TaxonomyNodeId node) {
+        return taxonomy.subtree(node).stream().map(TaxonomyNode::id).toList();
+    }
+
+    /**
+     * Разметка найденных Задач, названная по-человечески.
+     *
+     * <p>Пути и оба словаря читаются <b>по одному разу</b> и складываются
+     * в отображения «идентификатор → имя». Приём
+     * {@link ProblemController#problem}, где имена получаются фильтрацией
+     * полного списка по каждой метке, здесь не годится: на одной Задаче он
+     * незаметен, на списке даёт перебор «все найденные × весь словарь».
+     *
+     * <p>На пустом результате словари не читаются вовсе: {@code paths()}
+     * строит всё дерево, и платить за это, когда называть нечего, незачем.
+     */
+    private List<FoundProblem> named(List<Problem> found) {
+        if (found.isEmpty()) {
+            return List.of();
+        }
+        Map<TaxonomyNodeId, String> topicNames = taxonomy.paths().stream()
+                .collect(Collectors.toMap(TaxonomyPath::id, TaxonomyPath::path));
+        Map<SolutionMethodId, String> methodNames = methods.all().stream()
+                .collect(Collectors.toMap(SolutionMethod::id, SolutionMethod::name));
+        Map<CharacteristicId, String> characteristicNames = characteristics.all().stream()
+                .collect(Collectors.toMap(Characteristic::id, Characteristic::name));
+        return found.stream()
+                .map(problem -> new FoundProblem(problem,
+                        names(problem.topics(), topicNames, "узел рубрикатора"),
+                        names(problem.methods(), methodNames, "Метод"),
+                        names(problem.characteristics(), characteristicNames, "Характеристику")))
+                .toList();
+    }
+
+    /**
+     * Имена по идентификаторам разметки.
+     *
+     * Метка без имени — испорченные данные, и молчать о них нельзя: внешние
+     * ключи такого не допускают, а пропущенная строка в списке выглядела бы
+     * как Задача, размеченная беднее, чем она размечена.
+     */
+    private static <T> List<String> names(List<T> ids, Map<T, String> names, String what) {
+        return ids.stream()
+                .map(id -> {
+                    String name = names.get(id);
+                    if (name == null) {
+                        throw new IllegalStateException(
+                                "Разметка Задачи ссылается на " + what + ", которого нет: " + id);
+                    }
+                    return name;
+                })
+                .toList();
     }
 
     /**

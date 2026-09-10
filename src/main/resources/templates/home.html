@@ -14,7 +14,8 @@
 <ul>
     <li><a th:href="@{/taxonomy}">Рубрикатор</a></li>
     <li><a th:href="@{/dictionaries}">Словари</a></li>
-    <li><a th:href="@{/taxonomy}">Задачи</a> — лежат на Темах рубрикатора</li>
+    <li><a th:href="@{/problems}">Задачи</a> — поиск по всей библиотеке; лежат они
+        на Темах рубрикатора</li>
     <li th:if="${administrator}"><a th:href="@{/users}">Учётные записи</a></li>
     <li><a th:href="@{/password}">Сменить пароль</a></li>
 </ul>

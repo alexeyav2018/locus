@@ -2,8 +2,13 @@ package ru.locus.problem;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.LongFunction;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import ru.locus.dictionary.CharacteristicId;
@@ -98,6 +103,130 @@ public class ProblemRepository {
                 .query(ProblemRepository::row)
                 .list();
         return rows.stream().map(this::withMarkup).toList();
+    }
+
+    /**
+     * Отбор Задач по разметке — то, чем библиотека ищется (ADR-0031).
+     *
+     * <p>Темы приходят <b>готовым</b> списком: поддерево разворачивает
+     * рубрикатор, а не этот запрос. Второй рекурсивный обход завёл бы второй
+     * предел глубины, и разошлись бы они молча — стандарт проекта требует
+     * одного обхода на весь проект (standards.md, «Данные»).
+     *
+     * <p>Условия складываются подзапросами {@code exists}, а не соединением
+     * со снятием дублей через {@code distinct}. Ответ получился бы верный,
+     * но Задача, размеченная двумя Темами одного поддерева, порождает две
+     * строки, и правильность держалась бы на том, что в списке выборки нет
+     * ни одного различающего столбца. Стоит однажды добавить туда, скажем,
+     * имя Темы — и дубли вернутся, тихо. {@code exists} не порождает дублей
+     * вовсе.
+     *
+     * <p>Способ соединения меняет не вид подзапроса, а их число:
+     * {@link MatchMode#ANY} — один {@code exists} с {@code in (...)},
+     * {@link MatchMode#ALL} — по одному {@code exists} на значение.
+     *
+     * <p>Незаданное условие в текст запроса не попадает вовсе — оно
+     * не подставляется «всегда истинным» выражением: запрос должен читаться
+     * так же, как выглядит форма.
+     *
+     * @param topics           Темы, уже развёрнутые из поддерева;
+     *                         {@code null} — условия по узлу нет. Пустым
+     *                         список не бывает: поддерево всегда содержит
+     *                         сам узел
+     * @param methods          выбранные Методы; пустой список — условия нет
+     * @param characteristics  выбранные Характеристики; пустой — условия нет
+     * @param part             Часть; {@code null} — условия нет
+     * @throws IllegalArgumentException если список Тем пуст — это испорченный
+     *                                  вызов, и пустой результат был бы
+     *                                  правдоподобным ответом на него
+     */
+    public List<Problem> search(List<TaxonomyNodeId> topics,
+                                List<SolutionMethodId> methods,
+                                MatchMode methodMode,
+                                List<CharacteristicId> characteristics,
+                                MatchMode characteristicMode,
+                                ExamPart part) {
+        if (topics != null && topics.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Пустой список Тем: поддерево всегда содержит сам узел, значит вызов испорчен");
+        }
+        StringBuilder sql = new StringBuilder("""
+                select p.id, p.caption, p.exam_part, p.condition_file_key, p.solution_file_key
+                from problem p
+                where 1 = 1
+                """);
+        List<Object> parameters = new ArrayList<>();
+
+        if (topics != null) {
+            appendAny(sql, parameters, "problem_topic", "topic_id",
+                    topics.stream().map(TaxonomyNodeId::value).toList());
+        }
+        appendMarkup(sql, parameters, "problem_solution_method", "solution_method_id", methodMode,
+                methods == null ? List.of() : methods.stream().map(SolutionMethodId::value).toList());
+        appendMarkup(sql, parameters, "problem_characteristic", "characteristic_id", characteristicMode,
+                characteristics == null ? List.of() : characteristics.stream().map(CharacteristicId::value).toList());
+        if (part != null) {
+            sql.append(" and p.exam_part = ?");
+            parameters.add(part.name());
+        }
+        sql.append(" order by p.id");
+
+        List<Row> rows = database.sql(sql.toString())
+                .params(parameters)
+                .query(ProblemRepository::row)
+                .list();
+        return withMarkup(rows);
+    }
+
+    /**
+     * Условие по одной связующей таблице.
+     *
+     * <p><b>Пустой список — это отсутствие условия, а не условие из пустого
+     * набора</b>, и решается это здесь, один раз на все три измерения.
+     * Понятое буквально, «все сразу» из нуля значений истинно для всякой
+     * Задачи, а «любое из» из нуля — ложно для всякой; второе вернуло бы
+     * пусто на непустой библиотеке, объяснимо изнутри и необъяснимо снаружи.
+     * Ни одно из двух прочтений не имеется в виду, когда учитель просто
+     * не тронул список.
+     */
+    private static void appendMarkup(StringBuilder sql,
+                                     List<Object> parameters,
+                                     String table,
+                                     String column,
+                                     MatchMode mode,
+                                     List<Long> values) {
+        if (values.isEmpty()) {
+            return;
+        }
+        if (mode == MatchMode.ALL) {
+            for (Long value : values) {
+                appendAny(sql, parameters, table, column, List.of(value));
+            }
+        } else {
+            appendAny(sql, parameters, table, column, values);
+        }
+    }
+
+    /** «У Задачи есть хотя бы одна из этих меток» — один {@code exists}. */
+    private static void appendAny(StringBuilder sql,
+                                  List<Object> parameters,
+                                  String table,
+                                  String column,
+                                  List<Long> values) {
+        sql.append(" and exists (select 1 from ").append(table)
+                .append(" t where t.problem_id = p.id and t.").append(column)
+                .append(" in (").append(placeholders(values.size())).append("))");
+        parameters.addAll(values);
+    }
+
+    /**
+     * Значения уходят параметрами; в текст запроса подставляется только
+     * число вопросительных знаков. Собранной строкой запрос быть обязан —
+     * незаданное условие не должно в нём появляться, — но собирается она
+     * из заранее известных кусков, и ни одно значение в неё не попадает.
+     */
+    private static String placeholders(int count) {
+        return String.join(", ", Collections.nCopies(count, "?"));
     }
 
     /**
@@ -254,6 +383,79 @@ public class ProblemRepository {
                 topicsOf(row.id()),
                 methodsOf(row.id()),
                 characteristicsOf(row.id()));
+    }
+
+    /**
+     * Разметка целого списка Задач — тремя запросами на весь список,
+     * а не тремя на каждую Задачу.
+     *
+     * Так сделано только здесь, у поиска, и это не украшение: поиск без
+     * условий возвращает всю библиотеку, и дочитывание по одной означало бы
+     * три сотни запросов на сотне Задач — растущих ровно там, где список
+     * и должен быть длинным. Одиночные {@link #findById} и
+     * {@link #findByTopic} остались с прежним способом: у первого Задача
+     * одна, у второго список ограничен одной Темой.
+     *
+     * Порядок Задач сохраняется тот, в котором их вернул отбор.
+     */
+    private List<Problem> withMarkup(List<Row> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = rows.stream().map(row -> row.id().value()).toList();
+        Map<Long, List<TaxonomyNodeId>> topics =
+                grouped(ids, "problem_topic", null, "topic_id", "topic_id", TaxonomyNodeId::new);
+        Map<Long, List<SolutionMethodId>> methods =
+                grouped(ids, "problem_solution_method", "solution_method", "solution_method_id",
+                        "solution_method_id", SolutionMethodId::new);
+        Map<Long, List<CharacteristicId>> characteristics =
+                grouped(ids, "problem_characteristic", "characteristic", "characteristic_id",
+                        "characteristic_id", CharacteristicId::new);
+
+        return rows.stream()
+                .map(row -> new Problem(
+                        row.id(),
+                        row.caption(),
+                        row.part(),
+                        row.conditionFile(),
+                        row.solutionFile(),
+                        topics.getOrDefault(row.id().value(), List.of()),
+                        methods.getOrDefault(row.id().value(), List.of()),
+                        characteristics.getOrDefault(row.id().value(), List.of())))
+                .toList();
+    }
+
+    /**
+     * Один вид разметки для всех перечисленных Задач, разложенный по ним.
+     *
+     * Порядок внутри Задачи тот же, что и у поштучного чтения: записи
+     * словарей — по имени без учёта регистра, узлы — по идентификатору.
+     * Разойдись он, одна и та же Задача выглядела бы по-разному в списке
+     * и на своей странице.
+     *
+     * @param named таблица словаря для сортировки по имени; {@code null} —
+     *              сортировать по самому идентификатору
+     */
+    private <T> Map<Long, List<T>> grouped(List<Long> ids,
+                                           String table,
+                                           String named,
+                                           String column,
+                                           String order,
+                                           LongFunction<T> wrap) {
+        String sql = named == null
+                ? "select l.problem_id, l.%s from %s l where l.problem_id in (%s) order by l.%s"
+                        .formatted(column, table, placeholders(ids.size()), order)
+                : "select l.problem_id, l.%s from %s l join %s d on d.id = l.%s where l.problem_id in (%s) order by lower(d.name)"
+                        .formatted(column, table, named, column, placeholders(ids.size()));
+
+        Map<Long, List<T>> byProblem = new LinkedHashMap<>();
+        database.sql(sql)
+                .params(new ArrayList<Object>(ids))
+                .query((rs, rowNum) -> Map.entry(rs.getLong("problem_id"), wrap.apply(rs.getLong(column))))
+                .list()
+                .forEach(entry -> byProblem.computeIfAbsent(entry.getKey(), key -> new ArrayList<>())
+                        .add(entry.getValue()));
+        return byProblem;
     }
 
     private List<TaxonomyNodeId> topicsOf(ProblemId id) {
