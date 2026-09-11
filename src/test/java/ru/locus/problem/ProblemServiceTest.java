@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestLibrary;
@@ -221,6 +223,110 @@ class ProblemServiceTest extends IntegrationTest {
                 List.of(topic), problems.problem(id).methods(), List.of()))
                 .doesNotThrowAnyException();
         assertThatCode(() -> problems.delete(id)).doesNotThrowAnyException();
+    }
+
+    /**
+     * Перестройка дерева ({@code rubricator-restructure}), углубление:
+     * все Задачи Темы переезжают на приёмник, прочая разметка на месте.
+     */
+    @Test
+    void rehomingMovesEveryProblemOfTheTopicToTheReceiver() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId first = library.problem(from);
+        ProblemId second = library.problem(from);
+        List<SolutionMethodId> firstMethods = problems.problem(first).methods();
+
+        problems.rehomeTopic(from, to);
+
+        assertThat(problems.problemsOf(to)).extracting(Problem::id).containsExactly(first, second);
+        assertThat(problems.problemsOf(from)).isEmpty();
+        assertThat(problems.problem(first).methods()).as("Методы не задеты").isEqualTo(firstMethods);
+    }
+
+    /** Приёмника, которого нет, переезд не принимает — и внятно, а не ошибкой ключа. */
+    @Test
+    void rehomingOntoAMissingNodeIsRefusedAndNothingMoves() {
+        TaxonomyNodeId from = library.topic();
+        ProblemId id = library.problem(from);
+
+        assertThatThrownBy(() -> problems.rehomeTopic(from, new TaxonomyNodeId(Long.MAX_VALUE)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(problems.problem(id).topics()).containsExactly(from);
+    }
+
+    /**
+     * Перестройка, снятие Темы: каждая Задача уезжает на свой приёмник
+     * (ADR-0007, «распределяются поштучно»).
+     */
+    @Test
+    void distributionSendsEachProblemToItsOwnReceiver() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId left = library.topic();
+        TaxonomyNodeId right = library.topic();
+        ProblemId first = library.problem(from);
+        ProblemId second = library.problem(from);
+        ProblemId third = library.problem(from);
+
+        problems.distribute(from, Map.of(first, left, second, right, third, left));
+
+        assertThat(problems.problemsOf(left)).extracting(Problem::id).containsExactly(first, third);
+        assertThat(problems.problemsOf(right)).extracting(Problem::id).containsExactly(second);
+        assertThat(problems.problemsOf(from)).isEmpty();
+    }
+
+    /** Пропущенная Задача — отказ целиком: ни одна из названных не уехала. */
+    @Test
+    void incompleteDistributionIsRefusedBeforeAnythingMoves() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId named = library.problem(from);
+        ProblemId forgotten = library.problem(from);
+
+        assertThatThrownBy(() -> problems.distribute(from, Map.of(named, to)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("неполно")
+                .hasMessageContaining(String.valueOf(forgotten.value()));
+
+        assertThat(problems.problemsOf(from)).extracting(Problem::id).containsExactly(named, forgotten);
+        assertThat(problems.problemsOf(to)).isEmpty();
+    }
+
+    /** Посторонняя Задача в карте — тоже отказ целиком. */
+    @Test
+    void distributionNamingAStrangerIsRefused() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId own = library.problem(from);
+        ProblemId stranger = library.problem(library.topic());
+
+        assertThatThrownBy(() -> problems.distribute(from, Map.of(own, to, stranger, to)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("не размеченные")
+                .hasMessageContaining(String.valueOf(stranger.value()));
+
+        assertThat(problems.problemsOf(from)).extracting(Problem::id).containsExactly(own);
+        assertThat(problems.problemsOf(to)).isEmpty();
+    }
+
+    /**
+     * Перестройка — дело Администратора, как и всё ведение библиотеки;
+     * отказывает сервис, а не экран.
+     */
+    @Test
+    void teacherIsRefusedBothRestructuringOperations() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId id = library.problem(from);
+        LoggedIn.as(Role.TEACHER);
+
+        assertThatThrownBy(() -> problems.rehomeTopic(from, to))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> problems.distribute(from, Map.of(id, to)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        assertThat(repository.findById(id).orElseThrow().topics()).containsExactly(from);
     }
 
     /** Сценарий «Разметка Методом, в Теме не встречавшимся». */

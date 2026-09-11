@@ -82,4 +82,36 @@ class OwnerIsUnknownToProblemsTest {
             }
         }
     }
+
+    /**
+     * Перестройка дерева ({@code rubricator-restructure}) — единственная
+     * операция, которая действует и на личный контур: её продолжение
+     * в {@code mastery-marks} двинет и посчитает чужие отметки от имени
+     * Администратора (ADR-0034). Соблазн передать сюда владельца
+     * «чтобы ограничить» от этого только растёт — и потому методы
+     * перестройки названы поимённо, а не только покрыты общим перебором:
+     * исчезни они или переименуйся, сторож упадёт, а не промолчит.
+     */
+    @Test
+    void restructuringTakesNoOwnerEither() {
+        List<Method> restructuring = Stream.of(
+                        declared(ProblemRepository.class, "replaceTopic"),
+                        declared(ProblemRepository.class, "replaceTopicFor"),
+                        declared(ProblemService.class, "rehomeTopic"),
+                        declared(ProblemService.class, "distribute"))
+                .toList();
+
+        assertThat(restructuring).allSatisfy(method -> assertThat(method.getParameterTypes())
+                .as("метод перестройки %s не должен принимать владельца", method.getName())
+                .doesNotContain(UserId.class));
+    }
+
+    private static Method declared(Class<?> type, String name) {
+        return Arrays.stream(type.getDeclaredMethods())
+                .filter(method -> method.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "метода " + type.getSimpleName() + "." + name + " нет: перестройка переименована, "
+                                + "и сторож её больше не видит"));
+    }
 }

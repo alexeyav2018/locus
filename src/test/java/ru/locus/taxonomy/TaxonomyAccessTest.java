@@ -68,6 +68,13 @@ class TaxonomyAccessTest extends IntegrationTest {
         assertThat(teacher.postForm("/taxonomy/" + child.value() + "/deletion", Map.of()).status())
                 .as("удаление")
                 .isEqualTo(403);
+        assertThat(teacher.postForm("/taxonomy",
+                Map.of("name", "Потомок", "parentId", String.valueOf(child.value()), "receiver", "created")).status())
+                .as("углубление с Темой-приёмником")
+                .isEqualTo(403);
+        assertThat(teacher.postForm("/taxonomy/" + child.value() + "/distribution", Map.of()).status())
+                .as("снятие с распределением")
+                .isEqualTo(403);
 
         assertThat(nodes.findById(root).orElseThrow().name())
                 .as("дерево осталось прежним")

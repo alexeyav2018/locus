@@ -323,6 +323,60 @@ public class ProblemRepository {
     }
 
     /**
+     * Заменяет метку Темы {@code from} на {@code to} у всех Задач, где она
+     * стоит, — то, чем дерево перевешивает Задачи при перестройке
+     * ({@code rubricator-restructure}).
+     *
+     * <p>Меняется <b>одна метка</b> в списке Тем Задачи, а не вся разметка:
+     * прочие Темы, Методы и Характеристики остаются на месте. Замена целиком
+     * через {@link #replaceMarkup} потребовала бы перечитать каждую Задачу
+     * и переписать три таблицы ради одной строки в одной.
+     *
+     * <p>Задача, размеченная и {@code from}, и {@code to}, после замены несёт
+     * {@code to} <b>один раз</b>: метка {@code from} у неё снимается, а не
+     * переписывается — составной первичный ключ второй такой же строки
+     * не примет, и Администратор получил бы ошибку базы посреди перестройки
+     * дерева. Снятие идёт первым, замена — вторым: в обратном порядке дубль
+     * успел бы возникнуть.
+     */
+    public void replaceTopic(TaxonomyNodeId from, TaxonomyNodeId to) {
+        database.sql("""
+                        delete from problem_topic pt
+                        where pt.topic_id = ?
+                          and exists (select 1 from problem_topic t
+                                      where t.problem_id = pt.problem_id and t.topic_id = ?)
+                        """)
+                .params(from.value(), to.value())
+                .update();
+        database.sql("update problem_topic set topic_id = ? where topic_id = ?")
+                .params(to.value(), from.value())
+                .update();
+    }
+
+    /**
+     * То же, что {@link #replaceTopic}, но у одной названной Задачи — для
+     * поштучного распределения при снятии Темы (ADR-0007): каждой Задаче
+     * свой приёмник. Соседние по Теме Задачи не задеваются.
+     *
+     * <p>Задача, у которой метки {@code from} нет, не меняется и отказа
+     * не вызывает: полноту распределения проверяет сервис, а не запрос.
+     */
+    public void replaceTopicFor(ProblemId problem, TaxonomyNodeId from, TaxonomyNodeId to) {
+        database.sql("""
+                        delete from problem_topic pt
+                        where pt.problem_id = ?
+                          and pt.topic_id = ?
+                          and exists (select 1 from problem_topic t
+                                      where t.problem_id = pt.problem_id and t.topic_id = ?)
+                        """)
+                .params(problem.value(), from.value(), to.value())
+                .update();
+        database.sql("update problem_topic set topic_id = ? where problem_id = ? and topic_id = ?")
+                .params(to.value(), problem.value(), from.value())
+                .update();
+    }
+
+    /**
      * Снимает Задачу вместе со связями.
      *
      * Связи снимаются первыми: каскада по внешним ключам нет намеренно —

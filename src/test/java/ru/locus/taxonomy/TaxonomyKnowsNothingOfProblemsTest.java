@@ -31,6 +31,25 @@ class TaxonomyKnowsNothingOfProblemsTest {
                 .doesNotContain("ru.locus.problem");
     }
 
+    /**
+     * Перестройка ({@code rubricator-restructure}) переезд разметки
+     * не встроила в дерево: он идёт через {@link NodeContent#moveTopicContent},
+     * а не вызовом сервиса Задач и не запросом к их таблице. Проверяется
+     * по именам, а не только по пакету: {@code problem_topic} — строка SQL,
+     * и импортом её не увидеть.
+     */
+    @Test
+    void theMoveGoesThroughTheQuestionAndNotThroughTheProblemService() {
+        String source = sourceOf(TaxonomyService.class);
+        assertThat(source)
+                .as("переезд разметки — дело области Задач; дерево лишь просит ответчиков убрать за собой")
+                .doesNotContain("ProblemService")
+                .doesNotContain("problem_topic");
+        assertThat(source)
+                .as("а просит оно ровно тем вопросом, который для этого расширен")
+                .contains("moveTopicContent");
+    }
+
     @Test
     void neitherDoesTheTreeRepository() {
         assertThat(sourceOf(TaxonomyRepository.class)).doesNotContain("ru.locus.problem");

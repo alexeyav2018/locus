@@ -1,6 +1,8 @@
 package ru.locus.taxonomy;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,6 +10,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
+import ru.locus.problem.Problem;
+import ru.locus.problem.ProblemDistribution;
+import ru.locus.problem.ProblemId;
 import ru.locus.problem.ProblemService;
 import ru.locus.theory.TheoryService;
 import ru.locus.user.CurrentUser;
@@ -39,6 +44,22 @@ public class TaxonomyController {
      * обычным сравнением чисел, без проверки на отсутствие.
      */
     private static final long NOTHING_SELECTED = 0;
+
+    /**
+     * Значение поля «Тема-приёмник», означающее создаваемого потомка.
+     * Слово, а не число: у потомка идентификатора ещё нет, а «особое» число
+     * однажды ушло бы в запрос как настоящее ({@link TopicReceiver}).
+     */
+    static final String CREATED_CHILD = "created";
+
+    /**
+     * Поля формы распределения: {@code destination[<Задача>]} — Тема-приёмник
+     * этой Задачи. Имя поля несёт ключ карты, значение — её значение; так
+     * форма отдаёт всю карту «Задача → приёмник» разом, и полноту карты
+     * проверяет сервис Задач, а не порядок полей в разметке.
+     */
+    private static final String DESTINATION_PREFIX = "destination[";
+    private static final String DESTINATION_SUFFIX = "]";
 
     private final TaxonomyService taxonomy;
 
@@ -75,13 +96,25 @@ public class TaxonomyController {
         return render(node, model);
     }
 
+    /**
+     * Заводит узел; у Темы с Задачами — углубление с Темой-приёмником
+     * (ADR-0007). Приёмник приходит тем же запросом, что и имя потомка:
+     * это одна операция, и разделять её на «создать» и «перевесить» нельзя
+     * (см. {@link TaxonomyService#create(String, TaxonomyNodeId, TopicReceiver)}).
+     *
+     * <p>Пустое поле приёмника — «не указан»: у Темы без Задач форма прежняя
+     * и приёмника не отдаёт, а Тема с Задачами без него получит отказ —
+     * от сервиса, не отсюда.
+     */
     @PostMapping(Addresses.TAXONOMY)
     public String create(@RequestParam String name,
                          @RequestParam(required = false) Long parentId,
+                         @RequestParam(required = false) String receiver,
                          Model model) {
         try {
-            return atNode(taxonomy.create(name, nodeId(parentId)).value());
-        } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
+            return atNode(taxonomy.create(name, nodeId(parentId), receiver(receiver)).value());
+        } catch (NameAlreadyTakenException | TopicCarriesContentException | ReceiverIsNotATopicException
+                 | IllegalArgumentException refusal) {
             return refused(refusal, parentId, model);
         }
     }
@@ -124,6 +157,31 @@ public class TaxonomyController {
     }
 
     /**
+     * Снимает Тему с Задачами, распределив их по Темам-приёмникам поштучно
+     * (ADR-0007), и возвращает на прежнего родителя — как {@link #delete}.
+     *
+     * <p>Форма отдаёт карту «Задача → приёмник» полями
+     * {@code destination[<Задача>]}; здесь она лишь собирается в
+     * {@link ProblemDistribution} и передаётся дереву. Полноту карты
+     * проверяет область Задач, приёмников — дерево; контроллер ни того,
+     * ни другого не знает. Собирать карту здесь можно: контроллер — то
+     * единственное место у дерева, которому область Задач известна
+     * (см. поле {@link #problems}).
+     */
+    @PostMapping(Addresses.TAXONOMY + "/{id}/distribution")
+    public String distribute(@PathVariable long id,
+                             @RequestParam Map<String, String> form,
+                             Model model) {
+        try {
+            TaxonomyNodeId parent = taxonomy.node(new TaxonomyNodeId(id)).parent();
+            taxonomy.deleteWithDistribution(new TaxonomyNodeId(id), distribution(form));
+            return parent == null ? "redirect:" + Addresses.TAXONOMY : atNode(parent.value());
+        } catch (NodeNotEmptyException | ReceiverIsNotATopicException | IllegalArgumentException refusal) {
+            return refused(refusal, id, model);
+        }
+    }
+
+    /**
      * Собирает страницу: дерево слева, выбранный узел справа.
      *
      * Узел, которого нет, отказом не считается: его могли удалить в соседней
@@ -138,15 +196,25 @@ public class TaxonomyController {
      * Материалы спрашиваются на любом узле, а не только на Теме: теория лежит
      * и на Разделе (ADR-0032), и наследуется вниз — пустой список у Раздела
      * означал бы, что положенное на него никому не показывают.
+     *
+     * Перестройка предлагается Администратору на Теме с Задачами: тогда
+     * форма потомка требует Тему-приёмник, а вместо обычного удаления —
+     * снятие с распределением, для которого нужны Темы дерева и число
+     * исчезающих отметок Владения. Счёт отметок спрашивается только у
+     * Администратора и только здесь: это единственное место, где ему
+     * видно личное чужих учителей (ADR-0005), и Учителю сервис его
+     * не отдаст вовсе.
      */
     private String render(Long node, Model model) {
+        boolean administrator = currentUser.account().hasRole(Role.ADMINISTRATOR);
         model.addAttribute("tree", taxonomy.tree());
         model.addAttribute("paths", taxonomy.paths());
-        model.addAttribute("administrator", currentUser.account().hasRole(Role.ADMINISTRATOR));
+        model.addAttribute("administrator", administrator);
 
         long selected = NOTHING_SELECTED;
         model.addAttribute("problems", List.of());
         model.addAttribute("materials", List.of());
+        model.addAttribute("restructure", false);
         if (node != null) {
             try {
                 TaxonomyNode chosen = taxonomy.node(new TaxonomyNodeId(node));
@@ -154,7 +222,16 @@ public class TaxonomyController {
                 model.addAttribute("selectedPath", taxonomy.path(chosen.id()).path());
                 selected = chosen.id().value();
                 if (chosen.isTopic()) {
-                    model.addAttribute("problems", problems.problemsOf(chosen.id()));
+                    List<Problem> onTopic = problems.problemsOf(chosen.id());
+                    model.addAttribute("problems", onTopic);
+                    if (administrator && !onTopic.isEmpty()) {
+                        model.addAttribute("restructure", true);
+                        model.addAttribute("receivers", taxonomy.topicPaths());
+                        model.addAttribute("distributionReceivers",
+                                taxonomy.receiverPathsAfterRemoving(chosen.id()));
+                        model.addAttribute("createdChild", CREATED_CHILD);
+                        model.addAttribute("vanishingMarks", taxonomy.countVanishingMarks(chosen.id()));
+                    }
                 }
                 model.addAttribute("materials", theory.materialsOn(chosen.id()));
             } catch (IllegalArgumentException gone) {
@@ -182,5 +259,58 @@ public class TaxonomyController {
 
     private static TaxonomyNodeId nodeId(Long value) {
         return value == null ? null : new TaxonomyNodeId(value);
+    }
+
+    /**
+     * Поле приёмника из формы углубления: пусто — не указан, {@link
+     * #CREATED_CHILD} — создаваемый потомок, иначе — идентификатор Темы.
+     * Слово, которого форма не отдаёт, — неверный ввод, а не «не указан»:
+     * молчаливое «не указан» превратило бы опечатку в отказ по другой
+     * причине.
+     */
+    private static TopicReceiver receiver(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        if (CREATED_CHILD.equals(value)) {
+            return TopicReceiver.CREATED_CHILD;
+        }
+        try {
+            return TopicReceiver.existing(new TaxonomyNodeId(Long.parseLong(value)));
+        } catch (NumberFormatException malformed) {
+            throw new IllegalArgumentException("Тема-приёмник указана неверно: " + value);
+        }
+    }
+
+    /**
+     * Карта «Задача → приёмник» из полей формы распределения. Прочие поля
+     * пропускаются. Задача без выбранного приёмника — отказ здесь же,
+     * до сервиса: это неполный ввод, а не неполное распределение, и текст
+     * отказа должен назвать поле, а не «не названную Задачу».
+     */
+    private static ProblemDistribution distribution(Map<String, String> form) {
+        Map<ProblemId, TaxonomyNodeId> destinations = new LinkedHashMap<>();
+        form.forEach((field, value) -> {
+            if (!field.startsWith(DESTINATION_PREFIX) || !field.endsWith(DESTINATION_SUFFIX)) {
+                return;
+            }
+            String key = field.substring(DESTINATION_PREFIX.length(), field.length() - DESTINATION_SUFFIX.length());
+            ProblemId problem;
+            try {
+                problem = new ProblemId(Long.parseLong(key));
+            } catch (NumberFormatException malformed) {
+                throw new IllegalArgumentException("Поле распределения указано неверно: " + field);
+            }
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("У Задачи № " + problem.value() + " не указана Тема-приёмник");
+            }
+            try {
+                destinations.put(problem, new TaxonomyNodeId(Long.parseLong(value)));
+            } catch (NumberFormatException malformed) {
+                throw new IllegalArgumentException("Тема-приёмник Задачи № " + problem.value()
+                        + " указана неверно: " + value);
+            }
+        });
+        return new ProblemDistribution(destinations);
     }
 }

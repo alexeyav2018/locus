@@ -33,7 +33,10 @@ class OwnerIsUnknownToTaxonomyTest {
             TaxonomyNode.class,
             TaxonomyNodeId.class,
             TaxonomyBranch.class,
-            TaxonomyPath.class);
+            TaxonomyPath.class,
+            NodeContent.class,
+            TopicReceiver.class,
+            TopicDistribution.class);
 
     @Test
     void noMethodTakesTheOwner() {
@@ -65,6 +68,48 @@ class OwnerIsUnknownToTaxonomyTest {
                 .as("поле %s.%s не должно хранить владельца", field.getDeclaringClass().getSimpleName(),
                         field.getName())
                 .isNotEqualTo(UserId.class));
+    }
+
+    /**
+     * Перестройка дерева ({@code rubricator-restructure}) — единственная
+     * операция рубрикатора, которая дотягивается до личного контура:
+     * её продолжение в {@code mastery-marks} двинет и посчитает чужие
+     * отметки Владения от имени Администратора (ADR-0034), а счёт исчезающих
+     * отметок отдаёт наружу только число — без владельца и без значений.
+     * Соблазн передать сюда владельца «чтобы ограничить» от этого только
+     * растёт, и потому методы перестройки и счёта названы поимённо, а не
+     * только покрыты общим перебором: исчезни они или переименуйся, сторож
+     * упадёт, а не промолчит.
+     */
+    @Test
+    void restructuringAndCountingTakeNoOwnerEither() {
+        List<Method> restructuring = Stream.of(
+                        declared(TaxonomyService.class, "create"),
+                        declared(TaxonomyService.class, "deleteWithDistribution"),
+                        declared(TaxonomyService.class, "countVanishingMarks"),
+                        declared(TaxonomyService.class, "receiverPathsAfterRemoving"),
+                        declared(NodeContent.class, "moveTopicContent"),
+                        declared(NodeContent.class, "distributeTopicContent"),
+                        declared(NodeContent.class, "countVanishing"))
+                .flatMap(List::stream)
+                .toList();
+
+        assertThat(restructuring).allSatisfy(method -> assertThat(method.getParameterTypes())
+                .as("метод перестройки %s.%s не должен принимать владельца",
+                        method.getDeclaringClass().getSimpleName(), method.getName())
+                .doesNotContain(UserId.class));
+    }
+
+    /** Все перегрузки: у {@code create} их две, и приёмник принимает вторая. */
+    private static List<Method> declared(Class<?> type, String name) {
+        List<Method> found = Arrays.stream(type.getDeclaredMethods())
+                .filter(method -> method.getName().equals(name))
+                .toList();
+        assertThat(found)
+                .as("метода %s.%s нет: перестройка переименована, и сторож её больше не видит",
+                        type.getSimpleName(), name)
+                .isNotEmpty();
+        return found;
     }
 
     @Test

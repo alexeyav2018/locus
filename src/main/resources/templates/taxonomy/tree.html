@@ -46,6 +46,10 @@
             max-width: 100%;
         }
         .screen .actions button { padding: 0.35rem 0.9rem; }
+        .screen .actions .distribution h3 { margin: 0; }
+        .screen .actions .distribution p { margin: 0; }
+        .screen .actions .distribution ul { margin: 0; padding-left: 1.25rem; }
+        .screen .actions .distribution li { margin-bottom: 0.6rem; }
     </style>
 </head>
 <body>
@@ -126,9 +130,25 @@
                     <button type="submit">Переименовать</button>
                 </form>
 
+                <!--/* На Теме с Задачами потомок заводится только с Темой-приёмником,
+                       на которую переезжают Задачи: с появлением потомка Тема
+                       становится Разделом, а Раздел Задач не несёт (ADR-0007).
+                       По умолчанию предложен создаваемый потомок — самый частый
+                       случай: Тему делят, оставляя накопленное в первой из новых.
+                       Сама углубляемая Тема из списка исключена: после операции
+                       она Раздел, и сервис отказал бы в любом случае. */-->
                 <form method="post" th:action="@{/taxonomy}">
                     <input type="hidden" name="parentId" th:value="${selected.id.value}">
                     <label>Имя потомка <input type="text" name="name"></label>
+                    <label th:if="${restructure}">Тема-приёмник для Задач
+                        <select name="receiver">
+                            <option th:value="${createdChild}" selected>— создаваемый потомок —</option>
+                            <option th:each="path : ${receivers}"
+                                    th:unless="${path.id.value == selected.id.value}"
+                                    th:value="${path.id.value}"
+                                    th:text="${path.path}">Алгебра / Уравнения</option>
+                        </select>
+                    </label>
                     <button type="submit">Добавить потомка</button>
                 </form>
 
@@ -146,8 +166,50 @@
                     <button type="submit">Перенести</button>
                 </form>
 
-                <form method="post" th:action="@{/taxonomy/{id}/deletion(id=${selected.id.value})}">
+                <!--/* Обычное удаление снимает только пустой узел. На Теме
+                       с Задачами оно всегда отказало бы, поэтому вместо него
+                       предлагается снятие с распределением: каждая Задача
+                       Темы перечислена поимённо и получает свою Тему-приёмник
+                       — поштучно, а не «всё в одну», так решено в ADR-0007.
+                       Список Задач намеренно целый, без разбиения на страницы:
+                       полнота распределения должна быть видна глазом.
+
+                       Число исчезающих отметок Владения показывается до
+                       подтверждения: отметки не переезжают ни на один приёмник
+                       и невосполнимы. Это единственное место, где Администратору
+                       видно личное чужих учителей, — и только число (ADR-0005,
+                       ADR-0027). Сегодня оно всегда ноль: отметок ещё нет. */-->
+                <form method="post" th:unless="${restructure}"
+                      th:action="@{/taxonomy/{id}/deletion(id=${selected.id.value})}">
                     <button type="submit">Удалить</button>
+                </form>
+                <form method="post" th:if="${restructure}" class="distribution"
+                      th:action="@{/taxonomy/{id}/distribution(id=${selected.id.value})}">
+                    <h3>Снять Тему с распределением Задач</h3>
+                    <p>Тема снимается вместе с разметкой: каждой её Задаче укажите
+                        Тему-приёмник, на которую она переедет.</p>
+                    <p th:if="${vanishingMarks == 0}">Исчезающих отметок Владения нет.</p>
+                    <p th:unless="${vanishingMarks == 0}">Вместе с Темой исчезнут отметки Владения:
+                        <strong th:text="${vanishingMarks}">3</strong> — ни на один приёмник они
+                        не переедут.</p>
+                    <ul>
+                        <li th:each="problem : ${problems}">
+                            <label>
+                                <span th:text="'№ ' + ${problem.number}">№ 12</span>
+                                <span th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
+                                <!--/* Список приёмников здесь свой: считается по дереву
+                                       после снятия, и родитель, остающийся без потомков,
+                                       в нём есть, а снимаемая Тема — нет. */-->
+                                <select th:name="'destination[' + ${problem.id.value} + ']'" required>
+                                    <option value="">— выберите Тему-приёмник —</option>
+                                    <option th:each="path : ${distributionReceivers}"
+                                            th:value="${path.id.value}"
+                                            th:text="${path.path}">Алгебра / Уравнения</option>
+                                </select>
+                            </label>
+                        </li>
+                    </ul>
+                    <button type="submit">Снять с распределением</button>
                 </form>
             </div>
         </div>
