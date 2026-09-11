@@ -1,6 +1,6 @@
 ## 1. Вопрос дерева расширяется до переноса и счёта
 
-- [ ] 1.1 Дополнить интерфейс `ru.locus.taxonomy.NodeContent` двумя методами
+- [x] 1.1 Дополнить интерфейс `ru.locus.taxonomy.NodeContent` двумя методами
       с реализациями по умолчанию: `moveTopicContent(TaxonomyNodeId from,
       TaxonomyNodeId to)` — перевесить своё содержимое узла `from` на `to`,
       по умолчанию не делать ничего; `countVanishing(TaxonomyNodeId node)` —
@@ -12,14 +12,17 @@
       (ADR-0005, ADR-0027). Проверка: `mvn test -Dtest=TheoryServiceTest`
       зелёный — теория ни один из методов не переопределяет и от расширения
       интерфейса не ломается.
-- [ ] 1.2 Переопределить `moveTopicContent` в `ru.locus.problem.ProblemsOnNode`
-      вызовом нового метода `ProblemService` (раздел 2), `countVanishing`
-      оставить нулевым с javadoc «Задачи не исчезают — они распределяются».
-      В `ru.locus.theory.TheoryOnNode` явно записать в javadoc, что теория
-      в переезде не участвует: материал законен на любом узле, а узел
-      со своими материалами не снимается ни одной операцией перестройки
-      (ADR-0033). Проверка: `mvn test -Dtest=TaxonomyServiceTest` зелёный.
-- [ ] 1.3 Тест долга `MasteryRestructureDebtTest` в `src/test/java/ru/locus/taxonomy/`
+- [x] 1.2 В `ru.locus.theory.TheoryOnNode` явно записать в javadoc, что теория
+      ни в переезде, ни в счёте исчезающего не участвует: материал законен
+      на любом узле, а узел со своими материалами не снимается ни одной
+      операцией перестройки (ADR-0033). Оба новых метода остаются
+      непереопределёнными. Проверка: `mvn test -Dtest=TaxonomyServiceTest`
+      зелёный.
+
+      Переопределение `moveTopicContent` в `ProblemsOnNode` стоит в разделе 2
+      (пункт 2.6): оно зовёт метод `ProblemService`, которого до раздела 2
+      не существует.
+- [x] 1.3 Тест долга `MasteryRestructureDebtTest` в `src/test/java/ru/locus/taxonomy/`
       по образцу `ProblemUsageDebtTest` и `DeletionCheckDebtTest`: перечисляет
       реализации `NodeContent`, утверждает, что отвечающего по существу
       на `countVanishing` сегодня нет, и падает с внятным текстом, когда
@@ -56,6 +59,11 @@
 - [ ] 2.5 Дополнить `OwnerIsUnknownToProblemsTest`: `UserId` не встречается
       в сигнатурах новых методов репозитория и сервиса. Проверка: тест
       зелёный.
+- [ ] 2.6 Переопределить `moveTopicContent` в `ru.locus.problem.ProblemsOnNode`
+      вызовом `ProblemService.rehomeTopic`; `countVanishing` не
+      переопределять, записав в javadoc почему — «Задачи не исчезают, они
+      распределяются по приёмникам». Проверка: `mvn test -Dtest=TaxonomyServiceTest`
+      зелёный; переезд, запущенный из дерева, доходит до разметки Задач.
 
 ## 3. Углубление Темы с Темой-приёмником
 
