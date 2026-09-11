@@ -145,19 +145,69 @@ public class TaxonomyService {
      *
      * Вид узла при этом не назначается и нигде не сохраняется: новый узел
      * потомков не имеет, значит он Тема; появится потомок — станет Разделом
-     * сам собой. Ровно поэтому родителю, несущему Задачи, потомка добавить
-     * нельзя — см. {@link #refuseIfDeepeningLosesContent}.
+     * сам собой. Ровно поэтому родителю, несущему Задачи, потомка без
+     * Темы-приёмника не добавить — см. {@link #create(String, TaxonomyNodeId,
+     * TopicReceiver)}.
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
     public TaxonomyNodeId create(String name, TaxonomyNodeId parent) {
+        return create(name, parent, null);
+    }
+
+    /**
+     * Заводит узел, а если родитель — Тема с содержимым, требующим Темы,
+     * перевешивает это содержимое на {@code receiver} той же операцией
+     * (ADR-0007). Разделять их нельзя: Тема, оставшаяся Разделом с Задачами
+     * хотя бы на мгновение видимого состояния, нарушает инвариант 1.
+     *
+     * <p>Порядок шагов не случаен. Сначала все проверки, потом создание
+     * потомка, и только потом переезд: приёмником может быть сам создаваемый
+     * потомок, а идентификатор у него появляется лишь при создании. Отказ
+     * на любом шаге откатывает транзакцию целиком — узла нет, содержимое
+     * на месте.
+     *
+     * <p>Что именно переезжает и из какой области, дерево по-прежнему
+     * не знает: оно просит каждого ответчика {@link NodeContent} убрать
+     * за собой ({@link NodeContent#moveTopicContent}). Переезд просится
+     * у всех, как только приёмник указан, — даже если содержимого нет:
+     * ответчику, которому переезжать нечего, вызов безвреден, а проверять
+     * дважды одно и то же незачем.
+     *
+     * @param receiver Тема-приёмник; {@code null} — не указана. Без неё
+     *                 родитель с содержимым, требующим Темы, потомка
+     *                 не получает. Указанная проверяется всегда, и без
+     *                 содержимого тоже: неверный приёмник — неверный ввод,
+     *                 а не безобидная деталь.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public TaxonomyNodeId create(String name, TaxonomyNodeId parent, TopicReceiver receiver) {
         String trimmed = requireName(name);
-        if (parent != null) {
-            existing(parent);
-            refuseIfDeepeningLosesContent(parent);
+        if (parent == null) {
+            if (receiver != null) {
+                throw new IllegalArgumentException("Тема-приёмник указывается только при углублении"
+                        + " существующего узла: у корня переезжать нечему");
+            }
+        } else {
+            TaxonomyNode deepened = existing(parent);
+            if (receiver == null) {
+                refuseIfDeepeningLosesContent(deepened);
+            } else {
+                refuseUnlessReceiverStaysATopic(deepened, receiver);
+            }
         }
         refuseIfNameTaken(parent, trimmed, null);
-        return nodes.create(trimmed, parent);
+        TaxonomyNodeId created = nodes.create(trimmed, parent);
+        if (receiver != null) {
+            TaxonomyNodeId target = receiver instanceof TopicReceiver.Existing existing
+                    ? existing.id()
+                    : created;
+            for (NodeContent kind : content) {
+                kind.moveTopicContent(parent, target);
+            }
+        }
+        return created;
     }
 
     /**
@@ -242,26 +292,52 @@ public class TaxonomyService {
     }
 
     /**
-     * Углубить узел, несущий содержимое, которое живёт только на Теме,
-     * нельзя: с появлением потомка узел становится Разделом, а на Разделе
-     * Задач и отметок Владения не бывает никогда (инвариант 1).
+     * Углубить узел, несущий содержимое, которое живёт только на Теме, без
+     * Темы-приёмника нельзя: с появлением потомка узел становится Разделом,
+     * а на Разделе Задач и отметок Владения не бывает никогда (инвариант 1).
      *
      * Молча выполненная операция дала бы Задачи на Разделе: в дереве они
      * больше не находятся, в статистике не участвуют, и никакой ошибки
      * при этом не выдано (antipatterns.md, «Задачи или отметки на Разделе»).
      *
-     * Отказ временный и назван прямо: перенос на Тему-приёмник (ADR-0007)
-     * принадлежит работе {@code rubricator-restructure} и здесь не строится.
+     * Отказ называет выход: тот же вызов с указанной Темой-приёмником
+     * (ADR-0007), на которую содержимое переедет той же операцией.
      */
-    private void refuseIfDeepeningLosesContent(TaxonomyNodeId parent) {
-        TaxonomyNode node = existing(parent);
+    private void refuseIfDeepeningLosesContent(TaxonomyNode node) {
         for (NodeContent kind : content) {
             Optional<String> held = kind.requiringTopic(node.id());
             if (held.isPresent()) {
-                throw new TopicCarriesContentException("Узлу «" + node.name() + "» нельзя добавить потомка: "
-                        + held.get() + ", а с потомком он станет Разделом. Сначала нужно перенести их —"
-                        + " перенос появится вместе с механикой Темы-приёмника");
+                throw new TopicCarriesContentException("Узлу «" + node.name() + "» нельзя добавить потомка"
+                        + " без Темы-приёмника: " + held.get() + ", а с потомком он станет Разделом."
+                        + " Нужно указать Тему-приёмник — узел, на который они переедут");
             }
+        }
+    }
+
+    /**
+     * Приёмник допустим, если <b>после</b> операции у него не будет потомков
+     * (design.md, «Проверка „приёмник — Тема“ считает состояние после
+     * операции»). Вид узла не хранится, поэтому смотреть на нынешний
+     * {@code isTopic()} мало: углубляемая Тема сейчас Тема, но потомок у неё
+     * вот-вот появится; создаваемый потомок сейчас не существует, но будет
+     * листом.
+     *
+     * Проверка живёт здесь, а не в области содержимого: только дерево знает,
+     * каким оно станет.
+     */
+    private void refuseUnlessReceiverStaysATopic(TaxonomyNode deepened, TopicReceiver receiver) {
+        if (!(receiver instanceof TopicReceiver.Existing existing)) {
+            return;
+        }
+        TaxonomyNode node = existing(existing.id());
+        if (node.id().equals(deepened.id())) {
+            throw new ReceiverIsNotATopicException("Узел «" + node.name() + "» не может быть Темой-приёмником"
+                    + " для самого себя: с появлением потомка он станет Разделом, а Задачи несут только Темы");
+        }
+        int children = nodes.countChildren(node.id());
+        if (children > 0) {
+            throw new ReceiverIsNotATopicException("Узел «" + node.name() + "» не может быть Темой-приёмником:"
+                    + " у него есть потомки (" + children + "), а Задачи несут только Темы");
         }
     }
 

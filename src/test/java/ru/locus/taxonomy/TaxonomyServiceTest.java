@@ -121,6 +121,71 @@ class TaxonomyServiceTest extends IntegrationTest {
         assertThat(taxonomy.children(circles)).hasSize(1);
     }
 
+    /**
+     * Сценарий «Приёмником указан узел, перестающий быть Темой» — часть
+     * про саму углубляемую Тему.
+     *
+     * Здесь Тема пуста: проверка приёмника — правило дерева, и о Задачах
+     * оно не знает; неверный приёмник отклоняется как неверный ввод, даже
+     * когда переезжать нечему. Что при отказе не переезжает и разметка,
+     * проверяет {@code ProblemsGuardTheTreeTest}.
+     */
+    @Test
+    void deepenedTopicItselfIsRefusedAsAReceiver() {
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        assertThatThrownBy(() -> taxonomy.create("Квадратные", topic, TopicReceiver.existing(topic)))
+                .isInstanceOf(ReceiverIsNotATopicException.class)
+                .hasMessageContaining("Темы");
+
+        assertThat(taxonomy.children(topic)).as("потомок не создан").isEmpty();
+    }
+
+    /** Сценарий «Приёмником указан узел, перестающий быть Темой» — Раздел. */
+    @Test
+    void sectionIsRefusedAsAReceiver() {
+        TaxonomyNodeId section = taxonomy.create(unique("Геометрия"), null);
+        taxonomy.create("Треугольники", section);
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        assertThatThrownBy(() -> taxonomy.create("Квадратные", topic, TopicReceiver.existing(section)))
+                .isInstanceOf(ReceiverIsNotATopicException.class)
+                .hasMessageContaining("потомки");
+
+        assertThat(taxonomy.children(topic)).as("потомок не создан").isEmpty();
+    }
+
+    /** Приёмник, которого нет в дереве, — ошибка ввода, а не отказ по существу. */
+    @Test
+    void unknownReceiverIsAnError() {
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        assertThatThrownBy(() -> taxonomy.create("Квадратные", topic,
+                TopicReceiver.existing(new TaxonomyNodeId(Long.MAX_VALUE))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(taxonomy.children(topic)).as("потомок не создан").isEmpty();
+    }
+
+    /** У корня переезжать нечему: приёмник при создании корня — бессмыслица. */
+    @Test
+    void receiverForARootIsAnError() {
+        assertThatThrownBy(() -> taxonomy.create(unique("Алгебра"), null, TopicReceiver.CREATED_CHILD))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("корня");
+    }
+
+    /** Создаваемый потомок — законный приёмник и на пустой Теме; узел создаётся как обычно. */
+    @Test
+    void createdChildAsReceiverOnAnEmptyTopicCreatesTheNodeAsUsual() {
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        TaxonomyNodeId child = taxonomy.create("Квадратные", topic, TopicReceiver.CREATED_CHILD);
+
+        assertThat(taxonomy.children(topic)).extracting(TaxonomyNode::id).containsExactly(child);
+        assertThat(taxonomy.node(topic).isSection()).as("прежняя Тема стала Разделом").isTrue();
+    }
+
     /** Сценарий «Узел переименован». */
     @Test
     void renamedNodeKeepsItsPlaceParentAndChildren() {
