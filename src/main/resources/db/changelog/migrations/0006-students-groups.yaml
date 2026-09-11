@@ -1,0 +1,167 @@
+# Ученики и Группы — первые таблицы ЛИЧНОГО контура (ADR-0003, ADR-0004).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): Student → student; Group → group_ (GROUP зарезервировано
+# в PostgreSQL, как USER у user_); связующая таблица — group_student, первой
+# та сущность, которой связь принадлежит: Группа и есть список.
+#
+# Колонка user_id есть в КАЖДОЙ таблице, и это главное отличие от пяти
+# библиотечных миграций перед этой. Там колонки «чей» нет, потому что она
+# была бы началом фильтра, который сделал бы библиотеку невидимой. Здесь
+# она обязательна по обратной причине: Ученик принадлежит ровно одному
+# Учителю (инвариант 11 domain-model.md), и строка без владельца — это
+# строка, которую увидят все. Каждый запрос к этим таблицам несёт
+# user_id = ? — у репозиториев области нет метода без владельца (ADR-0027).
+#
+# Ключ на user_ без каскада: учётные записи не удаляются вовсе
+# (users-and-roles, «Администратор ведёт учётные записи»), а если однажды
+# станут — за учителем стоят его ученики, и уносить их молча нельзя.
+#
+# Уникальность (id, user_id) у student и group_ нужна не сама по себе —
+# id и так первичный ключ, — а как цель составных внешних ключей из
+# group_student: только так база сама не даст положить в Группу чужого
+# Ученика (см. третий changeset).
+databaseChangeLog:
+  - changeSet:
+      id: 0006-student
+      author: locus
+      comment: Ученик — карточка школьника, имя и владелец; входа у него нет
+      changes:
+        - createTable:
+            tableName: student
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_student
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Имени входа и пароля нет и не будет: Ученик — объект учёта,
+              # а не пользователь (ADR-0003). Тест StudentIsNotAUserTest
+              # перечисляет колонки этой таблицы поимённо.
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: student
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_student_user
+        - addUniqueConstraint:
+            tableName: student
+            columnNames: id, user_id
+            constraintName: uq_student_id_user
+
+  - changeSet:
+      id: 0006-group
+      author: locus
+      comment: Группа — именованный список Учеников одного Учителя
+      changes:
+        - createTable:
+            tableName: group_
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_group
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: group_
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_group_user
+        - addUniqueConstraint:
+            tableName: group_
+            columnNames: id, user_id
+            constraintName: uq_group_id_user
+
+  - changeSet:
+      id: 0006-group-unique-name
+      author: locus
+      comment: >-
+        Имя Группы уникально среди Групп одного Учителя без учёта регистра:
+        Группа выбирается по имени при выдаче, и две «9Б» неразличимы.
+        У разных Учителей имена не пересекаются — user_id в индексе.
+        У Ученика такого индекса нет намеренно: однофамильцы обычны.
+        Функциональный индекс выражается только сырым SQL, отката
+        у changeset'а нет, и это ожидаемо (ADR-0023); так же сделано
+        у словарей (0003-library-dictionaries.yaml).
+      changes:
+        - sql:
+            sql: >-
+              create unique index uq_group_user_name
+              on group_ (user_id, lower(name))
+
+  - changeSet:
+      id: 0006-group-student
+      author: locus
+      comment: >-
+        Состав Группы. user_id здесь избыточен — он выводим из обеих
+        сторон, — но именно он позволяет составным ключам гарантировать,
+        что Группа и Ученик принадлежат одному Учителю: строке с чужим
+        Учеником не на что сослаться. Правится колонка только вместе
+        с ключами и разойтись с ними не может.
+      changes:
+        - createTable:
+            tableName: group_student
+            columns:
+              - column:
+                  name: group_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: group_student
+            columnNames: group_id, student_id
+            constraintName: pk_group_student
+        # Единственные каскады изменения, и оба законны: членство — список,
+        # а не суждение (ADR-0035). Удаление Группы уносит её список,
+        # удаление Ученика вычёркивает его из всех Групп. Задание, Работа
+        # и отметка будут ссылаться на student БЕЗ каскада — их ключи
+        # заведут те работы.
+        - addForeignKeyConstraint:
+            baseTableName: group_student
+            baseColumnNames: group_id, user_id
+            referencedTableName: group_
+            referencedColumnNames: id, user_id
+            constraintName: fk_group_student_group
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: group_student
+            baseColumnNames: student_id, user_id
+            referencedTableName: student
+            referencedColumnNames: id, user_id
+            constraintName: fk_group_student_student
+            onDelete: CASCADE

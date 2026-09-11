@@ -13,6 +13,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import ru.locus.IntegrationTest;
+import ru.locus.LoggedIn;
+import ru.locus.TestAccounts;
 
 /**
  * {@link CurrentUser} — единственный компонент, знающий о вошедшем (ADR-0027).
@@ -28,6 +30,9 @@ class CurrentUserTest extends IntegrationTest {
     @Autowired
     private UserRepository users;
 
+    @Autowired
+    private TestAccounts accounts;
+
     @AfterEach
     void clearContext() {
         SecurityContextHolder.clearContext();
@@ -42,6 +47,17 @@ class CurrentUserTest extends IntegrationTest {
 
         assertThat(currentUser.id()).isEqualTo(id);
         assertThat(currentUser.login()).isEqualTo(login);
+        assertThat(currentUser.account().roles()).containsExactly(Role.TEACHER);
+    }
+
+    @Test
+    void loggedInAsATestAccountGivesThatAccountsIdentifier() {
+        TestAccounts.Account account = accounts.settled(Role.TEACHER);
+        LoggedIn.as(account);
+
+        assertThat(currentUser.id())
+                .as("оснастка личного контура ставит вошедшего с настоящей учётной записью")
+                .isEqualTo(account.id());
         assertThat(currentUser.account().roles()).containsExactly(Role.TEACHER);
     }
 
