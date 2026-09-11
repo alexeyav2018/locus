@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ученики — Locus</title>
+    <!--/*
+        Список Учеников вошедшего Учителя и форма заведения на той же
+        странице: Учитель без единого Ученика иначе увидел бы пустой экран
+        и не знал бы, что делать (design.md, «Риски»).
+
+        Форм правки и признака роли здесь нет: экран целиком доступен
+        только Учителю, а Пользователь без роли до шаблона не доходит.
+        Вычислений в шаблоне нет: список собран сервисом уже отфильтрованным
+        по владельцу — шаблон о владельце не знает и знать не должен.
+    */-->
+    <style>
+        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
+        button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1>Ученики</h1>
+
+<p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
+
+<p th:if="${#lists.isEmpty(students)}">Учеников пока нет.</p>
+<ul>
+    <li th:each="student : ${students}" th:id="'student-' + ${student.id.value}">
+        <a th:href="@{/students/{id}(id=${student.id.value})}" th:text="${student.name}">Иванов Пётр</a>
+    </li>
+</ul>
+
+<h2>Завести Ученика</h2>
+<form method="post" th:action="@{/students}">
+    <label>Имя <input type="text" name="name"></label>
+    <button type="submit">Завести</button>
+</form>
+
+<p><a th:href="@{/}">На главную</a></p>
+</body>
+</html>

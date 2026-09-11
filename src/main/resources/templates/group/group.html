@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Группа — Locus</title>
+    <!--/*
+        Страница Группы: имя, состав, переименование и удаление.
+
+        Состав задаётся целиком одной формой: галочки по всем Ученикам
+        владельца, отмечены состоящие. Снятая галочка исключает, форма
+        без единой галочки опустошает Группу. Множество идентификаторов
+        состава собрал контроллер — шаблон только проверяет принадлежность.
+
+        Удаление Группы свободно всегда: исчезает список, а не карточки
+        Учеников (ADR-0035).
+    */-->
+    <style>
+        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
+        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
+        button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1 th:text="${group.name}">9Б</h1>
+
+<p th:if="${error}" th:text="${error}">Группа с таким именем у вас уже есть</p>
+
+<h2>Состав</h2>
+<p th:if="${#lists.isEmpty(students)}">Учеников пока нет — заведите их в списке Учеников,
+    и здесь появятся галочки.</p>
+<form method="post" th:action="@{/groups/{id}/members(id=${group.id.value})}"
+      th:unless="${#lists.isEmpty(students)}">
+    <label th:each="student : ${students}">
+        <input type="checkbox" name="studentIds" th:value="${student.id.value}" th:checked="${memberIds.contains(student.id.value)}">
+        <span th:text="${student.name}">Иванов Пётр</span>
+    </label>
+    <button type="submit">Сохранить состав</button>
+</form>
+
+<h2>Действия</h2>
+<form method="post" th:action="@{/groups/{id}/name(id=${group.id.value})}">
+    <label>Новое имя <input type="text" name="name" th:value="${group.name}"></label>
+    <button type="submit">Переименовать</button>
+</form>
+
+<form method="post" th:action="@{/groups/{id}/deletion(id=${group.id.value})}">
+    <button type="submit">Удалить Группу</button>
+</form>
+
+<p><a th:href="@{/groups}">К списку Групп</a></p>
+</body>
+</html>

@@ -10,9 +10,8 @@ import ru.locus.user.User;
 /**
  * Главная страница вошедшего.
  *
- * Прикладного содержания в ней пока нет: разделы появятся вместе с
- * рубрикатором, задачами и учениками. Сейчас она показывает, кто вошёл,
- * и ведёт к тому немногому, что уже есть.
+ * Показывает, кто вошёл, и ведёт к разделам: общая библиотека — всем,
+ * Ученики и Группы — Учителю, учётные записи — Администратору.
  *
  * Ссылки показываются по ролям, но правами это не является: настоящая
  * проверка стоит на методах сервисов, и обращение по прямому адресу
@@ -32,6 +31,7 @@ public class HomeController {
         User user = currentUser.account();
         model.addAttribute("login", user.login());
         model.addAttribute("administrator", user.hasRole(Role.ADMINISTRATOR));
+        model.addAttribute("teacher", user.hasRole(Role.TEACHER));
         return "home";
     }
 }

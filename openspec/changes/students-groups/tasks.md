@@ -96,7 +96,7 @@
 
 ## 7. Экраны
 
-- [ ] 7.1 Добавить `Addresses.STUDENTS = "/students"` и `Addresses.GROUPS = "/groups"`;
+- [x] 7.1 Добавить `Addresses.STUDENTS = "/students"` и `Addresses.GROUPS = "/groups"`;
       `StudentController`: список с формой заведения, карточка (имя, форма
       переименования, Группы Ученика, удаление), обработчики `POST` по образцу
       `DictionaryController`; после удаления — на список. `GroupController`:
@@ -106,17 +106,17 @@
       `StudentControllerIsThinTest` по образцу `DictionaryControllerIsThinTest`
       (оба контроллера; дополнительно — ни один метод не принимает `UserId`
       и не зовёт `CurrentUser.id()`).
-- [ ] 7.2 Шаблоны `templates/student/list.html`, `student/student.html`,
+- [x] 7.2 Шаблоны `templates/student/list.html`, `student/student.html`,
       `group/list.html`, `group/group.html` по образцу `dictionary/dictionaries.html`
       и `user/list.html`; фразы, которые человек видит слитно, — в одном
       `th:text`. Главная `home.html`: ссылки «Ученики» и «Группы» под
       `th:if="${teacher}"`, `HomeController` кладёт `teacher`; текст «ученики
       появятся позже» заменить. Проверка: `ServerRenderedPageTest` зелёный.
-- [ ] 7.3 Тест `StudentScreenTest`: список Учеников, заведение через форму,
+- [x] 7.3 Тест `StudentScreenTest`: список Учеников, заведение через форму,
       карточка, переименование, удаление, пустое имя показывает сообщение;
       `GroupScreenTest`: список, заведение, занятое имя, состав галочками
       сохраняется и показывается, удаление. Проверка: оба зелёные.
-- [ ] 7.4 Тест доступа `StudentAccessTest` по образцу `ProblemAccessTest`:
+- [x] 7.4 Тест доступа `StudentAccessTest` по образцу `ProblemAccessTest`:
       невошедший получает форму входа; Администратор без роли Учителя — 403
       на списке, карточке и каждой операции над Учеником и Группой; Учитель —
       200. Проверка: тест зелёный.

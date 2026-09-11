@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Ученик — Locus</title>
+    <!--/*
+        Карточка Ученика: имя, Группы, в которых он состоит, переименование
+        и удаление. Состав Групп правится на странице Группы, а не здесь:
+        состав — свойство Группы и задаётся целиком одной формой.
+
+        Удаление отказывает, пока на Ученика что-нибудь ссылается
+        (ADR-0035); сегодня ссылаться некому, и отказ появится вместе
+        с Заданиями. Сообщение об отказе показывается здесь же.
+    */-->
+    <style>
+        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
+        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
+        button { padding: 0.35rem 0.9rem; }
+    </style>
+</head>
+<body>
+<h1 th:text="${student.name}">Иванов Пётр</h1>
+
+<p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
+
+<h2>Группы</h2>
+<p th:if="${#lists.isEmpty(groups)}">Ни в одной Группе не состоит.</p>
+<ul>
+    <li th:each="group : ${groups}">
+        <a th:href="@{/groups/{id}(id=${group.id.value})}" th:text="${group.name}">9Б</a>
+    </li>
+</ul>
+
+<h2>Действия</h2>
+<form method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
+    <label>Новое имя <input type="text" name="name" th:value="${student.name}"></label>
+    <button type="submit">Переименовать</button>
+</form>
+
+<form method="post" th:action="@{/students/{id}/deletion(id=${student.id.value})}">
+    <button type="submit">Удалить Ученика</button>
+</form>
+
+<p><a th:href="@{/students}">К списку Учеников</a></p>
+</body>
+</html>

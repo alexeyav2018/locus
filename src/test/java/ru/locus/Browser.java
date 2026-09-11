@@ -8,7 +8,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -60,8 +62,19 @@ public final class Browser {
     }
 
     public Page postForm(String action, Map<String, String> fields) {
-        Map<String, String> withToken = new LinkedHashMap<>(fields);
-        withToken.put("_csrf", csrfTokenFrom(action));
+        List<Map.Entry<String, String>> ordered = new ArrayList<>();
+        fields.forEach((name, value) -> ordered.add(Map.entry(name, value)));
+        return postForm(action, ordered);
+    }
+
+    /**
+     * Отправка формы, в которой одно имя поля повторяется, — как шлёт
+     * браузер группу галочек с общим именем. {@code Map} такого не выразит,
+     * поэтому поля идут списком пар в порядке отправки.
+     */
+    public Page postForm(String action, List<Map.Entry<String, String>> fields) {
+        List<Map.Entry<String, String>> withToken = new ArrayList<>(fields);
+        withToken.add(Map.entry("_csrf", csrfTokenFrom(action)));
         return send(HttpRequest.newBuilder(URI.create(baseUrl + action))
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(urlEncoded(withToken), StandardCharsets.UTF_8))
@@ -176,16 +189,16 @@ public final class Browser {
         return location.startsWith(baseUrl) ? location.substring(baseUrl.length()) : location;
     }
 
-    private static String urlEncoded(Map<String, String> fields) {
+    private static String urlEncoded(List<Map.Entry<String, String>> fields) {
         StringBuilder body = new StringBuilder();
-        fields.forEach((name, value) -> {
+        for (Map.Entry<String, String> field : fields) {
             if (!body.isEmpty()) {
                 body.append('&');
             }
-            body.append(java.net.URLEncoder.encode(name, StandardCharsets.UTF_8))
+            body.append(java.net.URLEncoder.encode(field.getKey(), StandardCharsets.UTF_8))
                     .append('=')
-                    .append(java.net.URLEncoder.encode(value, StandardCharsets.UTF_8));
-        });
+                    .append(java.net.URLEncoder.encode(field.getValue(), StandardCharsets.UTF_8));
+        }
         return body.toString();
     }
 }
