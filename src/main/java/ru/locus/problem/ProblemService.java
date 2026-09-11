@@ -1,9 +1,11 @@
 package ru.locus.problem;
 
 import java.net.URI;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -307,6 +309,88 @@ public class ProblemService {
         problems.delete(problem.id());
         storage.delete(problem.conditionFile());
         storage.delete(problem.solutionFile());
+    }
+
+    /**
+     * Перевешивает все Задачи Темы {@code from} на Тему-приёмник {@code to} —
+     * так дерево углубляет Тему с содержимым (ADR-0007): у Темы появляется
+     * потомок, а её Задачи переезжают на приёмник, указанный Администратором.
+     *
+     * <p>{@link #refuseUnlessUnused} здесь <b>не зовётся, и это не пропуск</b>
+     * (ADR-0034). Заморожена правка рукой — та, где Администратор сам выбирает
+     * Задаче разметку. Перестройка не правит разметку, а двигает ось, вдоль
+     * которой разметка задана: Задача остаётся на том же месте предметно,
+     * меняется имя и положение узла. Позови проверку здесь — и первая же
+     * выданная Задача заморозила бы не себя, а дерево: Тему с ней нельзя было
+     * бы ни углубить, ни снять, навсегда, потому что Задания не отменяются.
+     *
+     * <p>Поэтому это <b>отдельный, названный</b> путь изменения разметки, а не
+     * {@link #edit} с флагом «не проверять»: флаг однажды оказался бы
+     * выставлен из формы правки, и заморозка перестала бы работать молча
+     * (design.md, «Второй путь правки разметки закрыт от случайного вызова»).
+     * Отсутствие вызова сторожит {@code RestructureBypassesFreezeTest}.
+     *
+     * <p>Что приёмник — Тема, здесь не проверяется: вид узла не хранится,
+     * а считается по потомкам, и в момент вызова дерево ещё меняется —
+     * углубляемая Тема уже получила потомка, приёмник же может быть этим
+     * самым потомком. Каким дерево станет, знает только
+     * {@link TaxonomyService}, и проверка стоит там (design.md, «Проверка
+     * „приёмник — Тема“ считает состояние после операции»). Существование
+     * приёмника проверяется: отказ «узла нет» внятнее ошибки внешнего ключа.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void rehomeTopic(TaxonomyNodeId from, TaxonomyNodeId to) {
+        taxonomy.node(to);
+        problems.replaceTopic(from, to);
+    }
+
+    /**
+     * Распределяет Задачи Темы {@code from} поштучно: каждой — своя
+     * Тема-приёмник. Так дерево снимает Тему с содержимым (ADR-0007).
+     *
+     * <p>Карта принимается <b>целиком</b> и проверяется на полноту до первой
+     * правки: каждая Задача Темы обязана быть названа, посторонних быть
+     * не должно. Неполная или лишняя карта отклоняет операцию целиком —
+     * прерванный на середине цикл оставил бы Тему, часть Задач которой уже
+     * уехала, и продолжать пришлось бы вручную, гадая, где остановились
+     * (design.md, «Поштучное распределение принимает карту, а не список»).
+     *
+     * <p>{@link #refuseUnlessUnused} не зовётся по той же причине, что
+     * и в {@link #rehomeTopic}: перестройка сильнее заморозки (ADR-0034).
+     * Проверка «приёмник — Тема» — тоже там же, где и у углубления: в дереве.
+     *
+     * @throws IllegalArgumentException если карта неполна или содержит
+     *                                  Задачу, на Теме не размеченную
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void distribute(TaxonomyNodeId from, Map<ProblemId, TaxonomyNodeId> destinations) {
+        Set<ProblemId> onTopic = problems.findByTopic(from).stream()
+                .map(Problem::id)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<ProblemId> missing = onTopic.stream()
+                .filter(id -> !destinations.containsKey(id))
+                .toList();
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("Распределение неполно: не названы Задачи № "
+                    + numbers(missing) + " — распределить Тему можно только целиком");
+        }
+        List<ProblemId> strangers = destinations.keySet().stream()
+                .filter(id -> !onTopic.contains(id))
+                .toList();
+        if (!strangers.isEmpty()) {
+            throw new IllegalArgumentException("В распределении названы Задачи, на Теме не размеченные: № "
+                    + numbers(strangers));
+        }
+        destinations.values().forEach(taxonomy::node);
+
+        destinations.forEach((problem, to) -> problems.replaceTopicFor(problem, from, to));
+    }
+
+    private static String numbers(List<ProblemId> ids) {
+        return ids.stream().map(id -> String.valueOf(id.value())).collect(Collectors.joining(", "));
     }
 
     /**

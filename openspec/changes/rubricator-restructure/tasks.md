@@ -32,23 +32,23 @@
 
 ## 2. Перевешивание разметки в области Задач
 
-- [ ] 2.1 Добавить `ProblemRepository.replaceTopic(TaxonomyNodeId from,
+- [x] 2.1 Добавить `ProblemRepository.replaceTopic(TaxonomyNodeId from,
       TaxonomyNodeId to)` — заменить метку `from` на `to` в `problem_topic`
       у всех Задач, где она стоит, не задевая прочих меток и не плодя
       дубликата, если `to` у Задачи уже есть. Проверка:
       `ProblemRepositoryTest` — Задача с двумя Темами сохраняет вторую;
       Задача, размеченная и `from`, и `to`, после замены несёт `to` один раз.
-- [ ] 2.2 Добавить `ProblemRepository.replaceTopicFor(ProblemId problem,
+- [x] 2.2 Добавить `ProblemRepository.replaceTopicFor(ProblemId problem,
       TaxonomyNodeId from, TaxonomyNodeId to)` — то же для одной Задачи,
       нужное поштучному распределению. Проверка: `ProblemRepositoryTest` —
       правится только названная Задача, соседние по Теме не задеты.
-- [ ] 2.3 Добавить `ProblemService.rehomeTopic(TaxonomyNodeId from,
+- [x] 2.3 Добавить `ProblemService.rehomeTopic(TaxonomyNodeId from,
       TaxonomyNodeId to)` под `@PreAuthorize("hasRole('ADMINISTRATOR')")`
       и `@Transactional`: перевесить все Задачи Темы `from` на `to`.
       `refuseUnlessUnused` **не** зовётся; в javadoc — почему, со ссылкой
       на ADR-0034. Проверка: `ProblemServiceTest` — переезд выполняется,
       Учителю операция отклоняется.
-- [ ] 2.4 Добавить `ProblemService.distribute(TaxonomyNodeId from,
+- [x] 2.4 Добавить `ProblemService.distribute(TaxonomyNodeId from,
       Map<ProblemId, TaxonomyNodeId> destinations)` теми же аннотациями:
       проверить полноту карты (каждая Задача Темы названа, посторонних нет)
       и перевесить каждую Задачу на свой приёмник. Неполная или лишняя карта
@@ -56,10 +56,10 @@
       `ProblemServiceTest` — распределение трёх Задач по разным Темам;
       пропущенная Задача даёт отказ и разметка не меняется; посторонняя
       Задача в карте даёт отказ.
-- [ ] 2.5 Дополнить `OwnerIsUnknownToProblemsTest`: `UserId` не встречается
+- [x] 2.5 Дополнить `OwnerIsUnknownToProblemsTest`: `UserId` не встречается
       в сигнатурах новых методов репозитория и сервиса. Проверка: тест
       зелёный.
-- [ ] 2.6 Переопределить `moveTopicContent` в `ru.locus.problem.ProblemsOnNode`
+- [x] 2.6 Переопределить `moveTopicContent` в `ru.locus.problem.ProblemsOnNode`
       вызовом `ProblemService.rehomeTopic`; `countVanishing` не
       переопределять, записав в javadoc почему — «Задачи не исчезают, они
       распределяются по приёмникам». Проверка: `mvn test -Dtest=TaxonomyServiceTest`

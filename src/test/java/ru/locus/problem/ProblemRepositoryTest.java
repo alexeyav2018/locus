@@ -110,6 +110,75 @@ class ProblemRepositoryTest extends IntegrationTest {
         assertThat(problems.findByTopic(second)).extracting(Problem::id).contains(id);
     }
 
+    /**
+     * Перестройка дерева ({@code rubricator-restructure}): перевешивается
+     * одна метка, остальная разметка на месте.
+     */
+    @Test
+    void replacedTopicLeavesTheOtherTopicOfTheProblemAlone() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        TaxonomyNodeId other = library.topic();
+        SolutionMethodId method = library.method();
+        ProblemId id = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(from, other), List.of(method), List.of());
+
+        problems.replaceTopic(from, to);
+
+        Problem moved = problems.findById(id).orElseThrow();
+        assertThat(moved.topics()).containsExactlyInAnyOrder(to, other);
+        assertThat(moved.methods()).as("Методы не задеты").containsExactly(method);
+        assertThat(problems.countByTopic(from)).as("на прежней Теме не осталось ничего").isZero();
+    }
+
+    /**
+     * Задача, размеченная и уезжающей Темой, и приёмником, после переезда
+     * несёт приёмник один раз: составной ключ второй такой строки не примет,
+     * и падать посреди перестройки дерева нельзя.
+     */
+    @Test
+    void problemAlreadyMarkedWithTheReceiverCarriesItOnceAfterTheMove() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId both = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(from, to), List.of(library.method()), List.of());
+        ProblemId onlyFrom = library.problem(from);
+
+        problems.replaceTopic(from, to);
+
+        assertThat(problems.findById(both).orElseThrow().topics()).containsExactly(to);
+        assertThat(problems.findById(onlyFrom).orElseThrow().topics()).containsExactly(to);
+        assertThat(problems.findByTopic(to)).extracting(Problem::id).containsExactly(both, onlyFrom);
+    }
+
+    /** Поштучное распределение: правится только названная Задача. */
+    @Test
+    void topicIsReplacedForOneProblemAndItsNeighboursAreNotTouched() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId moved = library.problem(from);
+        ProblemId neighbour = library.problem(from);
+
+        problems.replaceTopicFor(moved, from, to);
+
+        assertThat(problems.findById(moved).orElseThrow().topics()).containsExactly(to);
+        assertThat(problems.findById(neighbour).orElseThrow().topics()).containsExactly(from);
+        assertThat(problems.findByTopic(from)).extracting(Problem::id).containsExactly(neighbour);
+    }
+
+    /** И поштучно приёмник не дублируется. */
+    @Test
+    void topicReplacedForOneProblemDoesNotDuplicateTheReceiver() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId both = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(from, to), List.of(library.method()), List.of());
+
+        problems.replaceTopicFor(both, from, to);
+
+        assertThat(problems.findById(both).orElseThrow().topics()).containsExactly(to);
+    }
+
     /** Сценарий «Методы Темы». */
     @Test
     void methodsOfATopicComeFromTheMarkupOfItsProblemsWithoutRepetition() {

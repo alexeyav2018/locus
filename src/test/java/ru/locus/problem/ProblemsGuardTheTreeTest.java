@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestLibrary;
+import ru.locus.taxonomy.NodeContent;
 import ru.locus.taxonomy.NodeNotEmptyException;
 import ru.locus.taxonomy.TaxonomyNode;
 import ru.locus.taxonomy.TaxonomyNodeId;
@@ -40,6 +42,10 @@ class ProblemsGuardTheTreeTest extends IntegrationTest {
 
     @Autowired
     private TestLibrary library;
+
+    /** Ответчики дерева — тем же списком, каким их собирает {@link TaxonomyService}. */
+    @Autowired
+    private List<NodeContent> content;
 
     @BeforeEach
     void logIn() {
@@ -121,5 +127,36 @@ class ProblemsGuardTheTreeTest extends IntegrationTest {
 
         TaxonomyNode wasTopic = taxonomy.node(topic);
         assertThat(wasTopic.isSection()).as("вид прежней Темы — Раздел").isTrue();
+    }
+
+    /**
+     * Перестройка ({@code rubricator-restructure}): переезд, запрошенный
+     * дереву тем же способом, каким его запрашивает {@code TaxonomyService}, —
+     * у всех ответчиков списком, не зная ни одного по имени, — доходит
+     * до разметки Задач. Что само дерево зовёт его при углублении, проверяет
+     * {@code TaxonomyServiceTest}.
+     */
+    @Test
+    void moveAskedByTheTreeReachesTheMarkupOfProblems() {
+        TaxonomyNodeId from = library.topic();
+        TaxonomyNodeId to = library.topic();
+        ProblemId problem = library.problem(from);
+
+        content.forEach(answerer -> answerer.moveTopicContent(from, to));
+
+        assertThat(problems.problemsOf(to)).extracting(Problem::id).containsExactly(problem);
+        assertThat(problems.problemsOf(from)).isEmpty();
+    }
+
+    /**
+     * Исчезающего у Задач нет: они распределяются, а не пропадают. Ответ
+     * по существу придёт с отметками Владения ({@code MasteryRestructureDebtTest}).
+     */
+    @Test
+    void problemsCountNothingAsVanishing() {
+        TaxonomyNodeId topic = library.topic();
+        library.problem(topic);
+
+        assertThat(content).allSatisfy(answerer -> assertThat(answerer.countVanishing(topic)).isZero());
     }
 }
