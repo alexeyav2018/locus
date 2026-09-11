@@ -31,14 +31,13 @@ import ru.locus.user.UserId;
  *
  * Список классов пополняется вместе с областью: каждый новый репозиторий
  * {@code ru.locus.student} вносится сюда, иначе метод без владельца заведётся
- * именно в том, который забыли. {@code GroupRepository} встаёт сюда
- * с задачей 5.2.
+ * именно в том, который забыли.
  */
 class OwnerIsRequiredByStudentsTest extends IntegrationTest {
 
-    private static final List<Class<?>> REPOSITORIES = List.of(StudentRepository.class);
+    private static final List<Class<?>> REPOSITORIES = List.of(StudentRepository.class, GroupRepository.class);
 
-    private static final List<String> TABLES = List.of("student", "group_");
+    private static final List<String> TABLES = List.of("student", "group_", "group_student");
 
     @Autowired
     private JdbcClient database;

@@ -63,10 +63,10 @@
 
 ## 5. Группа: запись, идентификатор, репозиторий
 
-- [ ] 5.1 Завести `GroupId` и запись `Group` (`GroupId`, `UserId owner`,
+- [x] 5.1 Завести `GroupId` и запись `Group` (`GroupId`, `UserId owner`,
       `String name`) с теми же правилами, что у `Student`. Проверка: `GroupIdTest`,
       `GroupTest`.
-- [ ] 5.2 Завести `GroupRepository`: `findAll(UserId)`, `findById(UserId, GroupId)`,
+- [x] 5.2 Завести `GroupRepository`: `findAll(UserId)`, `findById(UserId, GroupId)`,
       `findByName(UserId, String)` (без учёта регистра, тем же сравнением, что
       индекс), `create(UserId, String)`, `rename(UserId, GroupId, String)`,
       `delete(UserId, GroupId)`, `members(UserId, GroupId)` → `List<StudentId>`,
