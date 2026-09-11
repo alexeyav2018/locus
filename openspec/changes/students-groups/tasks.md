@@ -80,7 +80,7 @@
 
 ## 6. Группа: сервис
 
-- [ ] 6.1 Завести `GroupService`: `all()`, `group(GroupId)`, `create(String)`,
+- [x] 6.1 Завести `GroupService`: `all()`, `group(GroupId)`, `create(String)`,
       `rename(GroupId, String)`, `delete(GroupId)`, `members(GroupId)`
       → `List<Student>`, `setMembers(GroupId, List<StudentId>)`,
       `groupsOf(StudentId)`; `@PreAuthorize("hasRole('TEACHER')")` на каждом;
