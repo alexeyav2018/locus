@@ -43,11 +43,11 @@
 
 ## 4. Ученик: сервис
 
-- [ ] 4.1 Завести `StudentUsage` в `ru.locus.student` по образцу `ProblemUsage`
+- [x] 4.1 Завести `StudentUsage` в `ru.locus.student` по образцу `ProblemUsage`
       (`Optional<String> of(StudentId)`), javadoc называет `assignments`,
       `submission-review`, `mastery-marks` и ADR-0035. Проверка: файл
       на месте, компилируется.
-- [ ] 4.2 Завести `StudentService`: `all()`, `student(StudentId)`, `create(String)`,
+- [x] 4.2 Завести `StudentService`: `all()`, `student(StudentId)`, `create(String)`,
       `rename(StudentId, String)`, `delete(StudentId)`; на каждом —
       `@PreAuthorize("hasRole('TEACHER')")`; владелец берётся из
       `CurrentUser.id()` и передаётся в репозиторий; несуществующий или чужой
@@ -57,7 +57,7 @@
       — заведение, переименование, удаление, отказ на пустом имени, чужой
       Ученик неотличим от несуществующего; отказ Пользователю без роли Учителя
       (`AccessDeniedException`).
-- [ ] 4.3 Тест долга `StudentUsageDebtTest` по образцу `ProblemUsageDebtTest`:
+- [x] 4.3 Тест долга `StudentUsageDebtTest` по образцу `ProblemUsageDebtTest`:
       `refuseUnlessUnused` на месте, исходники `StudentService` и `StudentUsage`
       называют все три работы и ADR-0035. Проверка: тест зелёный.
 
