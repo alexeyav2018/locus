@@ -423,6 +423,38 @@ class TaxonomyServiceTest extends IntegrationTest {
         assertThat(taxonomy.node(topic).id()).isEqualTo(topic);
     }
 
+    /**
+     * Список приёмников для формы снятия считается по дереву после снятия
+     * — тем же правилом, что и проверка в {@code deleteWithDistribution}:
+     * родитель, у которого снимаемая Тема — единственный потомок, в списке
+     * есть, хотя сейчас он Раздел; родитель с другими потомками — нет;
+     * снимаемая Тема — нет, хотя сейчас она лист.
+     */
+    @Test
+    void receiversForRemovalAreCountedOnTheTreeAfterTheRemoval() {
+        TaxonomyNodeId lonelyParent = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId lonely = taxonomy.create("Уравнения", lonelyParent);
+        TaxonomyNodeId crowdedParent = taxonomy.create(unique("Геометрия"), null);
+        TaxonomyNodeId crowded = taxonomy.create("Треугольники", crowdedParent);
+        TaxonomyNodeId sibling = taxonomy.create("Окружности", crowdedParent);
+
+        List<TaxonomyNodeId> afterLonely = taxonomy.receiverPathsAfterRemoving(lonely).stream()
+                .map(TaxonomyPath::id)
+                .toList();
+        assertThat(afterLonely)
+                .as("родитель, остающийся без потомков, — приёмник; снимаемая Тема — нет")
+                .contains(lonelyParent, crowded, sibling)
+                .doesNotContain(lonely, crowdedParent);
+
+        List<TaxonomyNodeId> afterCrowded = taxonomy.receiverPathsAfterRemoving(crowded).stream()
+                .map(TaxonomyPath::id)
+                .toList();
+        assertThat(afterCrowded)
+                .as("родитель, у которого остаётся брат, Разделом и остаётся")
+                .contains(lonely, sibling)
+                .doesNotContain(crowded, crowdedParent, lonelyParent);
+    }
+
     /** Распределение не снимает узел с потомками: узлы снимаются по одному, снизу вверх. */
     @Test
     void deletionWithDistributionRefusesANodeWithChildren() {

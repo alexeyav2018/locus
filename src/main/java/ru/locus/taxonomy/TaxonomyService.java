@@ -98,6 +98,32 @@ public class TaxonomyService {
     }
 
     /**
+     * Пути до узлов, которые могут принять содержимое Темы {@code topic}
+     * при её снятии, — то, из чего выбирают Тему-приёмник в форме
+     * распределения.
+     *
+     * <p>Это не {@link #topicPaths()}: приёмник проверяется по состоянию
+     * дерева <b>после</b> снятия (design.md, «Проверка „приёмник — Тема“
+     * считает состояние после операции»), и сегодняшние листья ему
+     * не равны. Сама снимаемая Тема — лист сейчас, но её не будет; родитель,
+     * у которого она единственный потомок, — Раздел сейчас, но станет
+     * листом, и именно на него «Задачи поднимаются, когда соседних Тем нет»
+     * (ADR-0007). Знание о том, каким станет дерево, живёт здесь, рядом
+     * с проверкой в {@link #deleteWithDistribution}, а не в шаблоне: разойдясь
+     * с проверкой, форма предлагала бы приёмника, которого сервис отклонит.
+     */
+    public List<TaxonomyPath> receiverPathsAfterRemoving(TaxonomyNodeId topic) {
+        TaxonomyNode removed = existing(topic);
+        TaxonomyNodeId parent = removed.parent();
+        boolean parentBecomesATopic = parent != null && nodes.countChildren(parent) == 1;
+        return paths().stream()
+                .filter(path -> !path.id().equals(removed.id()))
+                .filter(path -> node(path.id()).isTopic()
+                        || (parentBecomesATopic && path.id().equals(parent)))
+                .toList();
+    }
+
+    /**
      * Узел и все его предки — от корня до запрошенного включительно.
      *
      * Обратная сторона {@link #subtree}: там спуск, здесь подъём. На этой

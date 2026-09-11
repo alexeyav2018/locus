@@ -126,6 +126,31 @@ class TaxonomyScreenTest extends IntegrationTest {
                 .isEqualTo(1);
     }
 
+    /**
+     * Сценарий «На пустой Теме перестройки не предлагают»: формы прежние —
+     * ни выбора Темы-приёмника, ни снятия с распределением. Обратная сторона
+     * — обе формы на Теме с Задачами — проверяется там, где Задачи известны:
+     * {@code RestructureScreenTest} в пакете Задач.
+     */
+    @Test
+    void emptyTopicIsOfferedThePlainFormsWithoutReceiverOrDistribution() {
+        TaxonomyNodeId root = nodes.create(unique("Алгебра"), null);
+        TaxonomyNodeId topic = nodes.create("Уравнения", root);
+
+        String body = loggedIn(Role.ADMINISTRATOR).get("/taxonomy?node=" + topic.value()).body();
+
+        assertThat(body)
+                .as("обычные создание потомка и удаление на месте")
+                .contains("Добавить потомка")
+                .contains("action=\"/taxonomy/" + topic.value() + "/deletion\"");
+        assertThat(body)
+                .as("ни приёмника, ни распределения не запрашивается")
+                .doesNotContain("Тема-приёмник")
+                .doesNotContain("name=\"receiver\"")
+                .doesNotContain("Снять с распределением")
+                .doesNotContain("/distribution\"");
+    }
+
     /** Сценарий «Пока узел не выбран». */
     @Test
     void withoutASelectedNodeOnlyTheRootFormIsOffered() {
