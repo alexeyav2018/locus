@@ -105,7 +105,7 @@
 | 9 | `library-search` | — | `problem-catalog` | — | M | нет | общее | ✅ |
 | 10 | `theory-materials` | — | `rubricator-tree`, `file-storage` | — | S | нет | общее | ✅ |
 | 11 | `rubricator-restructure` | — | `rubricator-tree`, `problem-catalog` | `mastery-marks` | L | **да** | общее → личное | ✅ |
-| 12 | `students-groups` | — | `auth-roles` | — | S | нет | личное | |
+| 12 | `students-groups` | — | `auth-roles` | — | S | нет | личное | ✅ |
 | 13 | `assignments` | — | `students-groups`, `library-search`, `theory-materials` | — | M | нет | личное | |
 | 14 | `deployment-backup` | — | — | `submission-review` | M | нет | не затрагивает | |
 | 15 | `submission-review` | — | `assignments`, `file-storage` | — | M | нет | личное | |
@@ -643,6 +643,32 @@ Thymeleaf; запуск локально; команды сборки, запу�
 ---
 
 ### 12. `students-groups` · S · не ломает
+
+> ✅ Выполнено 11.09.2026. Change:
+> [2026-09-11-students-groups](changes/archive/2026-09-11-students-groups/).
+> Сделано по карточке: Ученик — карточка из имени и владельца, без учётной
+> записи, имени входа и пароля (`StudentIsNotAUserTest` проверяет и состав
+> таблицы, и что войти именем Ученика нельзя); Группа — именованный список
+> Учеников того же Учителя, имя Группы у одного владельца неповторимо без
+> учёта регистра, имена Учеников свободны. Ведёт обоих Учитель, и только
+> своих; Администратор без роли Учителя получает 403. Признак готовности —
+> `StudentsAreFilteredByOwnerTest`: Учитель А не получает Учеников и Групп
+> Учителя Б ни списком, ни по прямому адресу, ни правкой, ни включением
+> чужого Ученика в свою Группу, а библиотека видна обоим целиком.
+> Правило [ADR-0027](context/adr/0027-mehanizm-granicy-obshchego-i-lichnogo.md)
+> стало принудительным: у `StudentRepository` и `GroupRepository` нет
+> метода без `UserId`, что сторожит `OwnerIsRequiredByStudentsTest` —
+> зеркало тестов `OwnerIsUnknownTo…`; принадлежность Группы и её Учеников
+> одному владельцу держится составными ключами в схеме.
+> Сверх карточки решено: **Ученик удаляется, пока на него ничего
+> не ссылается, Группа — в любой момент**
+> ([ADR-0035](context/adr/0035-udalenie-uchenika-i-gruppy.md)); вопрос
+> `StudentUsage` — по образцу `ProblemUsage`.
+> **Долг.** Реализаций `StudentUsage` нет — их обязаны дать `assignments`,
+> `submission-review` и `mastery-marks`, забытую валит `StudentUsageDebtTest`.
+> Выбытие ученика («занимался, перестал, историю терять нельзя») не
+> моделируется: предмет появится с первым Заданием, элемент бэклога
+> владелец заводит не позже `assignments` (последствия ADR-0035).
 
 **Зачем.** Ученики и группы — адресаты всего личного контура.
 

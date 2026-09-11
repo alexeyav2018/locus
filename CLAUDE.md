@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском и Теория; учеников нет
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -48,14 +48,25 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 Число исчезающих отметок Владения показывается перед снятием, но сегодня
 это всегда ноль: перенос и счёт отметок — долг `mastery-marks`,
 подпёртый тестом `MasteryRestructureDebtTest`.
+Затем `students-groups` — первая область личного контура: Ученик (имя
+и владелец, без учётной записи — сторожит `StudentIsNotAUserTest`) и Группа
+(именованный список Учеников того же Учителя, имя неповторимо у одного
+владельца). Ведёт их Учитель, и только свои: у репозиториев нет метода
+без `UserId` (`OwnerIsRequiredByStudentsTest`), Учитель не видит чужих
+ни одним запросом, а библиотеку видят оба целиком
+(`StudentsAreFilteredByOwnerTest`). Ученик удаляется, пока на него ничего
+не ссылается, Группа — в любой момент
+([ADR-0035](openspec/context/adr/0035-udalenie-uchenika-i-gruppy.md));
+вопрос `StudentUsage` обязаны реализовать `assignments`,
+`submission-review` и `mastery-marks` — долг сторожит `StudentUsageDebtTest`.
 
-Отметок владения и Учеников по-прежнему нет.
+Заданий, Работ и отметок владения по-прежнему нет.
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока восемь возможностей: `application-startup`, `users-and-roles`,
+а там пока девять возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
-`library-search` и `theory-materials`.
+`library-search`, `theory-materials` и `students-groups`.
 
 ### Первый вход
 
@@ -141,6 +152,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Владелец — обязательный параметр репозитория личного контура; библиотечный такого параметра не принимает ([ADR-0027](openspec/context/adr/0027-mehanizm-granicy-obshchego-i-lichnogo.md)).
 - Все идентификаторы английские, транслита нет ([ADR-0028](openspec/context/adr/0028-imena-v-kode-tolko-anglijskie.md)).
 - Перестройка рубрикатора двигает и замороженную Задачу; заморозка запрещает только правку рукой ([ADR-0034](openspec/context/adr/0034-perestrojka-silnee-zamorozki.md)).
+- Ученик удаляется, пока на него ничего не ссылается; Группа — в любой момент ([ADR-0035](openspec/context/adr/0035-udalenie-uchenika-i-gruppy.md)).
 
 ## Процесс: OpenSpec
 
