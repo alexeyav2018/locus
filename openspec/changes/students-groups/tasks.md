@@ -1,6 +1,6 @@
 ## 1. Схема
 
-- [ ] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0006-students-groups.yaml`,
+- [x] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0006-students-groups.yaml`,
       три changeset'а. `student`: `id` (autoIncrement, PK), `user_id` (BIGINT,
       NOT NULL, FK на `user_` **без каскада**), `name` (VARCHAR(200), NOT NULL);
       уникальность `(id, user_id)`. `group_`: те же три колонки и та же
