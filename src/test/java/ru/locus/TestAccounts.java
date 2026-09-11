@@ -1,5 +1,7 @@
 package ru.locus;
 
+import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -46,9 +48,14 @@ public class TestAccounts {
         for (Role role : roles) {
             users.assignRole(id, role);
         }
-        return new Account(id, login, password);
+        return new Account(id, login, password, Set.copyOf(Arrays.asList(roles)));
     }
 
-    public record Account(UserId id, String login, String password) {
+    /**
+     * Заведённая запись: то, что нужно знать тесту, чтобы войти от её имени —
+     * формой (имя входа и пароль) или напрямую в контекст безопасности
+     * ({@link LoggedIn#as(Account)}, для которого и хранятся роли).
+     */
+    public record Account(UserId id, String login, String password, Set<Role> roles) {
     }
 }

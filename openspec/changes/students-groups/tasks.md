@@ -15,7 +15,7 @@
 
 ## 2. Тестовая оснастка личного контура
 
-- [ ] 2.1 Добавить `roles` в `TestAccounts.Account` и `LoggedIn.as(TestAccounts.Account)`:
+- [x] 2.1 Добавить `roles` в `TestAccounts.Account` и `LoggedIn.as(TestAccounts.Account)`:
       токен с именем входа записи и её ролями, чтобы `CurrentUser.id()` отдавал
       настоящий `UserId`. Прежний `LoggedIn.as(Role…)` не трогать. Проверка:
       новый случай в `CurrentUserTest` — после `LoggedIn.as(account)`
