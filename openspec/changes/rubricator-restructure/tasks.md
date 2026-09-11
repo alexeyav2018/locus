@@ -192,17 +192,17 @@
 
 ## 6. Сторожевые тесты границ
 
-- [ ] 6.1 Тест `RestructureBypassesFreezeTest` в
+- [x] 6.1 Тест `RestructureBypassesFreezeTest` в
       `src/test/java/ru/locus/problem/`: `refuseUnlessUnused` зовётся
       из `edit`, `replaceCondition`, `replaceSolution` и `delete` и **не**
       зовётся из `rehomeTopic` и `distribute`; в тексте — ссылка на ADR-0034
       и объяснение, почему обратное сломает перестройку дерева, когда
       `assignments` заведёт первую реализацию `ProblemUsage`. Проверка: тест
       зелёный.
-- [ ] 6.2 Дополнить `ProblemsAreNotFilteredTest` и
+- [x] 6.2 Дополнить `ProblemsAreNotFilteredTest` и
       `OwnerIsUnknownToTaxonomyTest` новыми методами: ни перестройка, ни счёт
       исчезающих отметок владельца не принимают. Проверка: тесты зелёные.
-- [ ] 6.3 Прогнать `mvn clean package` целиком. Проверка: сборка зелёная.
+- [x] 6.3 Прогнать `mvn clean package` целиком. Проверка: сборка зелёная.
 
 ## 7. Документы проекта
 
