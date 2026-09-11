@@ -23,11 +23,11 @@
 
 ## 3. Ученик: запись, идентификатор, репозиторий
 
-- [ ] 3.1 Завести `StudentId` по образцу `SolutionMethodId` и запись `Student`
+- [x] 3.1 Завести `StudentId` по образцу `SolutionMethodId` и запись `Student`
       (`StudentId`, `UserId owner`, `String name`) с правилами в компактном
       конструкторе: имя непустое после обрезки, владелец обязателен. Проверка:
       `StudentIdTest` и `StudentTest` — отказы и законное состояние.
-- [ ] 3.2 Завести `StudentRepository` на `JdbcClient`: `findAll(UserId)`,
+- [x] 3.2 Завести `StudentRepository` на `JdbcClient`: `findAll(UserId)`,
       `findById(UserId, StudentId)`, `create(UserId, String)`,
       `rename(UserId, StudentId, String)`, `delete(UserId, StudentId)`;
       в каждом SQL — `user_id = ?`. Javadoc объясняет, почему у каждого метода
@@ -35,7 +35,7 @@
       Testcontainers — для **каждого** метода два владельца: А видит и правит
       своё, на чужом получает пусто или ноль строк; после `delete` строка
       исчезла; одинаковые имена у одного владельца допустимы.
-- [ ] 3.3 Тест `OwnerIsRequiredByStudentsTest` — зеркало `OwnerIsUnknownToTheoryTest`:
+- [x] 3.3 Тест `OwnerIsRequiredByStudentsTest` — зеркало `OwnerIsUnknownToTheoryTest`:
       у каждого публичного метода `StudentRepository` и `GroupRepository`
       (последний — с задачи 5.2, список классов пополняется там) среди
       параметров есть `UserId`; в таблицах `student` и `group_` есть колонка
