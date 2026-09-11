@@ -1,10 +1,12 @@
 package ru.locus.problem;
 
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import ru.locus.taxonomy.NodeContent;
 import ru.locus.taxonomy.TaxonomyNodeId;
+import ru.locus.taxonomy.TopicDistribution;
 
 /**
  * Ответ библиотеки Задач на вопрос дерева «что лежит на этом узле».
@@ -61,6 +63,21 @@ public class ProblemsOnNode implements NodeContent {
     @Override
     public void moveTopicContent(TaxonomyNodeId from, TaxonomyNodeId to) {
         service.rehomeTopic(from, to);
+    }
+
+    /**
+     * Снятие Темы с Задачами: каждая Задача едет на приёмник, назначенный
+     * ей Администратором (ADR-0007). Распределение, в котором своей части
+     * нет, читается как пустая карта — и {@link ProblemService#distribute}
+     * отклонит его, если на Теме есть хоть одна Задача: половинного ответа
+     * дереву не бывает, Тема с Задачами без назначений не снимается.
+     */
+    @Override
+    public void distributeTopicContent(TaxonomyNodeId from, TopicDistribution distribution) {
+        Map<ProblemId, TaxonomyNodeId> destinations = distribution instanceof ProblemDistribution own
+                ? own.destinations()
+                : Map.of();
+        service.distribute(from, destinations);
     }
 
     // countVanishing не переопределяется намеренно: Задачи вместе с Темой

@@ -250,6 +250,107 @@ public class TaxonomyService {
     }
 
     /**
+     * Сколько отметок Владения исчезнет невосполнимо вместе с узлом — то, что
+     * показывается Администратору перед снятием Темы с распределением
+     * (ADR-0007). Сумма ответов всех {@link NodeContent#countVanishing}.
+     *
+     * <p>Это <b>единственное</b> место, где Администратору видны данные
+     * личного контура чужих учителей, и потому единственное, что по владельцу
+     * не фильтруется намеренно (ADR-0005, ADR-0027): считаются отметки всех
+     * учеников всех учителей. Наружу — только число; параметра владельца
+     * у метода нет, и показать лишнее ему нечем. По той же причине спрашивать
+     * может только Администратор: Учителю чужие отметки не видны даже счётом.
+     *
+     * <p>Сегодня всегда ноль — отвечающего по существу нет; долг
+     * {@code mastery-marks} сторожит {@code MasteryRestructureDebtTest}.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public int countVanishingMarks(TaxonomyNodeId id) {
+        TaxonomyNode node = existing(id);
+        int vanishing = 0;
+        for (NodeContent kind : content) {
+            vanishing += kind.countVanishing(node.id());
+        }
+        return vanishing;
+    }
+
+    /**
+     * Снимает Тему с содержимым, распределив содержимое по Темам-приёмникам,
+     * назначенным Администратором поштучно (ADR-0007). Отдельная операция,
+     * а не {@link #delete} с параметром: обычное удаление снимает только
+     * пустой узел, и смешивать их — значит однажды снять непустой по ошибке.
+     *
+     * <p>Порядок шагов:
+     *
+     * <ol>
+     *   <li>потомки — отказ: узлы снимаются по одному, снизу вверх;</li>
+     *   <li>содержимое, которому Тема не нужна (Теоретические материалы), —
+     *       отказ, называющий выход: распределять его некуда, и снимает или
+     *       переносит его Администратор обычной правкой, ничем
+     *       не обусловленной (ADR-0033);</li>
+     *   <li>каждый ответчик {@link NodeContent} распределяет своё
+     *       ({@link NodeContent#distributeTopicContent}) — либо убирает,
+     *       если оно исчезает вместе с Темой; после этого узел обязан быть
+     *       пуст, иначе отказ;</li>
+     *   <li>узел снимается;</li>
+     *   <li>каждый приёмник проверяется <b>по состоянию дерева после
+     *       снятия</b> (design.md, «Проверка „приёмник — Тема“ считает
+     *       состояние после операции»): у него не должно быть потомков.
+     *       Родитель снятой Темы этим проверяется без особого случая —
+     *       если она была его единственным потомком, теперь он лист.</li>
+     * </ol>
+     *
+     * <p>Проверка приёмников стоит <i>после</i> снятия не по недосмотру:
+     * состояние «после операции» проще прочитать из дерева, чем вычислить
+     * заранее, а отказ на этом шаге откатывает транзакцию целиком — узел
+     * на месте, разметка прежняя. Что откат действительно целый, проверяет
+     * тест целостности в {@code ProblemsGuardTheTreeTest}.
+     *
+     * <p>Что именно распределяется и из какой области, дерево не знает:
+     * в {@code distribution} оно читает только приёмников, остальное —
+     * область содержимого ({@link TopicDistribution}).
+     *
+     * @throws NodeNotEmptyException      если у узла есть потомки, на нём
+     *                                    лежит содержимое, не подлежащее
+     *                                    распределению, или после
+     *                                    распределения узел не опустел
+     * @throws ReceiverIsNotATopicException если приёмник — сама снимаемая
+     *                                    Тема или узел, у которого после
+     *                                    снятия остаются потомки
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void deleteWithDistribution(TaxonomyNodeId id, TopicDistribution distribution) {
+        TaxonomyNode node = existing(id);
+        refuseIfHasChildren(node);
+        refuseIfCarriesUndistributable(node);
+        if (distribution.receivers().contains(node.id())) {
+            throw new ReceiverIsNotATopicException("Снимаемая Тема «" + node.name() + "» не может быть"
+                    + " Темой-приёмником для собственного содержимого: после снятия её не будет");
+        }
+        for (NodeContent kind : content) {
+            kind.distributeTopicContent(node.id(), distribution);
+        }
+        for (NodeContent kind : content) {
+            Optional<String> held = kind.on(node.id());
+            if (held.isPresent()) {
+                throw new NodeNotEmptyException("Узел «" + node.name() + "» после распределения не опустел: "
+                        + held.get());
+            }
+        }
+        nodes.delete(node.id());
+        for (TaxonomyNodeId receiver : distribution.receivers()) {
+            TaxonomyNode candidate = existing(receiver);
+            int children = nodes.countChildren(candidate.id());
+            if (children > 0) {
+                throw new ReceiverIsNotATopicException("Узел «" + candidate.name() + "» не может быть"
+                        + " Темой-приёмником: после снятия «" + node.name() + "» у него остаются потомки ("
+                        + children + "), а Задачи несут только Темы");
+            }
+        }
+    }
+
+    /**
      * Единственная проверка пустоты узла: сюда дописывается каждое новое
      * условие, и искать его потом надо в одном месте, а не по всем вызовам
      * удаления.
@@ -265,28 +366,61 @@ public class TaxonomyService {
      * <ul>
      *   <li>Задачи — на Теме; <b>пришли</b> с работой {@code problem-catalog},
      *       отвечает {@code ProblemsOnNode};</li>
-     *   <li>Теоретические материалы — на любом узле; работа
-     *       {@code theory-materials};</li>
+     *   <li>Теоретические материалы — на любом узле; <b>пришли</b> с работой
+     *       {@code theory-materials}, отвечает {@code TheoryOnNode};</li>
      *   <li>отметки Владения — на паре «Тема × Метод»; работа
      *       {@code mastery-marks}.</li>
      * </ul>
      *
      * <p>Забытое пополнение — тихая потеря данных: узел уходит вместе
      * с накопленными суждениями учителей об учениках, и восстановить их
-     * неоткуда (ADR-0007). Удаление узла <i>с</i> содержимым — не эта
-     * операция, а отдельная, с распределением задач и предупреждением
-     * о числе исчезающих отметок; она приедет с {@code rubricator-restructure}.
+     * неоткуда (ADR-0007). Удаление Темы <i>с</i> содержимым — не эта
+     * операция, а отдельная: {@link #deleteWithDistribution}, с распределением
+     * Задач и предупреждением о числе исчезающих отметок
+     * ({@link #countVanishingMarks}). Отказ здесь называет её как выход,
+     * когда содержимое такое, что распределению подлежит, — то есть
+     * отвечает на {@link NodeContent#requiringTopic}.
      */
     private void refuseUnlessEmpty(TaxonomyNode node) {
+        refuseIfHasChildren(node);
+        for (NodeContent kind : content) {
+            Optional<String> held = kind.on(node.id());
+            if (held.isPresent()) {
+                String exit = kind.requiringTopic(node.id()).isPresent()
+                        ? " — снять Тему вместе с этим можно только снятием с распределением"
+                        : "";
+                throw new NodeNotEmptyException("Узел «" + node.name() + "» не пуст: " + held.get() + exit);
+            }
+        }
+    }
+
+    private void refuseIfHasChildren(TaxonomyNode node) {
         int children = nodes.countChildren(node.id());
         if (children > 0) {
             throw new NodeNotEmptyException("У узла «" + node.name() + "» есть потомки (" + children
                     + "): узлы снимаются по одному, снизу вверх");
         }
+    }
+
+    /**
+     * Снятию с распределением мешает содержимое, которому Тема не нужна:
+     * оно законно на любом узле, распределять его некуда, и исчезать вместе
+     * с узлом оно не должно. Сегодня это Теоретические материалы.
+     *
+     * <p>Отказ обязан назвать выход: материал снимается или переносится
+     * на другой узел его обычной правкой, и никаких условий на перенос
+     * не наложено — заморозки у теории нет (ADR-0033). Само слово
+     * «материалы» дерево не произносит — оно приходит из ответа
+     * {@link NodeContent#on}; дерево знает только, что это содержимое
+     * на {@link NodeContent#requiringTopic} не отвечает.
+     */
+    private void refuseIfCarriesUndistributable(TaxonomyNode node) {
         for (NodeContent kind : content) {
             Optional<String> held = kind.on(node.id());
-            if (held.isPresent()) {
-                throw new NodeNotEmptyException("Узел «" + node.name() + "» не пуст: " + held.get());
+            if (held.isPresent() && kind.requiringTopic(node.id()).isEmpty()) {
+                throw new NodeNotEmptyException("Узел «" + node.name() + "» нельзя снять с распределением: "
+                        + held.get() + ". Это содержимое не распределяется — сначала снимите его или"
+                        + " перенесите на другой узел обычной правкой; никаких условий на перенос нет");
             }
         }
     }

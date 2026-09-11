@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import ru.locus.taxonomy.TaxonomyNode;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyService;
 import ru.locus.taxonomy.TopicCarriesContentException;
+import ru.locus.taxonomy.TopicDistribution;
 import ru.locus.taxonomy.TopicReceiver;
 import ru.locus.user.Role;
 
@@ -70,7 +72,9 @@ class ProblemsGuardTheTreeTest extends IntegrationTest {
 
         assertThatThrownBy(() -> taxonomy.delete(topic))
                 .isInstanceOf(NodeNotEmptyException.class)
-                .hasMessageContaining("Задачи");
+                .hasMessageContaining("Задачи")
+                .as("отказ называет выход — снятие с распределением")
+                .hasMessageContaining("снятием с распределением");
 
         assertThat(taxonomy.node(topic)).as("Тема на месте").isNotNull();
         assertThat(problems.problem(problem)).as("её Задачи на месте").isNotNull();
@@ -238,6 +242,106 @@ class ProblemsGuardTheTreeTest extends IntegrationTest {
 
         assertThat(problems.problemsOf(to)).extracting(Problem::id).containsExactly(problem);
         assertThat(problems.problemsOf(from)).isEmpty();
+    }
+
+    /** Сценарий «Задачи распределены по разным Темам». */
+    @Test
+    void problemsAreDistributedEachToItsOwnReceiver() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId first = library.problem(topic);
+        ProblemId second = library.problem(topic);
+        ProblemId third = library.problem(topic);
+        TaxonomyNodeId one = library.topic();
+        TaxonomyNodeId two = library.topic();
+        TaxonomyNodeId three = library.topic();
+
+        taxonomy.deleteWithDistribution(topic,
+                new ProblemDistribution(Map.of(first, one, second, two, third, three)));
+
+        assertThatThrownBy(() -> taxonomy.node(topic)).as("Тема исчезла").isInstanceOf(IllegalArgumentException.class);
+        assertThat(problems.problemsOf(one)).extracting(Problem::id).containsExactly(first);
+        assertThat(problems.problemsOf(two)).extracting(Problem::id).containsExactly(second);
+        assertThat(problems.problemsOf(three)).extracting(Problem::id).containsExactly(third);
+        assertThat(problems.problem(first)).as("ни одна Задача не исчезла").isNotNull();
+        assertThat(problems.problem(second)).isNotNull();
+        assertThat(problems.problem(third)).isNotNull();
+    }
+
+    /** Сценарий «Задачи поднимаются на родителя». */
+    @Test
+    void problemsRiseToTheParentWhenTheTopicHasNoSiblings() {
+        TaxonomyNodeId parent = library.topic();
+        TaxonomyNodeId topic = library.topic(parent);
+        ProblemId problem = library.problem(topic);
+        assertThat(taxonomy.node(parent).isSection()).isTrue();
+
+        taxonomy.deleteWithDistribution(topic, new ProblemDistribution(Map.of(problem, parent)));
+
+        assertThatThrownBy(() -> taxonomy.node(topic)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(problems.problemsOf(parent)).extracting(Problem::id).containsExactly(problem);
+        assertThat(taxonomy.node(parent).isTopic()).as("вид родителя — Тема").isTrue();
+    }
+
+    /** Сценарий «Приёмник назначен не всем Задачам». */
+    @Test
+    void distributionLeavingAProblemWithoutAReceiverIsRefusedWhole() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId named = library.problem(topic);
+        ProblemId forgotten = library.problem(topic);
+        TaxonomyNodeId receiver = library.topic();
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic,
+                new ProblemDistribution(Map.of(named, receiver))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("целиком");
+
+        assertThat(taxonomy.node(topic).id()).as("Тема на месте").isEqualTo(topic);
+        assertThat(problems.problemsOf(topic)).extracting(Problem::id)
+                .as("разметка не изменилась")
+                .containsExactlyInAnyOrder(named, forgotten);
+        assertThat(problems.problemsOf(receiver)).isEmpty();
+    }
+
+    /** Распределение без единого назначения на Теме с Задачами — тот же отказ. */
+    @Test
+    void distributionOfNothingOnATopicWithProblemsIsRefused() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId problem = library.problem(topic);
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic, TopicDistribution.NOTHING))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(problems.problemsOf(topic)).extracting(Problem::id).containsExactly(problem);
+    }
+
+    /**
+     * Сценарий «Приёмником назначен узел, остающийся Разделом» и тест
+     * целостности (задача 4.4).
+     *
+     * Отказ по приёмнику приходит <i>после</i> того, как разметка уже
+     * перевешена, а узел снят: дерево считает состояние после операции
+     * буквально. Значит, единственное, что держит Тему и разметку на месте, —
+     * откат транзакции, и проверяется здесь именно он.
+     */
+    @Test
+    void refusedReceiverRollsBackBothTheTreeAndTheMarkup() {
+        TaxonomyNodeId topic = library.topic();
+        TaxonomyNodeId section = library.section();
+        TaxonomyNodeId fine = library.topic();
+        ProblemId toSection = library.problem(topic);
+        ProblemId toFine = library.problem(topic);
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic,
+                new ProblemDistribution(Map.of(toSection, section, toFine, fine))))
+                .isInstanceOf(ReceiverIsNotATopicException.class)
+                .hasMessageContaining("Темы");
+
+        assertThat(taxonomy.node(topic).id()).as("Тема на месте").isEqualTo(topic);
+        assertThat(problems.problemsOf(topic)).extracting(Problem::id)
+                .as("разметка прежняя, включая Задачу с законным приёмником")
+                .containsExactlyInAnyOrder(toSection, toFine);
+        assertThat(problems.problemsOf(fine)).isEmpty();
+        assertThat(problems.problemsOf(section)).isEmpty();
     }
 
     /**

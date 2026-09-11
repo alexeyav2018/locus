@@ -105,11 +105,11 @@
 
 ## 4. Снятие Темы с распределением Задач
 
-- [ ] 4.1 Добавить `TaxonomyService.countVanishingMarks(TaxonomyNodeId)` —
+- [x] 4.1 Добавить `TaxonomyService.countVanishingMarks(TaxonomyNodeId)` —
       сумма `countVanishing` по всем реализациям `NodeContent`; то, что
       показывается Администратору перед снятием. Проверка:
       `TaxonomyServiceTest` — сегодня всегда `0`.
-- [ ] 4.2 Добавить `TaxonomyService.deleteWithDistribution(TaxonomyNodeId topic,
+- [x] 4.2 Добавить `TaxonomyService.deleteWithDistribution(TaxonomyNodeId topic,
       Map<ProblemId, TaxonomyNodeId> destinations)` под
       `@PreAuthorize("hasRole('ADMINISTRATOR')")` и `@Transactional`:
       отказать, если у узла есть потомки; отказать, если на узле лежат свои
@@ -122,12 +122,32 @@
       узел. Проверка: `TaxonomyServiceTest` — распределение трёх Задач;
       подъём на родителя, у которого вид после операции — Тема; отказ
       на приёмнике, остающемся Разделом; отказ на узле со своими материалами.
-- [ ] 4.3 Уточнить текст отказа обычного `delete` на Теме с Задачами: сказать,
+- [x] 4.3 Уточнить текст отказа обычного `delete` на Теме с Задачами: сказать,
       что снять её можно снятием с распределением. Проверка:
       `TaxonomyServiceTest` — в сообщении названа операция распределения.
-- [ ] 4.4 Тест целостности: при отказе внутри `deleteWithDistribution` —
+- [x] 4.4 Тест целостности: при отказе внутри `deleteWithDistribution` —
       узел на месте и разметка Задач прежняя (транзакция откатилась целиком).
       Проверка: новый случай в `TaxonomyServiceTest` на Testcontainers.
+
+      Сделано иначе, чем записано в 4.2, и вот почему. Сигнатура
+      `deleteWithDistribution(…, Map<ProblemId, TaxonomyNodeId>)` невозможна:
+      `ProblemId` живёт в `ru.locus.problem`, а сторожевой тест этого же
+      изменения (`TaxonomyKnowsNothingOfProblemsTest`) запрещает
+      `TaxonomyService` упоминать этот пакет хоть строкой. Распределение идёт
+      тем же путём, что и переезд, — через `NodeContent`, новым действием
+      `distributeTopicContent(from, distribution)`; карта пересекает границу
+      в типе `TopicDistribution` пакета дерева, у которого дерево читает
+      только `receivers()`, а область Задач узнаёт в нём свою запись
+      `ProblemDistribution` (design.md, «Распределение пересекает границу,
+      не называя Задачу»). Приёмники проверяются буквально по состоянию
+      дерева **после** снятия узла: отказ приходит после правок и держится
+      на откате транзакции — и потому тест целостности 4.4 проверяет
+      настоящий откат, а не отказ до первой правки. Проверки с Задачами
+      и с материалами живут в `ProblemsGuardTheTreeTest`
+      и `TheoryGuardsTheTreeTest` по правилу раздела 3; в
+      `TaxonomyServiceTest` — только чистые проверки приёмника
+      (родитель как единственный оставшийся лист; родитель, у которого
+      останется брат; сама снимаемая Тема) и нулевой счёт отметок.
 
 ## 5. Экран дерева
 

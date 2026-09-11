@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -338,6 +339,101 @@ class TaxonomyServiceTest extends IntegrationTest {
         assertThat(taxonomy.node(root).isTopic())
                 .as("вид узла ниоткуда не переписывался — он вычисляется")
                 .isTrue();
+    }
+
+    /**
+     * Сценарий «Отметок нет»: отвечающего по существу сегодня нет, и число
+     * всегда нулевое. Что оно перестанет быть нулевым не молча, стережёт
+     * {@code MasteryRestructureDebtTest}.
+     */
+    @Test
+    void countOfVanishingMarksIsZeroToday() {
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        assertThat(taxonomy.countVanishingMarks(topic)).isZero();
+    }
+
+    /** Снятие с распределением на пустой Теме — обычное снятие: распределять нечего. */
+    @Test
+    void emptyTopicIsDeletedWithNothingToDistribute() {
+        TaxonomyNodeId root = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId topic = taxonomy.create("Уравнения", root);
+
+        taxonomy.deleteWithDistribution(topic, TopicDistribution.NOTHING);
+
+        assertThatThrownBy(() -> taxonomy.node(topic)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(taxonomy.node(root).id()).isEqualTo(root);
+    }
+
+    /**
+     * Сценарий «Задачи поднимаются на родителя» — часть про дерево.
+     *
+     * Здесь Тема пуста, а распределение называет одного приёмника — родителя:
+     * проверка приёмника — правило дерева, и о содержимом оно не знает.
+     * Родитель сейчас Раздел, но после снятия единственного потомка станет
+     * листом — и проверка, считающая состояние <b>после</b> операции,
+     * его пропускает без особого случая. Что при этом переезжают и Задачи,
+     * проверяет {@code ProblemsGuardTheTreeTest}.
+     */
+    @Test
+    void parentIsALawfulReceiverWhenTheRemovedTopicWasItsOnlyChild() {
+        TaxonomyNodeId parent = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId onlyChild = taxonomy.create("Уравнения", parent);
+        assertThat(taxonomy.node(parent).isSection()).isTrue();
+
+        taxonomy.deleteWithDistribution(onlyChild, () -> Set.of(parent));
+
+        assertThatThrownBy(() -> taxonomy.node(onlyChild)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(taxonomy.node(parent).isTopic()).as("вид родителя — Тема").isTrue();
+    }
+
+    /**
+     * Сценарий «Приёмником назначен узел, остающийся Разделом».
+     *
+     * Родитель с двумя потомками после снятия одного из них остаётся
+     * Разделом. Отказ приходит <i>после</i> снятия узла — проверка считает
+     * состояние дерева после операции буквально, — и потому здесь же
+     * проверяется, что транзакция откатилась: снятый узел на месте.
+     */
+    @Test
+    void receiverKeepingChildrenAfterTheRemovalIsRefusedAndTheTopicStays() {
+        TaxonomyNodeId parent = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId topic = taxonomy.create("Уравнения", parent);
+        TaxonomyNodeId sibling = taxonomy.create("Неравенства", parent);
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic, () -> Set.of(parent)))
+                .isInstanceOf(ReceiverIsNotATopicException.class)
+                .hasMessageContaining("потомки")
+                .hasMessageContaining("Темы");
+
+        assertThat(taxonomy.node(topic).id()).as("снятие откатилось целиком").isEqualTo(topic);
+        assertThat(taxonomy.children(parent)).extracting(TaxonomyNode::id)
+                .containsExactlyInAnyOrder(topic, sibling);
+    }
+
+    /** Снимаемая Тема — не приёмник для собственного содержимого: после снятия её не будет. */
+    @Test
+    void removedTopicItselfIsRefusedAsAReceiver() {
+        TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic, () -> Set.of(topic)))
+                .isInstanceOf(ReceiverIsNotATopicException.class)
+                .hasMessageContaining("после снятия");
+
+        assertThat(taxonomy.node(topic).id()).isEqualTo(topic);
+    }
+
+    /** Распределение не снимает узел с потомками: узлы снимаются по одному, снизу вверх. */
+    @Test
+    void deletionWithDistributionRefusesANodeWithChildren() {
+        TaxonomyNodeId node = taxonomy.create(unique("Алгебра"), null);
+        TaxonomyNodeId child = taxonomy.create("Уравнения", node);
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(node, TopicDistribution.NOTHING))
+                .isInstanceOf(NodeNotEmptyException.class)
+                .hasMessageContaining("потомки");
+
+        assertThat(taxonomy.node(child).id()).isEqualTo(child);
     }
 
     @Test

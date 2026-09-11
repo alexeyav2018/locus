@@ -15,6 +15,7 @@ import ru.locus.taxonomy.NodeNotEmptyException;
 import ru.locus.taxonomy.TaxonomyNode;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyService;
+import ru.locus.taxonomy.TopicDistribution;
 import ru.locus.user.Role;
 
 /**
@@ -67,6 +68,30 @@ class TheoryGuardsTheTreeTest extends IntegrationTest {
         assertThatThrownBy(() -> taxonomy.delete(topic))
                 .isInstanceOf(NodeNotEmptyException.class)
                 .hasMessageContaining("Теоретические материалы");
+
+        assertThat(taxonomy.node(topic)).as("узел на месте").isNotNull();
+        assertThat(theory.material(material)).as("его материалы на месте").isNotNull();
+    }
+
+    /**
+     * Сценарий «Снятие Темы, несущей свои материалы».
+     *
+     * Снятие с распределением материалам не помогает: распределять их некуда,
+     * а исчезать вместе с узлом они не должны. Отказ обязан назвать выход —
+     * перенос материала на другой узел, который есть обычная его правка
+     * и ничем не обусловлен: заморозки у теории нет (ADR-0033).
+     */
+    @Test
+    void nodeCarryingItsOwnMaterialsIsNotDeletedWithDistributionEither() {
+        TaxonomyNodeId topic = library.topic();
+        TheoryMaterialId material = library.material(topic, "Формулы приведения");
+
+        assertThatThrownBy(() -> taxonomy.deleteWithDistribution(topic, TopicDistribution.NOTHING))
+                .isInstanceOf(NodeNotEmptyException.class)
+                .hasMessageContaining("Теоретические материалы")
+                .as("выход назван: снять или перенести обычной правкой")
+                .hasMessageContaining("перенесите")
+                .hasMessageContaining("обычной правкой");
 
         assertThat(taxonomy.node(topic)).as("узел на месте").isNotNull();
         assertThat(theory.material(material)).as("его материалы на месте").isNotNull();
