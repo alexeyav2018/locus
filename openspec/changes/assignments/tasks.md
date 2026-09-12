@@ -54,13 +54,13 @@
 
 ## 3. Репозитории
 
-- [ ] 3.1 Завести `AssignmentBatchRepository` на `JdbcClient`:
+- [x] 3.1 Завести `AssignmentBatchRepository` на `JdbcClient`:
       `create(UserId, String groupName, LocalDate issuedOn)`,
       `findById(UserId, AssignmentBatchId)`, `findAll(UserId)` (новые первыми),
       `delete(UserId, AssignmentBatchId)`; в каждом SQL `user_id = ?`.
       Проверка: `AssignmentBatchRepositoryTest` — каждый метод с двумя
       владельцами.
-- [ ] 3.2 Завести `AssignmentRepository`: `create(UserId, StudentId,
+- [x] 3.2 Завести `AssignmentRepository`: `create(UserId, StudentId,
       AssignmentBatchId /* nullable */, LocalDate issuedOn, LocalDate dueDate,
       TheoryScope, List<ProblemId>)` — строка Задания и строки состава
       с `position` в одной вставке; `findById(UserId, AssignmentId)` с составом
@@ -77,7 +77,7 @@
       Задание чужому Ученику не вставляется (нарушение составного ключа);
       удаление Задания уносит состав, Ученик и Задача остаются;
       `countByProblem` считает Задания обоих владельцев.
-- [ ] 3.3 Тест `OwnerIsRequiredByAssignmentsTest` по образцу
+- [x] 3.3 Тест `OwnerIsRequiredByAssignmentsTest` по образцу
       `OwnerIsRequiredByStudentsTest`: у каждого публичного метода
       `AssignmentRepository` и `AssignmentBatchRepository` среди параметров
       есть `UserId`, **кроме** перечисленных поимённо в списке исключений
@@ -86,7 +86,7 @@
       Javadoc теста объясняет, почему список поимённый, а не по признаку
       «возвращает число». Проверка: тест зелёный; добавление метода без
       владельца вне списка его роняет (проверить временной правкой и откатить).
-- [ ] 3.4 Тест `NotSubmittedIsNotStoredTest`: поимённый состав колонок трёх
+- [x] 3.4 Тест `NotSubmittedIsNotStoredTest`: поимённый состав колонок трёх
       таблиц — ровно те, что в 1.1; javadoc: «не сдано» вычисляется
       (инвариант 12, ADR-0016), колонка со сдачей или просрочкой уронит тест.
       Проверка: тест зелёный.
