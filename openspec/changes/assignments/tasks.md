@@ -1,6 +1,6 @@
 ## 1. Схема и часы
 
-- [ ] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0007-assignments.yaml`,
+- [x] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0007-assignments.yaml`,
       три changeset'а по `design.md`, «Схема». `assignment_batch`: `id`
       (autoIncrement, PK), `user_id` (BIGINT, NOT NULL, FK на `user_` без
       каскада), `group_name` (VARCHAR(200), NOT NULL), `issued_on` (DATE,
@@ -17,7 +17,7 @@
       `0006-students-groups.yaml`: почему имя Группы текстом, почему ключи
       без каскада, почему нет колонки «сдано». Проверка:
       `mvn test -Dtest=MigrationsOnStartupTest,InconsistentSchemaTest` зелёные.
-- [ ] 1.2 Завести `ru.locus.TimeConfiguration` с бином `Clock`
+- [x] 1.2 Завести `ru.locus.TimeConfiguration` с бином `Clock`
       (`Clock.systemDefaultZone()`), javadoc — почему один бин на приложение
       и почему часы хранилища не трогаются. В тестовых исходниках —
       `ru.locus.TestClock`: `@Component @Primary`, наследник `Clock`
@@ -239,7 +239,13 @@
       и поимённым списком в тесте формы; `CLAUDE.md` — раздел «Статус»
       («Заданий … нет» больше нельзя писать) и список возможностей;
       `openspec/backlog.md` — строка 13 получает ✅ и ссылку на архив,
-      в карточке — что решено сверх и долг (`AssignmentWork`, выбытие).
+      в карточке — что решено сверх и долг (`AssignmentWork`, выбытие);
+      **новая строка и карточка `student-withdrawal`** (решение владельца
+      на гейте): выбытие ученика — «занимался, перестал, в списках мешает,
+      историю терять нельзя»; класс `—`, зависимость `assignments`,
+      стоимость S, не ломает, личное; основание — последствия ADR-0035;
+      развилки без решения: флаг «выбыл» на карточке / отдельный список
+      выбывших / только скрытие из выбора при выдаче.
       `scenarios.md`, `antipatterns.md`, `strategy.md` не затрагиваются:
       С4 и С7 описаны как есть, предпосылки не задеты, условия возврата
       не сработали.
