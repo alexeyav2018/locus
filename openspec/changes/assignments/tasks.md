@@ -30,13 +30,13 @@
 
 ## 2. Записи, идентификаторы, перечисление
 
-- [ ] 2.1 Завести `AssignmentId` и `AssignmentBatchId` по образцу `StudentId`;
+- [x] 2.1 Завести `AssignmentId` и `AssignmentBatchId` по образцу `StudentId`;
       перечисление `TheoryScope` (`NONE`, `TOPICS`, `TOPICS_AND_SECTIONS`)
       с русским `title` по словарю («без теории», «только Темы задач»,
       «вместе с Разделами»). Проверка: `AssignmentIdTest`,
       `AssignmentBatchIdTest`, `TheoryScopeTest` — отказ на неположительном,
       названия трёх значений.
-- [ ] 2.2 Завести запись `Assignment(AssignmentId id, UserId owner, StudentId
+- [x] 2.2 Завести запись `Assignment(AssignmentId id, UserId owner, StudentId
       student, AssignmentBatchId batch /* null — выдано лично */, LocalDate
       issuedOn, LocalDate dueDate, TheoryScope theoryScope, List<ProblemId>
       problems)` с правилами в компактном конструкторе: владелец, Ученик,
@@ -47,7 +47,7 @@
       (инвариант 12) и почему Раздача помнит имя, а не Группу. Проверка:
       `AssignmentTest`, `AssignmentBatchTest` — отказы и законное состояние,
       в том числе Задание без Раздачи.
-- [ ] 2.3 Завести `Addressee` — запечатанный интерфейс с `ToStudent(StudentId)`
+- [x] 2.3 Завести `Addressee` — запечатанный интерфейс с `ToStudent(StudentId)`
       и `ToGroup(GroupId)` и фабрикой `of(Long student, Long group)`:
       отказ `IllegalArgumentException` на «ни одного» и «оба», сообщение
       «адресат один: Ученик либо Группа». Проверка: `AddresseeTest`.
