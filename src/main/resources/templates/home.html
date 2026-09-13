@@ -19,6 +19,7 @@
         на Темах рубрикатора</li>
     <li th:if="${teacher}"><a th:href="@{/students}">Ученики</a></li>
     <li th:if="${teacher}"><a th:href="@{/groups}">Группы</a></li>
+    <li th:if="${teacher}"><a th:href="@{/assignments}">Задания</a></li>
     <li th:if="${administrator}"><a th:href="@{/users}">Учётные записи</a></li>
     <li><a th:href="@{/password}">Сменить пароль</a></li>
 </ul>

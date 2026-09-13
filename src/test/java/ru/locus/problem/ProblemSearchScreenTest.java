@@ -290,6 +290,48 @@ class ProblemSearchScreenTest extends IntegrationTest {
     }
 
     /**
+     * Спека assignments, «От найденного к выдаче»: у Учителя у каждой
+     * найденной Задачи есть отметка, а под списком — переход к форме выдачи.
+     * Отметка ищется в разметке, как {@code checked}: человеку она видна,
+     * а в тексте страницы её нет.
+     */
+    @Test
+    void teacherSeesAMarkAtEachFoundProblemAndTheWayToIssue() {
+        ProblemId first = library.problem(library.topic());
+        ProblemId second = library.problem(library.topic());
+
+        String page = teacher().get("/problems").body();
+
+        assertThat(page)
+                .contains("name=\"problem\"")
+                .contains("value=\"" + first.value() + "\"")
+                .contains("value=\"" + second.value() + "\"")
+                .contains("action=\"/assignments/new\"")
+                .contains("Выдать отмеченные");
+    }
+
+    /**
+     * Спека assignments, «Выдача Администратору без роли Учителя
+     * не предлагается»: Задачи те же, поиск тот же, а отметок и перехода
+     * к выдаче нет — выдавать ему некому.
+     */
+    @Test
+    void administratorWithoutTheTeacherRoleSeesNeitherMarksNorTheWayToIssue() {
+        ProblemId problem = library.problem(library.topic());
+        TestAccounts.Account administrator = accounts.settled(Role.ADMINISTRATOR);
+        Browser browser = new Browser(port);
+        browser.logIn(administrator.login(), administrator.password());
+
+        String page = browser.get("/problems").body();
+
+        assertThat(page)
+                .contains("№ " + problem.value())
+                .doesNotContain("name=\"problem\"")
+                .doesNotContain("/assignments/new")
+                .doesNotContain("Выдать отмеченные");
+    }
+
+    /**
      * Разметка в одну строку с одиночными пробелами. Thymeleaf переносит
      * подставленный атрибут на новую строку — ровно туда, где стоял
      * {@code th:selected} в шаблоне, — и образец, написанный с одним

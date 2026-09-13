@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Задание — Locus</title>
+    <!--/*
+        Страница Задания: Ученик, даты, «не сдано», состав со ссылками
+        на Задачи, теория по охвату со ссылками на материалы, перенос срока
+        и удаление.
+
+        Правится только срок (ADR-0037): состав, Ученик и охват после выдачи
+        неизменны, и форм для них здесь нет — нужен другой набор, выдаётся
+        новое Задание. Удаление отказывает, пока по Заданию есть Работа;
+        сегодня ответить некому, и отказ появится вместе с submission-review.
+
+        Теория не хранится у Задания, а вычисляется при показе из текущей
+        разметки Задач и текущего дерева (ADR-0018): материал, добавленный
+        после выдачи, виден. У материала назван узел, на котором он лежит.
+
+        «Не сдано» приходит из сервиса вычисленным (инвариант 12).
+    */-->
+    <style>
+        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
+        input[type=date] { padding: 0.35rem; }
+        button { padding: 0.35rem 0.9rem; }
+        .problems { margin: 0; padding-left: 1.25rem; }
+        .problems li { margin-bottom: 0.5rem; }
+        .problems .marks { margin: 0.15rem 0 0; }
+    </style>
+</head>
+<body>
+<h1 th:text="'Задание для ' + ${listed.studentName}">Задание для Иванов Пётр</h1>
+
+<p th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
+
+<p>Ученик: <a th:href="@{/students/{id}(id=${listed.assignment.student.value})}"
+              th:text="${listed.studentName}">Иванов Пётр</a></p>
+<p th:text="'Выдано: ' + ${#temporals.format(listed.assignment.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</p>
+<p th:text="'Срок: ' + ${#temporals.format(listed.assignment.dueDate, 'dd.MM.yyyy')}">Срок: 08.09.2026</p>
+<!--/* «Не сдано» — одним словом в одном th:text: человек видит его
+       слитно, и тест ищет его целиком, а не по кускам разметки. */-->
+<p th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</p>
+<p th:if="${listed.assignment.batch != null}">Выдано Группе —
+    <a th:href="@{/assignments/batches/{id}(id=${listed.assignment.batch.value})}">к Раздаче</a></p>
+
+<h2>Задачи</h2>
+<ul class="problems">
+    <li th:each="problem : ${problems}">
+        <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+           th:text="'№ ' + ${problem.number}">№ 12</a>
+        <span th:if="${problem.problem.hasCaption}"
+              th:text="${problem.problem.caption}">Ященко, вариант 12</span>
+        <span th:text="${problem.problem.part.title}">вторая часть</span>
+        <p class="marks"
+           th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
+        <p class="marks"
+           th:text="'Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Методы: Замена переменной</p>
+        <p class="marks" th:if="${not #lists.isEmpty(problem.characteristicNames)}"
+           th:text="'Характеристики: ' + ${#strings.listJoin(problem.characteristicNames, ', ')}">Характеристики: Двойной угол</p>
+    </li>
+</ul>
+
+<h2 th:text="'Теория: ' + ${listed.assignment.theoryScope.title}">Теория: только Темы задач</h2>
+<p th:if="${#lists.isEmpty(theory)}">Материалов к Заданию нет.</p>
+<ul th:unless="${#lists.isEmpty(theory)}">
+    <li th:each="item : ${theory}">
+        <a th:href="@{/theory/{id}(id=${item.material.id.value})}"
+           th:text="${item.material.title}">Тригонометрические тождества</a>
+        <span th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
+        <span th:text="'узел: ' + ${item.source}">узел: Тригонометрия</span>
+    </li>
+</ul>
+
+<h2>Действия</h2>
+<form method="post" th:action="@{/assignments/{id}/due-date(id=${listed.assignment.id.value})}">
+    <label>Новый срок <input type="date" name="dueDate" th:value="${listed.assignment.dueDate}"></label>
+    <button type="submit">Перенести срок</button>
+</form>
+
+<form method="post" th:action="@{/assignments/{id}/deletion(id=${listed.assignment.id.value})}">
+    <button type="submit">Удалить Задание</button>
+</form>
+
+<p><a th:href="@{/assignments}">К Заданиям</a></p>
+</body>
+</html>

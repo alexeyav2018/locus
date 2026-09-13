@@ -1,0 +1,197 @@
+# Задания и Раздачи — вторая область ЛИЧНОГО контура (ADR-0016).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): Assignment → assignment, AssignmentBatch → assignment_batch;
+# связующая таблица — assignment_problem, первой та сущность, которой
+# связь принадлежит: состав — часть Задания.
+#
+# Колонка user_id есть в КАЖДОЙ таблице, как у Учеников и Групп: строка
+# без владельца — это строка, которую увидят все, и у репозиториев
+# области нет метода без владельца (ADR-0027) — кроме одного, названного
+# поимённо: счёт Заданий по Задаче для ответа библиотеке идёт по всем
+# владельцам, потому что спрашивает Администратор, у которого личного
+# контура нет (ADR-0036).
+#
+# Колонки «сдано», «просрочено» или даты сдачи здесь НЕТ и не будет:
+# «не сдано» — выражение «срок прошёл и Работы нет», вычисляемое при
+# показе (инвариант 12 domain-model.md, ADR-0016). Состав колонок трёх
+# таблиц перечислен поимённо в NotSubmittedIsNotStoredTest: миграция,
+# добавившая такую колонку, уронит тест.
+#
+# Ключи на student и на assignment_batch составные, с user_id, — как
+# у состава Группы (0006-students-groups.yaml): Задание чужому Ученику
+# не может существовать, ему не на что сослаться. Оба БЕЗ каскада: Ученик
+# с Заданием не удаляется (ADR-0035), а Раздача удаляется сервисом вместе
+# со своими Заданиями явно, в одной транзакции (ADR-0037). Ключ на problem
+# тоже без каскада: Задача, вошедшая в Задание, заморожена (ADR-0030),
+# и удалить её база не даст даже в обход сервиса.
+#
+# Раздача помнит имя Группы ТЕКСТОМ, а не ключом на group_: Группа
+# удаляется в любой момент (ADR-0035), и ключ либо запретил бы это, либо
+# обнулялся бы, теряя происхождение. Имя на момент выдачи — исторический
+# факт («выдано 9Б такого-то числа»), а не производные данные.
+databaseChangeLog:
+  - changeSet:
+      id: 0007-assignment-batch
+      author: locus
+      comment: Раздача — одно действие выдачи Группе; помнит имя Группы и дату, не более
+      changes:
+        - createTable:
+            tableName: assignment_batch
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assignment_batch
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: issued_on
+                  type: DATE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: assignment_batch
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_assignment_batch_user
+        - addUniqueConstraint:
+            tableName: assignment_batch
+            columnNames: id, user_id
+            constraintName: uq_assignment_batch_id_user
+
+  - changeSet:
+      id: 0007-assignment
+      author: locus
+      comment: Задание — один Ученик, срок, охват теории; Раздача — только у выданного Группе
+      changes:
+        - createTable:
+            tableName: assignment
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assignment
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Пусто у Задания, выданного Ученику лично: Раздача бывает
+              # только у выдачи Группе (ADR-0016).
+              - column:
+                  name: assignment_batch_id
+                  type: BIGINT
+              - column:
+                  name: issued_on
+                  type: DATE
+                  constraints:
+                    nullable: false
+              # Срок и охват лежат на Задании, а не на Раздаче: срок
+              # переносится по одному Заданию (ADR-0037), а Раздача —
+              # «лёгкая сущность, помнит происхождение, не более».
+              - column:
+                  name: due_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: theory_scope
+                  type: VARCHAR(30)
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: assignment
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_assignment_user
+        - addForeignKeyConstraint:
+            baseTableName: assignment
+            baseColumnNames: student_id, user_id
+            referencedTableName: student
+            referencedColumnNames: id, user_id
+            constraintName: fk_assignment_student
+        - addForeignKeyConstraint:
+            baseTableName: assignment
+            baseColumnNames: assignment_batch_id, user_id
+            referencedTableName: assignment_batch
+            referencedColumnNames: id, user_id
+            constraintName: fk_assignment_batch
+        - addUniqueConstraint:
+            tableName: assignment
+            columnNames: id, user_id
+            constraintName: uq_assignment_id_user
+
+  - changeSet:
+      id: 0007-assignment-problem
+      author: locus
+      comment: >-
+        Состав Задания: Задачи библиотеки в порядке выбора. Единственный
+        каскад изменения — от Задания: состав — часть записи, а не суждение,
+        как членство в Группе. Ключ на problem без каскада: выданная Задача
+        заморожена (ADR-0030).
+      changes:
+        - createTable:
+            tableName: assignment_problem
+            columns:
+              - column:
+                  name: assignment_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Порядок Задач в Задании: учитель выбирает их в порядке,
+              # который для него что-то значит, и список без порядка
+              # перемешался бы от чтения к чтению.
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: assignment_problem
+            columnNames: assignment_id, problem_id
+            constraintName: pk_assignment_problem
+        - addForeignKeyConstraint:
+            baseTableName: assignment_problem
+            baseColumnNames: assignment_id, user_id
+            referencedTableName: assignment
+            referencedColumnNames: id, user_id
+            constraintName: fk_assignment_problem_assignment
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: assignment_problem
+            baseColumnNames: problem_id
+            referencedTableName: problem
+            referencedColumnNames: id
+            constraintName: fk_assignment_problem_problem
