@@ -107,14 +107,17 @@
       по обоим; `AssignmentsOfStudentTest` — считаются только Задания
       вошедшего; `ProblemUsageDebtTest` и `StudentUsageDebtTest` по-прежнему
       зелёные.
-- [ ] 4.3 Поправить javadoc `NodeContent.countVanishing`: «единственное
+- [x] 4.3 Поправить javadoc `NodeContent.countVanishing`: «единственное
       исключение» → класс исключений по ADR-0036, ссылка на него.
       Проверка: `MasteryRestructureDebtTest` зелёный.
-- [ ] 4.4 Тест долга `AssignmentWorkDebtTest` по образцу `ProblemUsageDebtTest`:
+- [x] 4.4 Тест долга `AssignmentWorkDebtTest` по образцу `ProblemUsageDebtTest`:
       в `AssignmentService` есть названные методы `refuseUnlessNoWork`
       и вычисление «не сдано» спрашивает `AssignmentWork`; исходники сервиса
       и вопроса называют `submission-review`, ADR-0037 и ADR-0016. Проверка:
       тест зелёный (пишется вместе с 5.1, зелёный после неё).
+      Написан в разделе 4: сервис назван путём, не `.class`, поэтому
+      компилируется уже сейчас; три из четырёх проверок красные, пока
+      нет `AssignmentService.java`, — зазеленеют на 5.2.
 
 ## 5. Сервис
 
