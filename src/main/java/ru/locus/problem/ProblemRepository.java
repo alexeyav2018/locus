@@ -106,6 +106,33 @@ public class ProblemRepository {
     }
 
     /**
+     * Задачи по списку номеров — одним запросом, а не по одному на номер.
+     *
+     * Порядок ответа — по номеру, как у {@link #findByTopic}: запрос
+     * не знает порядка, в котором номера пришли, и восстанавливает его
+     * тот, кто спрашивал ({@code ProblemService.problems}). Отсутствующий
+     * номер строки не даёт — ответ короче запроса, и отличить «нет такой»
+     * от «есть» обязан вызывающий, сверив списки. Пустой список — пустой
+     * ответ без запроса: {@code in ()} в SQL не существует.
+     */
+    public List<Problem> findByIds(List<ProblemId> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<Row> rows = database.sql("""
+                        select p.id, p.caption, p.exam_part, p.condition_file_key, p.solution_file_key
+                        from problem p
+                        where p.id in (""" + placeholders(ids.size()) + """
+                        )
+                        order by p.id
+                        """)
+                .params(ids.stream().map(ProblemId::value).toList())
+                .query(ProblemRepository::row)
+                .list();
+        return withMarkup(rows);
+    }
+
+    /**
      * Отбор Задач по разметке — то, чем библиотека ищется (ADR-0031).
      *
      * <p>Темы приходят <b>готовым</b> списком: поддерево разворачивает

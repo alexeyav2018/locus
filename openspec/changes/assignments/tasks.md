@@ -121,12 +121,12 @@
 
 ## 5. Сервис
 
-- [ ] 5.1 Добавить `ProblemService.problems(List<ProblemId>) → List<FoundProblem>`
+- [x] 5.1 Добавить `ProblemService.problems(List<ProblemId>) → List<FoundProblem>`
       в порядке запроса (репозиторий: `findByIds`), отсутствующая —
       `IllegalArgumentException` «Задачи № … не существует»; `named`
       переиспользуется. Проверка: новый случай в `ProblemServiceTest`;
       `OwnerIsUnknownToProblemsTest` зелёный.
-- [ ] 5.2 Завести `AssignmentService` с `@PreAuthorize("hasRole('TEACHER')")`
+- [x] 5.2 Завести `AssignmentService` с `@PreAuthorize("hasRole('TEACHER')")`
       на каждом методе, владелец из `CurrentUser`, часы из `Clock`,
       `List<AssignmentWork>`: `issueToStudent(StudentId, List<ProblemId>,
       LocalDate, TheoryScope) → AssignmentId` (Ученик через
@@ -157,16 +157,16 @@
       несуществующая Задача; повтор снят; чужой Ученик и чужая Группа
       неотличимы от несуществующих; перенос срока; удаление Задания
       и Раздачи; отказ без роли Учителя.
-- [ ] 5.3 Тест «не сдано» `NotSubmittedTest` на `TestClock`: срок сегодня —
+- [x] 5.3 Тест «не сдано» `NotSubmittedTest` на `TestClock`: срок сегодня —
       не несдано; срок вчера — несдано; выдано со сроком через два дня,
       сдвиг часов на три дня — несдано без единого действия; сдвиг снят —
       снова нет; отбор «только несданные за период» из спеки (позавчера,
       вчера, завтра). Проверка: тест зелёный.
-- [ ] 5.4 Тест теории `AssignmentTheoryTest`: материал на Теме и на её Разделе —
+- [x] 5.4 Тест теории `AssignmentTheoryTest`: материал на Теме и на её Разделе —
       `TOPICS` даёт только первый, `TOPICS_AND_SECTIONS` оба с именами узлов,
       `NONE` — пусто; материал, добавленный после выдачи, виден; материал
       Раздела по двум Темам — один раз. Проверка: тест зелёный.
-- [ ] 5.5 Тест заморозки и неудаляемости `AssignmentsFreezeTheLibraryTest`:
+- [x] 5.5 Тест заморозки и неудаляемости `AssignmentsFreezeTheLibraryTest`:
       после выдачи `ProblemService.edit`, `replaceCondition`, `replaceSolution`,
       `delete` отклоняются с `ProblemInUseException`, в тексте — число Заданий;
       `StudentService.delete` отклоняется с `StudentInUseException`; после

@@ -226,6 +226,33 @@ class ProblemServiceTest extends IntegrationTest {
     }
 
     /**
+     * Чтение по списку номеров ({@code assignments}, задача 5.1): порядок
+     * ответа — порядок запроса, а не номеров; разметка названа; отсутствующий
+     * номер — отказ с этим номером, а не ответ покороче.
+     */
+    @Test
+    void problemsByIdsComeInTheRequestedOrderAndAMissingOneIsRefused() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId first = library.problem(topic);
+        ProblemId second = library.problem(topic);
+
+        List<FoundProblem> found = problems.problems(List.of(second, first));
+
+        assertThat(found).extracting(FoundProblem::number)
+                .as("порядок запроса, а не номеров")
+                .containsExactly(second.value(), first.value());
+        assertThat(found.getFirst().topicPaths()).isNotEmpty();
+        assertThat(found.getFirst().methodNames()).isNotEmpty();
+        assertThat(problems.problems(List.of())).isEmpty();
+
+        ProblemId missing = new ProblemId(first.value() + 1_000_000);
+        assertThatThrownBy(() -> problems.problems(List.of(first, missing)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("№ " + missing.value())
+                .hasMessageContaining("не существует");
+    }
+
+    /**
      * Перестройка дерева ({@code rubricator-restructure}), углубление:
      * все Задачи Темы переезжают на приёмник, прочая разметка на месте.
      */
