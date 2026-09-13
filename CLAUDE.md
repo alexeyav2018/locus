@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -57,16 +57,34 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 (`StudentsAreFilteredByOwnerTest`). Ученик удаляется, пока на него ничего
 не ссылается, Группа — в любой момент
 ([ADR-0035](openspec/context/adr/0035-udalenie-uchenika-i-gruppy.md));
-вопрос `StudentUsage` обязаны реализовать `assignments`,
+вопрос `StudentUsage` обязаны реализовать `assignments` (уже отвечает),
 `submission-review` и `mastery-marks` — долг сторожит `StudentUsageDebtTest`.
+Затем `assignments` — вторая область личного контура и первая, ссылающаяся
+на библиотеку: Задание (набор Задач одному Ученику со сроком и охватом
+теории `TheoryScope`) и Раздача (одно действие выдачи Группе; помнит
+**имя** Группы текстом, а не ключ — Группа удаляется в любой момент).
+Выдача начинается с поиска: Учитель отмечает найденные Задачи на `/problems`
+и переходит к форме `/assignments/new`. После выдачи Задание не правится,
+кроме переноса срока, и удаляется, пока по нему нет Работы
+([ADR-0037](openspec/context/adr/0037-zadanie-neizmenno-posle-vydachi.md)).
+«Не сдано» вычисляется от бина `Clock` и вопроса `AssignmentWork`, хранимой
+колонки нет (`NotSubmittedIsNotStoredTest`, `NotSubmittedTest` на `TestClock`);
+на `AssignmentWork` обязан ответить `submission-review` — долг сторожит
+`AssignmentWorkDebtTest`. Здесь же впервые по-настоящему сработали
+заморозка Задачи (ADR-0030) и неудаляемость Ученика (ADR-0035): `assignments`
+отвечает на `ProblemUsage` и `StudentUsage`. Ответ библиотеке считает
+Задания **всех** Учителей — `AssignmentRepository.countByProblem` без
+`UserId`, оформлен как класс исключений из ADR-0027
+([ADR-0036](openspec/context/adr/0036-voprosy-biblioteki-bez-vladelca.md))
+и перечислен поимённо в `OwnerIsRequiredByAssignmentsTest`.
 
-Заданий, Работ и отметок владения по-прежнему нет.
+Работ и отметок владения по-прежнему нет.
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока девять возможностей: `application-startup`, `users-and-roles`,
+а там пока десять возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
-`library-search`, `theory-materials` и `students-groups`.
+`library-search`, `theory-materials`, `students-groups` и `assignments`.
 
 ### Первый вход
 
@@ -153,6 +171,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Все идентификаторы английские, транслита нет ([ADR-0028](openspec/context/adr/0028-imena-v-kode-tolko-anglijskie.md)).
 - Перестройка рубрикатора двигает и замороженную Задачу; заморозка запрещает только правку рукой ([ADR-0034](openspec/context/adr/0034-perestrojka-silnee-zamorozki.md)).
 - Ученик удаляется, пока на него ничего не ссылается; Группа — в любой момент ([ADR-0035](openspec/context/adr/0035-udalenie-uchenika-i-gruppy.md)).
+- Вопросы библиотеки к личным контурам отвечаются без фильтра по владельцу — классом с тремя границами, методы перечислены поимённо ([ADR-0036](openspec/context/adr/0036-voprosy-biblioteki-bez-vladelca.md)).
+- Задание после выдачи не правится, кроме срока, и удаляется, пока по нему нет Работы ([ADR-0037](openspec/context/adr/0037-zadanie-neizmenno-posle-vydachi.md)).
 
 ## Процесс: OpenSpec
 

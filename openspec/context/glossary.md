@@ -57,6 +57,9 @@
 | | вторая часть ЕГЭ | `SECOND` |
 | `MatchMode` | все сразу | `ALL` |
 | | любое из | `ANY` |
+| `TheoryScope` | без теории | `NONE` |
+| | только Темы задач | `TOPICS` |
+| | вместе с Разделами | `TOPICS_AND_SECTIONS` |
 | `MasteryStatus` | неизвестно | `UNKNOWN` |
 | | не владеет | `NOT_MASTERED` |
 | | владеет неуверенно | `UNCERTAIN` |
