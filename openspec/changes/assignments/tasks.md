@@ -93,12 +93,12 @@
 
 ## 4. Вопросы и ответы между областями
 
-- [ ] 4.1 Завести `AssignmentWork` в `ru.locus.assignment`
+- [x] 4.1 Завести `AssignmentWork` в `ru.locus.assignment`
       (`Set<AssignmentId> withWork(Collection<AssignmentId>)`), javadoc
       по образцу `StudentUsage`: реализаций нет, обязан ответить
       `submission-review`, ссылка на ADR-0037 и ADR-0016 (оба употребления —
       «не сдано» и отказ в удалении). Проверка: компилируется.
-- [ ] 4.2 Завести `AssignmentsOfProblem implements ProblemUsage` (`@Component`):
+- [x] 4.2 Завести `AssignmentsOfProblem implements ProblemUsage` (`@Component`):
       `countByProblem` → «вошла в Задания (N)» или пусто; javadoc — ADR-0036,
       наружу только число. `AssignmentsOfStudent implements StudentUsage`:
       `countByStudent(currentUser.id(), student)` → «выдано Заданий (N)».
