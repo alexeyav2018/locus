@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Выдача Задания — Locus</title>
+    <!--/*
+        Форма выдачи: Задачи, отмеченные в поиске по библиотеке (С4), срок,
+        охват теории и адресат — один из своих Учеников либо одна из своих
+        Групп. Задачи повторяются скрытыми полями: форма — продолжение
+        поиска, и что выдаётся, решено там, а не здесь.
+
+        Адресат ровно один: два списка, и правило «Ученик либо Группа»
+        проверяет Addressee.of, а не шаблон. Отказ любого рода — без срока,
+        без Задач, оба адресата, пустая Группа — возвращает эту же форму
+        с сообщением и введённым.
+
+        Задачи показаны так, как в поиске: номер, подпись, разметка именами
+        (FoundProblem) — Учитель видит, что именно выдаёт. Задание хранит
+        ссылки, а не копии: выданная Задача заморожена (ADR-0030), и здесь
+        она такова, какова в библиотеке.
+    */-->
+    <style>
+        form { max-width: 52rem; }
+        fieldset { margin: 0 0 1.5rem; padding: 0.75rem 1rem 1rem; }
+        legend { padding: 0 0.35rem; }
+        label { display: block; margin: 0.35rem 0; }
+        select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
+        input[type=date] { padding: 0.35rem; }
+        button { padding: 0.35rem 0.9rem; }
+        .scopes label { display: inline-block; margin-right: 1.25rem; }
+        .problems { margin: 0; padding-left: 1.25rem; }
+        .problems li { margin-bottom: 0.5rem; }
+        .problems .marks { margin: 0.15rem 0 0; }
+    </style>
+</head>
+<body>
+<h1>Выдача Задания</h1>
+
+<p th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
+
+<form method="post" th:action="@{/assignments}">
+    <fieldset>
+        <legend>Задачи</legend>
+        <p th:if="${#lists.isEmpty(problems)}">Ни одной Задачи не отмечено — вернитесь
+            к <a th:href="@{/problems}">поиску по библиотеке</a> и отметьте Задачи
+            в найденном.</p>
+        <ul class="problems" th:unless="${#lists.isEmpty(problems)}">
+            <li th:each="problem : ${problems}">
+                <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
+                <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+                   th:text="'№ ' + ${problem.number}">№ 12</a>
+                <span th:if="${problem.problem.hasCaption}"
+                      th:text="${problem.problem.caption}">Ященко, вариант 12</span>
+                <span th:text="${problem.problem.part.title}">вторая часть</span>
+                <p class="marks"
+                   th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
+                <p class="marks"
+                   th:text="'Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Методы: Замена переменной</p>
+                <p class="marks" th:if="${not #lists.isEmpty(problem.characteristicNames)}"
+                   th:text="'Характеристики: ' + ${#strings.listJoin(problem.characteristicNames, ', ')}">Характеристики: Двойной угол</p>
+            </li>
+        </ul>
+    </fieldset>
+
+    <fieldset>
+        <legend>Срок и теория</legend>
+        <label>Срок сдачи <input type="date" name="dueDate" th:value="${dueDate}"></label>
+        <!--/* Охват по умолчанию — «без теории» (спека, «Теория прикрепляется
+               охватом»): пока ничего не выбрано, отмечено первое значение. */-->
+        <p class="scopes">
+            <label th:each="scope : ${scopes}">
+                <input type="radio" name="theoryScope" th:value="${scope}"
+                       th:checked="${theoryScope == scope or (theoryScope == null and scope.name() == 'NONE')}">
+                <span th:text="${scope.title}">без теории</span>
+            </label>
+        </p>
+    </fieldset>
+
+    <fieldset>
+        <legend>Кому</legend>
+        <p th:if="${#lists.isEmpty(students)}">Учеников пока нет — заведите их
+            в <a th:href="@{/students}">списке Учеников</a>.</p>
+        <label>Ученику
+            <select name="student">
+                <option value="">— не выбран —</option>
+                <option th:each="one : ${students}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenStudent == one.id.value}">Иванов Пётр</option>
+            </select>
+        </label>
+        <label>или Группе
+            <select name="group">
+                <option value="">— не выбрана —</option>
+                <option th:each="one : ${groups}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenGroup == one.id.value}">9Б</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <button type="submit">Выдать</button>
+</form>
+
+<p><a th:href="@{/problems}">К поиску Задач</a></p>
+<p><a th:href="@{/assignments}">К Заданиям</a></p>
+</body>
+</html>

@@ -120,6 +120,13 @@
         <p th:text="'Найдено Задач: ' + ${foundCount}">Найдено Задач: 3</p>
         <ul class="results">
             <li th:each="problem : ${found}">
+                <!--/* Отметка для выдачи принадлежит форме «issue» ниже
+                       через атрибут form: результаты лежат вне формы поиска,
+                       и обернуть их второй формой только для Учителя
+                       без вложенности не выйдет. */-->
+                <input type="checkbox" name="problem" form="issue" th:if="${teacher}"
+                       th:value="${problem.problem.id.value}"
+                       th:id="'problem-' + ${problem.problem.id.value}">
                 <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
                 <span th:if="${problem.problem.hasCaption}"
@@ -137,6 +144,12 @@
                    th:text="'Характеристики: ' + ${#strings.listJoin(problem.characteristicNames, ', ')}">Характеристики: Двойной угол</p>
             </li>
         </ul>
+        <!--/* Переход к выдаче — GET: это переход к форме, а не действие
+               (design.md, «Экраны»). Показывается только Учителю: у прочих
+               Учеников нет, и выдавать некому. */-->
+        <form method="get" th:action="@{/assignments/new}" id="issue" th:if="${teacher}">
+            <button type="submit">Выдать отмеченные</button>
+        </form>
     </div>
 </div>
 

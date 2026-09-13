@@ -176,7 +176,7 @@
 
 ## 6. Экраны
 
-- [ ] 6.1 Добавить `Addresses.ASSIGNMENTS = "/assignments"`. `AssignmentController`:
+- [x] 6.1 Добавить `Addresses.ASSIGNMENTS = "/assignments"`. `AssignmentController`:
       `GET /assignments` (сводка: параметры `student`, `batch`, `from`, `to`,
       `notSubmitted`; списки Учеников и Раздач для отбора), `GET /assignments/new`
       (параметр `problem` повторяющийся; Задачи через `problems(ids)`;
@@ -190,7 +190,7 @@
       Контроллер тонкий: `UserId` не читает, `CurrentUser.id()` не зовёт.
       Проверка: `AssignmentControllerIsThinTest` по образцу
       `StudentControllerIsThinTest`.
-- [ ] 6.2 Шаблоны `templates/assignment/list.html`, `assignment/form.html`,
+- [x] 6.2 Шаблоны `templates/assignment/list.html`, `assignment/form.html`,
       `assignment/assignment.html`, `assignment/batch.html` по образцу
       `student/` и `problem/search.html`; даты через `#temporals.format(…, 'dd.MM.yyyy')`;
       «не сдано» — отдельным словом в одном `th:text`; ссылки на `/problems/{id}`
@@ -203,14 +203,14 @@
       «Задания» под `teacher`. Проверка: `ServerRenderedPageTest` зелёный;
       `ProblemSearchScreenTest` — Учитель видит отметки, Администратор без
       роли Учителя — нет.
-- [ ] 6.3 Тест `AssignmentScreenTest`: от поиска к форме с двумя отмеченными
+- [x] 6.3 Тест `AssignmentScreenTest`: от поиска к форме с двумя отмеченными
       Задачами; выдача Ученику через форму и страница Задания с составом,
       сроком и Учеником; выдача Группе и страница Раздачи с именем Группы
       и Учениками; переименование и удаление Группы после выдачи не меняют
       Раздачу; без срока, без Задач, оба адресата — сообщение; перенос срока;
       удаление Задания и Раздачи; сводка с отбором по Ученику и «только
       несданные» на `TestClock`. Проверка: тест зелёный.
-- [ ] 6.4 Тест доступа `AssignmentAccessTest` по образцу `StudentAccessTest`:
+- [x] 6.4 Тест доступа `AssignmentAccessTest` по образцу `StudentAccessTest`:
       невошедший — форма входа; Администратор без роли Учителя — 403 на сводке,
       форме, выдаче и каждой операции; Учитель — 200. Проверка: тест зелёный.
 

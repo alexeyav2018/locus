@@ -12,6 +12,8 @@ import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyService;
+import ru.locus.user.CurrentUser;
+import ru.locus.user.Role;
 
 /**
  * Экран поиска Задач по разметке: форма условий сверху, найденное под ней.
@@ -42,6 +44,12 @@ import ru.locus.taxonomy.TaxonomyService;
  * {@code SecurityConfig}, а роль Администратора запретила бы поиск Учителю,
  * то есть тому, ради кого он делается. Фильтра по владельцу здесь нет
  * и быть не может — Задачи общие (ADR-0027).
+ *
+ * Единственное, что зависит от вошедшего, — признак {@code teacher}
+ * для шаблона, как у {@code HomeController}: Учителю у найденного
+ * показываются отметки и переход к выдаче Задания, прочим — нет
+ * (спека assignments, «Выдача начинается с поиска по библиотеке»).
+ * Это признак роли, а не владелец: сам поиск от него не меняется.
  */
 @Controller
 public class ProblemSearchController {
@@ -50,15 +58,18 @@ public class ProblemSearchController {
     private final TaxonomyService taxonomy;
     private final SolutionMethodService methods;
     private final CharacteristicService characteristics;
+    private final CurrentUser currentUser;
 
     public ProblemSearchController(ProblemService problems,
                                    TaxonomyService taxonomy,
                                    SolutionMethodService methods,
-                                   CharacteristicService characteristics) {
+                                   CharacteristicService characteristics,
+                                   CurrentUser currentUser) {
         this.problems = problems;
         this.taxonomy = taxonomy;
         this.methods = methods;
         this.characteristics = characteristics;
+        this.currentUser = currentUser;
     }
 
     /**
@@ -86,6 +97,7 @@ public class ProblemSearchController {
                 part);
         fillChoices(model);
         model.addAttribute("filter", filter);
+        model.addAttribute("teacher", currentUser.account().hasRole(Role.TEACHER));
         try {
             List<FoundProblem> found = problems.search(filter);
             model.addAttribute("found", found);

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Раздача — Locus</title>
+    <!--/*
+        Страница Раздачи: имя Группы на момент выдачи, дата и Задания
+        по Ученикам с «не сдано» — ответ на «кто из Группы не сдал» (С7).
+
+        Раздача помнит имя, а не Группу (ADR-0016): Группу с тех пор могли
+        переименовать, перекроить или удалить, а кому и когда выдавали —
+        не меняется. Поэтому ссылки на Группу здесь нет, а Ученики названы
+        через их Задания.
+
+        Удаляется Раздача целиком или никак (ADR-0037): если хотя бы одно
+        Задание удержано Работой, отклоняется всё, и отказ показывается
+        здесь же.
+    */-->
+    <style>
+        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
+        button { padding: 0.35rem 0.9rem; }
+        table { border-collapse: collapse; }
+        th, td { padding: 0.35rem 0.75rem; text-align: left; border-bottom: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+<h1 th:text="'Раздача Группе «' + ${batch.groupName} + '»'">Раздача Группе «9Б»</h1>
+
+<p th:if="${error}" th:text="${error}">По Заданию есть Работа</p>
+
+<p th:text="'Выдано: ' + ${#temporals.format(batch.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</p>
+
+<h2>Задания</h2>
+<p th:if="${#lists.isEmpty(assignments)}">Заданий в Раздаче не осталось.</p>
+<table th:unless="${#lists.isEmpty(assignments)}">
+    <thead>
+    <tr>
+        <th>Ученик</th>
+        <th>Срок</th>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="item : ${assignments}" th:id="'assignment-' + ${item.assignment.id.value}">
+        <td><a th:href="@{/assignments/{id}(id=${item.assignment.id.value})}"
+               th:text="${item.studentName}">Иванов Пётр</a></td>
+        <td th:text="${#temporals.format(item.assignment.dueDate, 'dd.MM.yyyy')}">08.09.2026</td>
+        <!--/* «Не сдано» — одним словом в одном th:text. */-->
+        <td><span th:if="${item.notSubmitted}" th:text="'не сдано'">не сдано</span></td>
+    </tr>
+    </tbody>
+</table>
+
+<h2>Действия</h2>
+<form method="post" th:action="@{/assignments/batches/{id}/deletion(id=${batch.id.value})}">
+    <button type="submit">Удалить Раздачу со всеми Заданиями</button>
+</form>
+
+<p><a th:href="@{/assignments}">К Заданиям</a></p>
+</body>
+</html>
