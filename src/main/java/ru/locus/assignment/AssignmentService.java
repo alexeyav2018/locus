@@ -54,12 +54,14 @@ import ru.locus.user.UserId;
  * от даты, и тест должен уметь сдвинуть часы, ничего не трогая в Задании.
  *
  * <p>Два условия сервиса спрашивают область Работ через вопрос
- * {@link AssignmentWork}, у которого <b>сегодня нет ни одной реализации</b>:
- * Работа появится с работой {@code submission-review}, и она обязана
- * ответить. До тех пор «не сдано» означает «срок прошёл» (ADR-0016),
- * а удаление проходит всегда (ADR-0037). Оба условия — отдельные названные
+ * {@link AssignmentWork}; отвечает на него {@code WorksOfAssignment}
+ * из работы {@code submission-review}: Задание с Работой хотя бы по одной
+ * Задаче не «не сдано» (ADR-0016) и не удаляется (ADR-0037), вердикт
+ * для этого не нужен (ADR-0038). Оба условия — отдельные названные
  * методы, {@link #notSubmitted} и {@link #refuseUnlessNoWork}, чтобы ответ
- * подключался в одно место; долг сторожит {@code AssignmentWorkDebtTest}.
+ * подключался в одно место; что вопрос и ответчик названы, сторожит
+ * {@code AssignmentWorkDebtTest}, что ответ работает —
+ * {@code AssignmentWorkAnsweredTest}.
  */
 @Service
 public class AssignmentService {
@@ -74,8 +76,8 @@ public class AssignmentService {
     private final Clock clock;
 
     /**
-     * Ответчики на вопрос «есть ли по Заданию Работа». Сегодня список пуст —
-     * Работ не существует; подробности и долг — в {@link AssignmentWork}.
+     * Ответчики на вопрос «есть ли по Заданию Работа» — область Работ
+     * ({@code submission-review}); подробности — в {@link AssignmentWork}.
      */
     private final List<AssignmentWork> works;
 
@@ -302,12 +304,11 @@ public class AssignmentService {
      * в одном месте.
      *
      * <p>Спрашивается у {@link AssignmentWork} одним вызовом на весь список:
-     * Раздача удаляется или отклоняется целиком. Сегодня ответчиков нет,
-     * множество пусто, и удаление проходит всегда — это честное состояние,
-     * а не заглушка. <b>Появление Работы обязано пополнить проверку</b>
-     * реализацией вопроса — работа {@code submission-review}. Забытое
-     * пополнение — Работы, повисшие без Задания, к которому привязаны
-     * (ADR-0037).
+     * Раздача удаляется или отклоняется целиком. Отвечает область Работ —
+     * работа {@code submission-review}: Задание с Работой хотя бы по одной
+     * Задаче удержано, и Раздача с одним таким Заданием не удаляется вся.
+     * Исчезни ответчик — удаление снова прошло бы всегда, и Работы повисли
+     * бы без Задания, к которому привязаны (ADR-0037).
      */
     private void refuseUnlessNoWork(List<Assignment> candidates) {
         Set<AssignmentId> held = withWork(candidates.stream().map(Assignment::id).toList());
@@ -327,10 +328,10 @@ public class AssignmentService {
      *
      * <p>Вторая половина условия спрашивается у {@link AssignmentWork}
      * заранее и одним вызовом на весь список ({@link #withWork}); сюда
-     * приходит готовое множество. Сегодня оно пусто — Работ не существует,
-     * и «не сдано» означает «срок прошёл»; ответить обязана работа
-     * {@code submission-review}, иначе просроченное Задание останется
-     * несданным при любом числе принятых Работ.
+     * приходит готовое множество. Отвечает область Работ — работа
+     * {@code submission-review}: Работа считается с момента приёма, без
+     * вердикта тоже (ADR-0038). Исчезни ответчик — просроченное Задание
+     * осталось бы несданным при любом числе принятых Работ.
      */
     private static boolean notSubmitted(Assignment assignment, LocalDate today, Set<AssignmentId> withWork) {
         return assignment.dueDate().isBefore(today) && !withWork.contains(assignment.id());

@@ -91,6 +91,24 @@ public final class Browser {
      *              означает незаполненное поле выбора файла
      */
     public Page postMultipart(String action, Map<String, String> fields, Map<String, byte[]> files) {
+        List<FilePart> parts = new ArrayList<>();
+        files.forEach((name, content) -> parts.add(new FilePart(name, name + ".pdf", "application/pdf", content)));
+        return postMultipart(action, fields, parts);
+    }
+
+    /**
+     * Часть формы с файлом: поле, имя файла, тип содержимого и байты.
+     * Несколько частей с одним полем — это «выбрано несколько файлов»
+     * в одном {@code <input type="file" multiple>}.
+     */
+    public record FilePart(String field, String filename, String contentType, byte[] content) {
+    }
+
+    /**
+     * Отправка формы с файлами, у каждого — своё поле, имя и тип: так
+     * уходит приём Работы с несколькими снимками в одном поле.
+     */
+    public Page postMultipart(String action, Map<String, String> fields, List<FilePart> files) {
         String boundary = "----locus" + java.util.UUID.randomUUID();
         var body = new java.io.ByteArrayOutputStream();
         Map<String, String> withToken = new LinkedHashMap<>(fields);
@@ -99,13 +117,13 @@ public final class Browser {
         withToken.forEach((name, value) -> write(body, "--" + boundary + "\r\n"
                 + "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n"
                 + value + "\r\n"));
-        files.forEach((name, content) -> {
+        for (FilePart file : files) {
             write(body, "--" + boundary + "\r\n"
-                    + "Content-Disposition: form-data; name=\"" + name + "\"; filename=\"" + name + ".pdf\"\r\n"
-                    + "Content-Type: application/pdf\r\n\r\n");
-            write(body, content);
+                    + "Content-Disposition: form-data; name=\"" + file.field() + "\"; filename=\"" + file.filename() + "\"\r\n"
+                    + "Content-Type: " + file.contentType() + "\r\n\r\n");
+            write(body, file.content());
             write(body, "\r\n");
-        });
+        }
         write(body, "--" + boundary + "--\r\n");
 
         return send(HttpRequest.newBuilder(URI.create(baseUrl + action))

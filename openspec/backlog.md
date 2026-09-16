@@ -108,7 +108,7 @@
 | 12 | `students-groups` | — | `auth-roles` | — | S | нет | личное | ✅ |
 | 13 | `assignments` | — | `students-groups`, `library-search`, `theory-materials` | — | M | нет | личное | ✅ |
 | 14 | `deployment-backup` | — | — | `submission-review` | M | нет | не затрагивает | ждёт условия |
-| 15 | `submission-review` | — | `assignments`, `file-storage` | — | M | нет | личное | |
+| 15 | `submission-review` | — | `assignments`, `file-storage` | — | M | нет | личное | ✅ |
 | 16 | `mastery-marks` | — | `submission-review`, `problem-catalog` | — | M | нет | личное | |
 | 17 | `mastery-views` | — | `mastery-marks`, `rubricator-tree`, `library-search` | — | M | нет | личное | |
 | 18 | `method-edit-impact` | — | `mastery-marks` | — | S | **да** | общее → личное | |
@@ -789,6 +789,40 @@ Thymeleaf; запуск локально; команды сборки, запу�
 ---
 
 ### 15. `submission-review` · M · не ломает
+
+> ✅ Выполнено 14.09.2026. Change:
+> [2026-09-14-submission-review](changes/archive/2026-09-14-submission-review/).
+> Сделано по карточке: Работа — решение одной Задачи одного Задания, файлы
+> (изображение пережимается, PDF как есть, прочее отклоняется; хотя бы один),
+> дата получения, бинарный вердикт `Verdict` и примечание; несколько файлов
+> одним действием и при приёме, и при добавлении; экран приёма
+> `/works?assignment=` по Заданию и список Работ Ученика `/works?student=`,
+> оба под телефон (`viewport`, без таблиц и фиксированных ширин).
+> Признак готовности: скан не получить по постоянному адресу —
+> `WorkFilesTest` (ссылка без подписи и с отодвинутым сроком — 403);
+> Работа без файла не сохраняется — `StudentWorkServiceTest`,
+> `WorkScreenTest`; интерфейс загрузки работает на узком экране —
+> `WorkScreenTest` (`viewport`, `multiple`, `accept`). Впервые по-настоящему
+> сработали «не сдано» по Работе и отказ в удалении Задания (ADR-0037):
+> `submission-review` отвечает на `AssignmentWork` (`WorksOfAssignment`,
+> `AssignmentWorkAnsweredTest`) и на `StudentUsage` (`WorksOfStudent`,
+> `WorksOfStudentTest`); `StudentService.refuseUnlessUnused` теперь собирает
+> ответы всех ответчиков в один отказ.
+> Сверх карточки решено: **на паре «Задание × Задача» Работа одна**,
+> **вердикт отделён от приёма** (Работа без вердикта — «не проверена»,
+> это отсутствие вердикта, а не флаг), **Работа удаляется владельцем
+> в любой момент** вместе с файлами
+> ([ADR-0038](context/adr/0038-rabota-odna-na-paru-i-udalyaetsya-svobodno.md));
+> **пределы загрузки** `spring.servlet.multipart` — 20 МБ на файл, 100 МБ
+> на запрос, разбор тела ленивый, чтобы превышение показывалось текстом
+> на экране приёма; Ученика у Работы нет — он у Задания. Тестовый `Browser`
+> получил `postMultipart` с несколькими файлами в одном поле и типом
+> у каждого.
+> **Долг.** Отметки Владения на том же экране и справка «по этому методу
+> решено 2 из 6» (С5, шаг 4) — `mastery-marks`; там же — третий ответ
+> на `StudentUsage`. Tomcat при превышении `max-swallow-size` (2 МБ по
+> умолчанию) может оборвать соединение раньше, чем приложение покажет
+> текст отказа, — обстоятельство для `deployment-backup`.
 
 **Зачем.** Ради этого экрана учитель открывает систему чаще всего.
 

@@ -32,9 +32,9 @@ import ru.locus.user.Role;
  * и у сервиса: день срока — ещё не просрочка, и граница суток должна
  * проходить для обоих в одном месте.
  *
- * Вторая половина условия — «Работы нет» — сегодня выполняется тождественно:
- * ответчиков на {@link AssignmentWork} не существует, и проверить её
- * обязана работа {@code submission-review}.
+ * Вторая половина условия — «Работы нет» — здесь не проверяется: Работ
+ * в этом тесте нет, и ответ на {@link AssignmentWork} пуст. Её проверяет
+ * {@code ru.locus.work.AssignmentWorkAnsweredTest} области Работ.
  */
 class NotSubmittedTest extends IntegrationTest {
 

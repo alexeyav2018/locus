@@ -60,6 +60,8 @@
 | `TheoryScope` | без теории | `NONE` |
 | | только Темы задач | `TOPICS` |
 | | вместе с Разделами | `TOPICS_AND_SECTIONS` |
+| `Verdict` | верно | `CORRECT` |
+| | неверно | `INCORRECT` |
 | `MasteryStatus` | неизвестно | `UNKNOWN` |
 | | не владеет | `NOT_MASTERED` |
 | | владеет неуверенно | `UNCERTAIN` |
@@ -70,6 +72,11 @@
 `UNKNOWN` и `NOT_MASTERED` — **разные** значения и одно другим не подменяется:
 первое означает «сюда не ходили», второе — суждение учителя
 ([ADR-0012](adr/0012-shkala-vladeniya.md)).
+
+У `Verdict` третьего значения нет: Работа без вердикта — «не проверена»,
+и это отсутствие вердикта, а не значение перечисления
+([ADR-0014](adr/0014-proverka-bez-avtomatiki.md),
+[ADR-0038](adr/0038-rabota-odna-na-paru-i-udalyaetsya-svobodno.md)).
 
 ## Имена в коде и в базе
 

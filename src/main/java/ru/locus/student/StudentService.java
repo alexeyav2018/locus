@@ -1,7 +1,7 @@
 package ru.locus.student;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -97,16 +97,18 @@ public class StudentService {
      *
      * <p>Условие спрашивается у {@link StudentUsage} — вопроса, на который
      * отвечают области, ссылающиеся на Ученика; сам сервис ни одну из них
-     * не знает по имени.
+     * не знает по имени. Ответы всех ответчиков собираются в один отказ:
+     * Ученик с Работой всегда имеет и Задание, и учителю нужно видеть
+     * обе причины сразу, а не по одной за попытку.
      *
      * <p><b>Каждая из трёх сущностей обязана пополнить эту проверку</b>
-     * своей реализацией {@link StudentUsage} — первая уже ответила,
-     * две другие должны:
+     * своей реализацией {@link StudentUsage} — Задание и Работа уже
+     * отвечают, отметки — долг:
      *
      * <ul>
-     *   <li>Задание — работа {@code assignments};</li>
-     *   <li>Работа — работа {@code submission-review};</li>
-     *   <li>отметка Владения — работа {@code mastery-marks}.</li>
+     *   <li>Задание — работа {@code assignments}, ответила;</li>
+     *   <li>Работа — работа {@code submission-review}, ответила;</li>
+     *   <li>отметка Владения — работа {@code mastery-marks}, должна.</li>
      * </ul>
      *
      * <p>Забытое пополнение — тихая потеря данных: удаление Ученика с историей
@@ -115,12 +117,13 @@ public class StudentService {
      * выбытие, — этим правилом не решается и записано долгом там же.
      */
     private void refuseUnlessUnused(Student student) {
+        List<String> used = new ArrayList<>();
         for (StudentUsage usage : usages) {
-            Optional<String> used = usage.of(student.id());
-            if (used.isPresent()) {
-                throw new StudentInUseException("На Ученика «" + student.name() + "» ссылается: "
-                        + used.get() + ". Пока это так, удалить его нельзя");
-            }
+            usage.of(student.id()).ifPresent(used::add);
+        }
+        if (!used.isEmpty()) {
+            throw new StudentInUseException("На Ученика «" + student.name() + "» ссылается: "
+                    + String.join(", ", used) + ". Пока это так, удалить его нельзя");
         }
     }
 

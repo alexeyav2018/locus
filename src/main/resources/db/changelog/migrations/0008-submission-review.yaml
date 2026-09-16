@@ -1,0 +1,149 @@
+# Работы — третья область ЛИЧНОГО контура (ADR-0015, ADR-0038).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): StudentWork → student_work, StudentWorkFile → student_work_file.
+#
+# Колонка user_id есть в ОБЕИХ таблицах, как у Заданий: строка без владельца —
+# это строка, которую увидят все, и у репозитория области нет метода без
+# владельца (ADR-0027). Исключений, как у Заданий (ADR-0036), здесь нет:
+# библиотека о Работах ничего не спрашивает.
+#
+# С Работы уходят ДВА ключа, и каждый держит своё правило спеки:
+#   - (assignment_id, problem_id) → assignment_problem — «Задача из состава
+#     этого Задания»: Работа по Задаче, которой в Задании нет, не вставляется
+#     и в обход сервиса;
+#   - (assignment_id, user_id) → assignment(id, user_id) — «Задание этого
+#     Учителя»: Работа по чужому Заданию не может существовать.
+# Оба БЕЗ каскада: Задание с Работой не удаляется (ADR-0037), и база это
+# подтвердит, если сервис забудут. Уникальность (assignment_id, problem_id) —
+# «на паре Работа одна» (ADR-0038).
+#
+# Ученика в таблице НЕТ: он у Задания, и вторая колонка разошлась бы
+# с первой. Вопрос «есть ли у Ученика Работы» отвечается соединением
+# с assignment — как Задания соединяются со student.
+#
+# verdict NULL означает «не проверена». Отдельной колонки «проверена» нет
+# по той же причине, что нет «сдано» у Задания (инвариант 12 domain-model.md):
+# состояние — это данные, а не флаг рядом с ними.
+#
+# Файлы — каскадом от Работы: файл без Работы — не сущность, а забытый
+# ключ. Из хранилища файлы уносит сервис, база о хранилище не знает.
+databaseChangeLog:
+  - changeSet:
+      id: 0008-student-work
+      author: locus
+      comment: Работа — решение одной Задачи одного Задания; на паре одна; вердикт отдельно от приёма
+      changes:
+        - createTable:
+            tableName: student_work
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_student_work
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assignment_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Дата получения, не дата записи: решение приходит раньше,
+              # чем учитель переносит его в систему.
+              - column:
+                  name: received_on
+                  type: DATE
+                  constraints:
+                    nullable: false
+              # NULL — «не проверена» (ADR-0038); значения — имена Verdict.
+              - column:
+                  name: verdict
+                  type: VARCHAR(20)
+              - column:
+                  name: note
+                  type: VARCHAR(2000)
+        - addForeignKeyConstraint:
+            baseTableName: student_work
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_student_work_user
+        - addForeignKeyConstraint:
+            baseTableName: student_work
+            baseColumnNames: assignment_id, problem_id
+            referencedTableName: assignment_problem
+            referencedColumnNames: assignment_id, problem_id
+            constraintName: fk_student_work_assignment_problem
+        - addForeignKeyConstraint:
+            baseTableName: student_work
+            baseColumnNames: assignment_id, user_id
+            referencedTableName: assignment
+            referencedColumnNames: id, user_id
+            constraintName: fk_student_work_assignment
+        - addUniqueConstraint:
+            tableName: student_work
+            columnNames: assignment_id, problem_id
+            constraintName: uq_student_work_pair
+        - addUniqueConstraint:
+            tableName: student_work
+            columnNames: id, user_id
+            constraintName: uq_student_work_id_user
+
+  - changeSet:
+      id: 0008-student-work-file
+      author: locus
+      comment: >-
+        Файлы Работы в порядке загрузки. Каскад от Работы: файл без Работы —
+        забытый ключ хранилища, а не сущность. Ключ файла наружу не отдаётся —
+        только временная подписанная ссылка (ADR-0021).
+      changes:
+        - createTable:
+            tableName: student_work_file
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_student_work_file
+              - column:
+                  name: student_work_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              # Порядок загрузки: учитель снимает страницы по порядку,
+              # и список без порядка перемешался бы от чтения к чтению.
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: student_work_file
+            baseColumnNames: student_work_id, user_id
+            referencedTableName: student_work
+            referencedColumnNames: id, user_id
+            constraintName: fk_student_work_file_work
+            onDelete: CASCADE
