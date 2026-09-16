@@ -18,7 +18,7 @@
 
 ## 2. Записи и перечисление
 
-- [ ] 2.1 Завести пакет `ru.locus.mastery`: перечисление `MasteryStatus`
+- [x] 2.1 Завести пакет `ru.locus.mastery`: перечисление `MasteryStatus`
       (`UNKNOWN`, `NOT_MASTERED`, `UNCERTAIN`, `MASTERED`) с русским `title`
       («неизвестно», «не владеет», «владеет неуверенно», «владеет»)
       и методом `isJudgement()` (`false` только у `UNKNOWN`), javadoc —
