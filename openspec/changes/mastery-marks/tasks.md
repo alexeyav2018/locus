@@ -1,6 +1,6 @@
 ## 1. Схема
 
-- [ ] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0009-mastery-marks.yaml`,
+- [x] 1.1 Завести миграцию `src/main/resources/db/changelog/migrations/0009-mastery-marks.yaml`,
       один changeset по `design.md`, «Схема»: таблица `mastery` с колонками
       `user_id`, `student_id`, `topic_id`, `solution_method_id` (все BIGINT
       NOT NULL), `status` (VARCHAR(20) NOT NULL); составной первичный ключ
