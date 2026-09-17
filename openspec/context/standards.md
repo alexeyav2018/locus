@@ -38,9 +38,14 @@
   границу идут типом спрашивающей области, который она объявляет, но читает
   лишь в своей части (`TopicDistribution`). Ответ, который обязана дать
   ещё не построенная область, сторожится **тестом долга**
-  (`ProblemUsageDebtTest`, `DeletionCheckDebtTest`,
-  `MasteryRestructureDebtTest`): он перечисляет реализации, зелёный сегодня
+  (`ProblemUsageDebtTest`, `DeletionCheckDebtTest`, `StudentUsageDebtTest`,
+  `AssignmentWorkDebtTest`): он перечисляет реализации, зелёный сегодня
   и падает с внятным текстом, когда область появится, а ответить забудет.
+  Когда область ответила, тест не удаляется, а переписывается: теперь он
+  сторожит, что все ответчики названы и ни один не пропал
+  (`StudentUsageDebtTest` после `mastery-marks`); тест, стороживший одну
+  ещё не написанную реализацию, заменяется её настоящим тестом
+  (`MasteryRestructureDebtTest` → `MasteryRestructureTest`).
 
 ## Данные
 
@@ -96,11 +101,19 @@
   (`StudentUsage`) в класс не входит — там владелец есть, вошедший Учитель;
   метод назван отдельно и **перечислен поимённо с причиной** в тесте формы
   `OwnerIsRequiredBy…` своей области, а не разрешён общим правилом вроде
-  «методы счёта можно». Сегодня в классе два метода: `countVanishing`
-  у `NodeContent` (ответчик — `mastery-marks`, пока не построен)
-  и `AssignmentRepository.countByProblem` (в списке исключений
-  `OwnerIsRequiredByAssignmentsTest`). Метод без владельца вне этих границ —
-  повод для новой записи в журнале, а не для тихого добавления.
+  «методы счёта можно». Сегодня в классе пять методов:
+  `AssignmentRepository.countByProblem` (в списке исключений
+  `OwnerIsRequiredByAssignmentsTest`) и четыре у `MasteryRepository`
+  (в списке `OwnerIsRequiredByMasteryTest`) — `countByTopic`
+  и `deleteByTopic` за `countVanishing` и `distributeTopicContent`
+  у `NodeContent`, `rehomeTopic` за `moveTopicContent`, `countByMethod`
+  за `DictionaryUsage.ofMethod`. Действия дерева над отметками
+  (`rehomeTopic`, `deleteByTopic`) — тоже класс, а не только вопросы:
+  наружу и здесь не уходит ни одной записи, а операцию Администратор
+  выполняет над **всеми** владельцами разом
+  ([ADR-0007](adr/0007-pravka-rubrikatora.md)). Метод без владельца вне
+  этих границ — повод для новой записи в журнале, а не для тихого
+  добавления.
 - **Иерархия хранится одним способом на весь проект: связью «родитель»,
   обход поддерева — рекурсивным запросом.** Материализованный путь и `ltree`
   не заводятся ни в рубрикаторе, ни в любой другой будущей иерархии.

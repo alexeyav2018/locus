@@ -109,7 +109,7 @@
 | 13 | `assignments` | — | `students-groups`, `library-search`, `theory-materials` | — | M | нет | личное | ✅ |
 | 14 | `deployment-backup` | — | — | `submission-review` | M | нет | не затрагивает | ждёт условия |
 | 15 | `submission-review` | — | `assignments`, `file-storage` | — | M | нет | личное | ✅ |
-| 16 | `mastery-marks` | — | `submission-review`, `problem-catalog` | — | M | нет | личное | |
+| 16 | `mastery-marks` | — | `submission-review`, `problem-catalog` | — | M | нет | личное | ✅ |
 | 17 | `mastery-views` | — | `mastery-marks`, `rubricator-tree`, `library-search` | — | M | нет | личное | |
 | 18 | `method-edit-impact` | — | `mastery-marks` | — | S | **да** | общее → личное | |
 | 19 | `teacher-proposes` | — | `problem-catalog`, `auth-roles` | — | M | нет | общее | ждёт условия |
@@ -604,13 +604,13 @@ Thymeleaf; запуск локально; команды сборки, запу�
 > областей типом `TopicDistribution`, который дерево читает только
 > в части приёмников. Узел со своими Теоретическими материалами ни одной
 > операцией не снимается — материал переносится обычной правкой (ADR-0033).
-> **Долг.** Отметок Владения в системе нет, поэтому число исчезающих
-> сегодня всегда ноль, а перенос при углублении не выполняется: реализация
-> `NodeContent.moveTopicContent` и `countVanishing` для отметок обязана
-> прийти вместе с `mastery-marks`. Забытое пополнение валит
-> `MasteryRestructureDebtTest`. Вторая половина признака готовности
-> («верное число отметок по всем учителям») проверяется поэтому не здесь,
-> а там.
+> **Долг** (погашен 17.09.2026 в `mastery-marks`): реализация
+> `NodeContent` для отметок — `MasteryOnNode` — переезд при углублении
+> (со слиянием по [ADR-0039](context/adr/0039-otmetka-tolko-s-suzhdeniem.md)),
+> исчезновение при снятии и настоящий счёт по всем учителям;
+> `MasteryRestructureDebtTest` заменён на `MasteryRestructureTest`, там же
+> проверена вторая половина признака готовности («верное число отметок
+> по всем учителям»).
 
 **Зачем.** Дерево уточняется по мере роста базы, и без правил перестройки
 структура останется грубой навсегда. Стоит **до** накопления отметок владения:
@@ -844,6 +844,48 @@ Thymeleaf; запуск локально; команды сборки, запу�
 ---
 
 ### 16. `mastery-marks` · M · не ломает
+
+> ✅ Выполнено 17.09.2026. Change:
+> [2026-09-17-mastery-marks](changes/archive/2026-09-17-mastery-marks/).
+> Сделано по карточке: отметка Владения на паре «Ученик × Тема × Метод»
+> у своего владельца (таблица `mastery`, `MasteryRepository`), шкала
+> `MasteryStatus` из четырёх значений; ячейки-кандидаты «Темы Задачи × её
+> Методы» у принятой Работы на экране приёма `/works?assignment=`, каждая
+> с текущим значением и справкой «решено N из M»; выборочная простановка
+> `POST /mastery` (`MasteryService.mark`), нетронутые ячейки не меняются;
+> перезапись без истории. Предзаполнения и вывода нет; вердикт на отметки
+> не влияет; Работа удаляется — отметка остаётся.
+> Признак готовности: ячейка не создаётся для пары без Задачи —
+> `MasteryServiceTest` (пара не из разметки — отказ); вердикт не влияет
+> на ячейки — `MasteryServiceTest`, `MasteryScreenTest`; новое значение
+> затирает прежнее без истории — `MasteryRepositoryTest`,
+> `MasteryServiceTest`. Здесь же вторая половина признака готовности
+> `rubricator-restructure` — верное число исчезающих отметок по всем
+> учителям (`MasteryRestructureTest`).
+> Сверх карточки решено: **строка отметки существует только для
+> суждения** — `неизвестно` есть отсутствие строки, простановка
+> `неизвестно` строку удаляет; **при углублении Темы отметки переезжают
+> на приёмник и сливаются** по правилу ADR-0013, если ячейка занята
+> (совпали — одна, разошлись — `владеет неуверенно`); **справка считает
+> только проверенные Работы**
+> ([ADR-0039](context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
+> Погашены три долга: дерево — `MasteryOnNode implements NodeContent`
+> (переезд, исчезновение при распределении, настоящий счёт;
+> `MasteryRestructureDebtTest` заменён на `MasteryRestructureTest`),
+> Ученики — `MasteryOfStudent implements StudentUsage` («вынесено
+> суждений (N)», `StudentUsageDebtTest` теперь сторожит три ответа),
+> словарь — `MasteryOfMethod implements DictionaryUsage` (Метод
+> с отметками не удаляется, по всем Учителям; `MasteryGuardsTheMethodTest`).
+> Четыре метода `MasteryRepository` без владельца (`countByTopic`,
+> `countByMethod`, `rehomeTopic`, `deleteByTopic`) — класс ADR-0036,
+> перечислены в `OwnerIsRequiredByMasteryTest`; изоляция —
+> `MasteryIsFilteredByOwnerTest`. Экран приёма собирается общим
+> компонентом `work.AssignmentScreen` для `StudentWorkController`
+> и `MasteryController`.
+> **Долг.** Распределений по Теме, Разделу и Методу, перечня пробелов
+> и подбора по ним нет — `mastery-views`. Что происходит с ячейками при
+> правке Методов у размеченной Задачи — по-прежнему не определено,
+> `method-edit-impact`.
 
 **Зачем.** Смысловое ядро системы: то знание об ученике, ради которого ведётся
 вся разметка.

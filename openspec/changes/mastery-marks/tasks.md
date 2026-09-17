@@ -191,15 +191,15 @@
 
 ## 8. Приёмка и документы
 
-- [ ] 8.1 Прогнать `mvn clean package`. Проверка: сборка зелёная.
-- [ ] 8.2 Проверить признак готовности карточки: ячейка не создаётся для
+- [x] 8.1 Прогнать `mvn clean package`. Проверка: сборка зелёная.
+- [x] 8.2 Проверить признак готовности карточки: ячейка не создаётся для
       пары без Задачи — `MasteryServiceTest` (пара не из разметки);
       вердикт не влияет на ячейки — `MasteryServiceTest`, `MasteryScreenTest`;
       новое значение затирает прежнее без истории — `MasteryRepositoryTest`,
       `MasteryServiceTest`; вторая половина признака `rubricator-restructure`
       («верное число отметок по всем учителям») — `MasteryRestructureTest`.
       Проверка: тесты названы и зелёные.
-- [ ] 8.3 Правка документов контекста: `glossary.md` — у `Mastery` пометка
+- [x] 8.3 Правка документов контекста: `glossary.md` — у `Mastery` пометка
       «построено в `mastery-marks`», у `UNKNOWN` — «отсутствие строки
       (ADR-0039)»; `domain-model.md` — абзац после схемы («Владение
       по-прежнему замысел» → построено), инвариант 7 при необходимости,
@@ -220,6 +220,6 @@
       `strategy.md` не затрагиваются: новых граблей нет, предпосылки
       не задеты. Проверка: `grep -rn "mastery-marks" openspec/context
       CLAUDE.md` не находит слов «должна», «долг», «пока нет».
-- [ ] 8.4 Перевести [ADR-0039](../../context/adr/0039-otmetka-tolko-s-suzhdeniem.md)
+- [x] 8.4 Перевести [ADR-0039](../../context/adr/0039-otmetka-tolko-s-suzhdeniem.md)
       в статус «Принято», пересобрать индекс:
       `python3 openspec/context/adr/build_index.py --check` зелёный.
