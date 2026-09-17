@@ -5,9 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,8 +18,6 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
 import ru.locus.assignment.AssignmentId;
-import ru.locus.assignment.AssignmentService;
-import ru.locus.assignment.ListedAssignment;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.student.StudentService;
@@ -54,15 +50,15 @@ import ru.locus.student.StudentService;
 public class StudentWorkController {
 
     private final StudentWorkService works;
-    private final AssignmentService assignments;
     private final StudentService students;
+    private final AssignmentScreen screen;
 
     public StudentWorkController(StudentWorkService works,
-                                 AssignmentService assignments,
-                                 StudentService students) {
+                                 StudentService students,
+                                 AssignmentScreen screen) {
         this.works = works;
-        this.assignments = assignments;
         this.students = students;
+        this.screen = screen;
     }
 
     /**
@@ -179,20 +175,12 @@ public class StudentWorkController {
         return null;
     }
 
+    /**
+     * Экран приёма собирает {@link AssignmentScreen}: тот же экран рисует
+     * и {@code MasteryController} — при отказе в простановке отметок.
+     */
     private String renderAssignment(AssignmentId id, Model model) {
-        ListedAssignment listed = assignments.assignment(id);
-        Map<ProblemId, StudentWork> byProblem = works.ofAssignment(id);
-        Map<ProblemId, List<LinkedFile>> files = new LinkedHashMap<>();
-        for (StudentWork work : byProblem.values()) {
-            files.put(work.problem(), works.filesOf(work));
-        }
-        model.addAttribute("listed", listed);
-        model.addAttribute("problems", assignments.problemsOf(listed.assignment()));
-        model.addAttribute("works", byProblem);
-        model.addAttribute("files", files);
-        model.addAttribute("verdicts", Verdict.values());
-        model.addAttribute("today", works.today());
-        return "work/assignment";
+        return screen.render(id, model);
     }
 
     private String renderStudent(StudentId id, Model model) {
@@ -222,6 +210,6 @@ public class StudentWorkController {
     }
 
     private static String atAssignment(AssignmentId id) {
-        return "redirect:" + Addresses.WORKS + "?assignment=" + id.value();
+        return AssignmentScreen.redirectTo(id);
     }
 }

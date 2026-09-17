@@ -1,4 +1,4 @@
-package ru.locus.work;
+package ru.locus.mastery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,40 +9,36 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.UserId;
+import ru.locus.work.StudentWorkRepository;
 
 /**
  * Требование «Контроллеры тонкие» (standards.md, «Слои и границы») для
- * Работ — и его усиление владельцем, как у Заданий
- * ({@code AssignmentControllerIsThinTest}).
+ * отметок Владения — и его усиление владельцем, как у Работ
+ * ({@code StudentWorkControllerIsThinTest}).
  *
- * Контроллер не ходит в репозиторий мимо сервиса: пойди он туда — вместе
- * с запросом мимо сервиса ушли бы и проверка роли, и фильтр по владельцу,
- * и укладка файлов с уборкой. Хранилище ему тоже не передаётся: ключ
- * файла в контроллере — путь к постоянному адресу, которого у скана
- * быть не должно (ADR-0021).
+ * Контроллер не ходит в репозиторий мимо сервиса — ни в свой, ни
+ * в репозиторий Работ, из которого сервис читает, принята ли Работа:
+ * пойди он туда — вместе с запросом мимо сервиса ушли бы проверка роли,
+ * фильтр по владельцу и проверка «пара из разметки Задачи», а с ней
+ * и инвариант 4 «ячейка порождается употреблением».
  *
  * Владельца контроллер не знает вовсе (ADR-0027): ни один обработчик
  * не принимает {@link UserId}, и {@link CurrentUser} контроллеру
  * не передаётся.
- *
- * Те же правила — для {@link AssignmentScreen}: он не контроллер,
- * но собирает модель экрана приёма для двух контроллеров, и лазейка
- * к репозиторию в нём была бы лазейкой в обоих.
  */
-class StudentWorkControllerIsThinTest {
+class MasteryControllerIsThinTest {
 
-    private static final List<Class<?>> CONTROLLERS =
-            List.of(StudentWorkController.class, AssignmentScreen.class);
+    private static final List<Class<?>> CONTROLLERS = List.of(MasteryController.class);
 
     private static final List<Class<?>> FORBIDDEN =
-            List.of(StudentWorkRepository.class, ru.locus.file.FileStorage.class, CurrentUser.class);
+            List.of(MasteryRepository.class, StudentWorkRepository.class, CurrentUser.class);
 
     @Test
-    void controllerDoesNotHoldARepositoryStorageOrTheCurrentUser() {
+    void controllerDoesNotHoldARepositoryOrTheCurrentUser() {
         for (Class<?> controller : CONTROLLERS) {
             for (Field field : controller.getDeclaredFields()) {
                 assertThat(FORBIDDEN)
-                        .as("%s: поле %s — ни репозиторий, ни хранилище, ни вошедший",
+                        .as("%s: поле %s — ни репозиторий, ни вошедший",
                                 controller.getSimpleName(), field.getName())
                         .doesNotContain(field.getType());
             }
@@ -50,11 +46,11 @@ class StudentWorkControllerIsThinTest {
     }
 
     @Test
-    void controllerIsNotEvenGivenARepositoryStorageOrTheCurrentUser() {
+    void controllerIsNotEvenGivenARepositoryOrTheCurrentUser() {
         for (Class<?> controller : CONTROLLERS) {
             for (Constructor<?> constructor : controller.getDeclaredConstructors()) {
                 assertThat(constructor.getParameterTypes())
-                        .as("%s: репозиторий, хранилище и CurrentUser контроллеру не передаются",
+                        .as("%s: репозитории и CurrentUser контроллеру не передаются",
                                 controller.getSimpleName())
                         .doesNotContainAnyElementsOf(FORBIDDEN);
             }

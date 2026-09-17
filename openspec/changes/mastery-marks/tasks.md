@@ -145,7 +145,7 @@
 
 ## 6. Экран
 
-- [ ] 6.1 Добавить `Addresses.MASTERY = "/mastery"`. `MasteryController`:
+- [x] 6.1 Добавить `Addresses.MASTERY = "/mastery"`. `MasteryController`:
       `POST /mastery` с `assignment`, `problem`, параллельными списками
       `topic`, `method`, `status` (пустая строка — без изменения) →
       `List<Mark>` по индексу → `MasteryService.mark`; редирект на
