@@ -119,7 +119,7 @@
 
 ## 5. Сервис
 
-- [ ] 5.1 Завести `MasteryService` с `@PreAuthorize("hasRole('TEACHER')")`
+- [x] 5.1 Завести `MasteryService` с `@PreAuthorize("hasRole('TEACHER')")`
       на каждом методе, владелец из `CurrentUser`, зависимости:
       `MasteryRepository`, `AssignmentService`, `StudentWorkRepository`,
       `TaxonomyService` (пути Тем), `SolutionMethodService` (имена Методов).
