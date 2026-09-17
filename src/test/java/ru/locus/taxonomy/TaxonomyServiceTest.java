@@ -342,12 +342,12 @@ class TaxonomyServiceTest extends IntegrationTest {
     }
 
     /**
-     * Сценарий «Отметок нет»: отвечающего по существу сегодня нет, и число
-     * всегда нулевое. Что оно перестанет быть нулевым не молча, стережёт
-     * {@code MasteryRestructureDebtTest}.
+     * Сценарий «Отметок нет»: ноль, пока отметок нет. Что число настоящее
+     * и считает отметки всех Учителей, проверяет
+     * {@code MasteryRestructureTest} — там, где отметки есть.
      */
     @Test
-    void countOfVanishingMarksIsZeroToday() {
+    void countOfVanishingMarksIsZeroWhileThereAreNoMarks() {
         TaxonomyNodeId topic = taxonomy.create(unique("Уравнения"), null);
 
         assertThat(taxonomy.countVanishingMarks(topic)).isZero();

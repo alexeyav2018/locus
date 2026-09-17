@@ -74,7 +74,7 @@
 
 ## 4. Ответы на вопросы дерева, Учеников и словаря
 
-- [ ] 4.1 Завести `MasteryOnNode implements NodeContent` (`@Component`,
+- [x] 4.1 Завести `MasteryOnNode implements NodeContent` (`@Component`,
       зависимость только от `MasteryRepository`): `on` и `requiringTopic` —
       «на Теме стоят отметки Владения (N)»; `moveTopicContent` →
       `rehomeTopic`; `distributeTopicContent` → `deleteByTopic`

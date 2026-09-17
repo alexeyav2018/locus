@@ -287,8 +287,9 @@ public class TaxonomyService {
      * у метода нет, и показать лишнее ему нечем. По той же причине спрашивать
      * может только Администратор: Учителю чужие отметки не видны даже счётом.
      *
-     * <p>Сегодня всегда ноль — отвечающего по существу нет; долг
-     * {@code mastery-marks} сторожит {@code MasteryRestructureDebtTest}.
+     * <p>По существу отвечает {@code mastery-marks}: считаются только
+     * суждения, ячейка «неизвестно» строки не имеет (ADR-0039). Что число
+     * настоящее и по всем Учителям, проверяет {@code MasteryRestructureTest}.
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public int countVanishingMarks(TaxonomyNodeId id) {

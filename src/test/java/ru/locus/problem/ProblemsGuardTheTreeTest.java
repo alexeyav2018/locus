@@ -345,8 +345,10 @@ class ProblemsGuardTheTreeTest extends IntegrationTest {
     }
 
     /**
-     * Исчезающего у Задач нет: они распределяются, а не пропадают. Ответ
-     * по существу придёт с отметками Владения ({@code MasteryRestructureDebtTest}).
+     * Исчезающего у Задач нет: они распределяются, а не пропадают. Ноль
+     * у всех ответчиков — пока отметок нет: по существу отвечают отметки
+     * Владения ({@code MasteryRestructureTest}), а Задача на Теме их
+     * не создаёт.
      */
     @Test
     void problemsCountNothingAsVanishing() {
