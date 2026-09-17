@@ -25,8 +25,14 @@
         и живёт минуты. Открывается в новой вкладке: страница за ней должна
         остаться.
 
-        Отметок Владения здесь пока нет — долг mastery-marks: место им
-        на этом же экране, рядом с вердиктом.
+        Отметки Владения — здесь же, в блоке принятой Работы, после
+        вердикта: ставятся «точечно, в момент проверки» (ADR-0011), и до
+        Работы ячеек нет. Ячейка — пара «Тема × Метод» из разметки Задачи;
+        предзаполнения нет (ADR-0011): текущее значение стоит в подписи,
+        а в списке выбран пункт «без изменения» — сохранение с ним
+        ничего не меняет. Выбранное «неизвестно» — снятие отметки
+        (ADR-0039). Справка «решено N из M» — подсказка, а не основание
+        для автоматической отметки (ADR-0014).
 
         «Не сдано» приходит из сервиса вычисленным (инвариант 12).
     */-->
@@ -34,8 +40,10 @@
         body { max-width: 40rem; margin: 0 auto; padding: 0 0.75rem; }
         form { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; margin: 0 0 1.25rem; }
         form.inline { flex-direction: row; align-items: center; margin: 0; }
-        input, textarea, button { font: inherit; max-width: 100%; box-sizing: border-box; }
-        input[type=date], textarea { padding: 0.35rem; width: 100%; }
+        input, textarea, select, button { font: inherit; max-width: 100%; box-sizing: border-box; }
+        input[type=date], textarea, select { padding: 0.35rem; width: 100%; }
+        .cell { margin: 0.25rem 0; }
+        .cell p { margin: 0 0 0.25rem; }
         textarea { min-height: 3.5rem; }
         button { padding: 0.5rem 0.9rem; }
         .problem { border-top: 1px solid #ccc; padding: 0.75rem 0; }
@@ -110,6 +118,29 @@
                 <textarea name="note" th:text="${work.note}"></textarea>
             </label>
             <button type="submit">Сохранить вердикт</button>
+        </form>
+
+        <!--/* Владение: одна форма на Задачу, по ячейке — скрытые Тема
+               и Метод и список значений; три параллельных списка
+               topic/method/status собираются в отметки по индексу.
+               Текущее значение и справка — в подписи, а не выбраны
+               в списке: выбранное текущее ничего бы не меняло, но читалось
+               бы как предзаполнение (ADR-0011). */-->
+        <h3>Владение</h3>
+        <form method="post" th:action="@{/mastery}">
+            <input type="hidden" name="assignment" th:value="${listed.assignment.id.value}">
+            <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
+            <div class="cell" th:each="cell : ${cells.get(problem.problem.id)}">
+                <p th:text="${cell.topicPath} + ' × ' + ${cell.methodName}">Алгебра / Уравнения × Замена переменной</p>
+                <p class="marks" th:text="'сейчас: ' + ${cell.status.title} + ' · ' + ${cell.hint}">сейчас: неизвестно · решено 2 из 3</p>
+                <input type="hidden" name="topic" th:value="${cell.topic.value}">
+                <input type="hidden" name="method" th:value="${cell.method.value}">
+                <select name="status">
+                    <option value="" selected>без изменения</option>
+                    <option th:each="one : ${statuses}" th:value="${one.name()}" th:text="${one.title}">владеет</option>
+                </select>
+            </div>
+            <button type="submit">Сохранить отметки</button>
         </form>
 
         <form method="post" th:action="@{/works/{id}/deletion(id=${work.id.value})}">

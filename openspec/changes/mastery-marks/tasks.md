@@ -159,7 +159,7 @@
       Контроллеры тонкие. Проверка: `MasteryControllerIsThinTest` по образцу
       `StudentWorkControllerIsThinTest`; `StudentWorkControllerIsThinTest`
       по-прежнему зелёный.
-- [ ] 6.2 Шаблон `templates/work/assignment.html`: в блоке принятой Работы,
+- [x] 6.2 Шаблон `templates/work/assignment.html`: в блоке принятой Работы,
       после формы вердикта, — раздел «Владение» с формой `POST /mastery`:
       по ячейке — подпись «путь Темы × имя Метода», текущее значение
       и справка одной фразой в одном `th:text` («сейчас: неизвестно ·
