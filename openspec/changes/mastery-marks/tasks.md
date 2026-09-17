@@ -95,7 +95,7 @@
       Проверка: `MasteryRestructureTest`, `TaxonomyServiceTest`,
       `ProblemsGuardTheTreeTest`, `TaxonomyKnowsNothingOfProblemsTest`
       зелёные; `MasteryRestructureDebtTest` удалён.
-- [ ] 4.2 Завести `MasteryOfStudent implements StudentUsage` (`@Component`,
+- [x] 4.2 Завести `MasteryOfStudent implements StudentUsage` (`@Component`,
       владелец из `CurrentUser`) — «вынесено суждений (N)». Поправить
       `StudentUsageDebtTest`: третий ответчик пришёл — тест проверяет, что
       `StudentUsage` и `StudentService.refuseUnlessUnused` называют все три
