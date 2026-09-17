@@ -105,7 +105,7 @@
       «суждений (1)»; с Заданием, Работой и отметкой — все три причины;
       после `put(UNKNOWN)` и удаления Задания — удаляется; чужие отметки
       не считаются. Проверка: тесты зелёные.
-- [ ] 4.3 Завести `MasteryOfMethod implements DictionaryUsage` (`@Component`):
+- [x] 4.3 Завести `MasteryOfMethod implements DictionaryUsage` (`@Component`):
       `ofMethod` — «опираются отметки Владения (N)» по `countByMethod`,
       `ofCharacteristic` — пусто с пояснением. Поправить
       `DeletionCheckDebtTest` (`mastery-marks` — ответила) и javadoc

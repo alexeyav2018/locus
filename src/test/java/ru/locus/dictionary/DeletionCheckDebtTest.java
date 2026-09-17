@@ -17,12 +17,14 @@ import org.junit.jupiter.api.Test;
  * а вместе с ним уходит и единственная подсказка о том, что сюда надо
  * вернуться. Поэтому проверяется сам исходный текст.
  *
- * <b>Часть долга погашена.</b> Разметка Задачи пришла с {@code problem-catalog}:
- * условие теперь настоящее, и его срабатывание проверяется отдельно
- * ({@code ProblemsGuardTheDictionariesTest}). Остаётся долг по отметкам
- * Владения — их ячейки опираются на Метод, и {@code mastery-marks} обязан
- * добавить свой ответ. Долг записан и требованием спеки, и карточкой
- * бэклога — здесь третий, самый близкий к коду рубеж.
+ * <b>Долг погашен целиком.</b> Разметка Задачи пришла
+ * с {@code problem-catalog}, отметки Владения — с {@code mastery-marks};
+ * условие настоящее с обеих сторон, и его срабатывание проверяется отдельно
+ * ({@code ProblemsGuardTheDictionariesTest},
+ * {@code MasteryGuardsTheMethodTest}). Тест остаётся: пояснение к методу —
+ * единственная подсказка о том, чем условие обязано быть полным, и убранная
+ * при уборке строка компилируется так же хорошо, как и стоявшая. Проверяется,
+ * что обе работы названы и ни одна не значится должной.
  */
 class DeletionCheckDebtTest {
 
@@ -37,8 +39,11 @@ class DeletionCheckDebtTest {
                 .as("разметка Задачи пришла с problem-catalog — условие названо погашенным")
                 .contains("problem-catalog");
         assertThat(source)
-                .as("ячейки владения опираются на Метод — mastery-marks обязан пополнить условие")
+                .as("ячейки владения опираются на Метод — mastery-marks ответила")
                 .contains("mastery-marks");
+        assertThat(source)
+                .as("ни одна из двух работ не значится должной")
+                .doesNotContain("обязан");
     }
 
     @Test
@@ -53,8 +58,8 @@ class DeletionCheckDebtTest {
 
     /**
      * Условие пополняется ответом на вопрос, а не строкой внутри сервиса:
-     * следующая работа обязана добавить реализацию {@link DictionaryUsage},
-     * ничего в словарях не правя. Исчезни вопрос — и пополнять станет некуда.
+     * обе работы добавили реализацию {@link DictionaryUsage}, ничего
+     * в словарях не правя. Исчезни вопрос — и пополнять станет некуда.
      */
     @Test
     void theCheckAsksTheQuestionInsteadOfKnowingTheAnswerItself() throws IOException {
@@ -63,8 +68,9 @@ class DeletionCheckDebtTest {
                 .contains("DictionaryUsage");
         assertThat(sourceOf(CharacteristicService.class)).contains("DictionaryUsage");
         assertThat(sourceOf(SolutionMethodService.class))
-                .as("словарь не знает области Задач по имени")
-                .doesNotContain("ru.locus.problem");
+                .as("словарь не знает по имени ни области Задач, ни области отметок")
+                .doesNotContain("ru.locus.problem")
+                .doesNotContain("ru.locus.mastery");
     }
 
     private static String sourceOf(Class<?> type) throws IOException {
