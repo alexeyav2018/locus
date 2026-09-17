@@ -182,7 +182,7 @@
 
 ## 7. Изоляция по владельцу
 
-- [ ] 7.1 Тест `MasteryIsFilteredByOwnerTest` через HTTP двумя Учителями
+- [x] 7.1 Тест `MasteryIsFilteredByOwnerTest` через HTTP двумя Учителями
       по образцу `WorksAreFilteredByOwnerTest`: `POST /mastery` Б по Заданию
       А — 404 и отметок А не появилось и не изменилось; оба ставят отметки
       своим Ученикам на одной паре библиотеки — на экране приёма каждый
