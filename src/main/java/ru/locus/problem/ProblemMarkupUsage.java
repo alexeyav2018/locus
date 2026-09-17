@@ -14,9 +14,10 @@ import ru.locus.dictionary.SolutionMethodId;
  * тождественно. Теперь Метод, которым размечена хотя бы одна Задача,
  * и Характеристика, указанная хотя бы у одной, не удаляются.
  *
- * Оставшийся долг словарей — отметки Владения ({@code mastery-marks}): их
- * ячейки опираются на Метод, и они добавят свою реализацию
- * {@link DictionaryUsage}, не трогая ни эту, ни сервисы словарей.
+ * Вторая половина долга — отметки Владения ({@code mastery-marks}): их
+ * ячейки опираются на Метод, и они принесли свою реализацию
+ * {@link DictionaryUsage} ({@code MasteryOfMethod}), не тронув ни эту,
+ * ни сервисы словарей.
  */
 @Component
 public class ProblemMarkupUsage implements DictionaryUsage {

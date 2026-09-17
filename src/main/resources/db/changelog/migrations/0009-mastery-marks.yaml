@@ -1,0 +1,108 @@
+# Отметки Владения — четвёртая область ЛИЧНОГО контура (ADR-0011, ADR-0012,
+# ADR-0039) и смысловое ядро системы: суждение Учителя о своём Ученике
+# на паре «Тема × Метод».
+#
+# Имя выведено из имени класса (openspec/context/glossary.md, «Имена в коде
+# и в базе»): Mastery → mastery.
+#
+# Это ЕДИНСТВЕННАЯ таблица проекта без суррогатного id, и это намеренно:
+# отметку никто не адресует по номеру — ни адрес формы, ни ссылка, ни чужая
+# таблица. Ключ ячейки (владелец, Ученик, Тема, Метод) и есть её имя, поэтому
+# он же — первичный ключ. Он же держит правило «на одной ячейке у одного
+# Учителя отметка одна»; вторая простановка — ON CONFLICT DO UPDATE
+# в репозитории, то есть перезапись без истории (ADR-0012).
+#
+# Колонка user_id — как у Учеников, Заданий и Работ: строка без владельца —
+# это строка, которую увидят все. У репозитория области четыре метода без
+# владельца — вопросы и действия дерева и словаря о СВОЕЙ сущности (Теме,
+# Методе), класс исключений ADR-0036; они перечислены поимённо
+# в OwnerIsRequiredByMasteryTest, а не разрешены общим правилом.
+#
+# В колонке status ТРИ значения — NOT_MASTERED, UNCERTAIN, MASTERED, — а не
+# четыре: «неизвестно» (UNKNOWN) есть ОТСУТСТВИЕ строки, а не значение в ней
+# (ADR-0039). Тот же приём, что «не проверена — это verdict IS NULL» у Работы
+# и «не сдано — не хранится» у Задания: «сюда не ходили» — отсутствие данных,
+# и не должно выглядеть как данные. CHECK на колонку не ставится: единственный
+# вход в таблицу — MasteryRepository.put, который UNKNOWN превращает в DELETE;
+# второго рубежа здесь нет, потому что нет второго входа.
+#
+# С отметки уходят ТРИ ключа, и ни один не каскадный:
+#   - (student_id, user_id) → student(id, user_id) — отметка чужому Ученику
+#     не вставляется и в обход сервиса, как Работа по чужому Заданию;
+#     без каскада — Ученик с суждениями не удаляется (ADR-0035), и база
+#     это подтвердит, если ответчик StudentUsage забудется;
+#   - topic_id → taxonomy_node — Тема с отметками не снимается обычным
+#     удалением; при снятии с распределением отметки уносит ответчик
+#     NodeContent (ADR-0007), а ключ — второй рубеж за ним
+#     (antipatterns.md, «Молчаливое удаление Темы»);
+#   - solution_method_id → solution_method — Метод, на который опираются
+#     отметки, не удаляется; ответчик DictionaryUsage отказывает с числом,
+#     ключ — второй рубеж.
+#
+# «Пара „Тема × Метод“ порождена Задачей» (инвариант 4) ключом не выразить:
+# это соединение двух таблиц разметки, а не одна колонка. Правило ставит
+# сервис: отметка принимается только на паре из разметки Задачи, по которой
+# принята Работа.
+databaseChangeLog:
+  - changeSet:
+      id: 0009-mastery
+      author: locus
+      comment: Отметка Владения — суждение Учителя о своём Ученике на паре «Тема × Метод»; «неизвестно» — отсутствие строки
+      changes:
+        - createTable:
+            tableName: mastery
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: solution_method_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Имя константы MasteryStatus, кроме UNKNOWN: см. шапку файла.
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: mastery
+            columnNames: user_id, student_id, topic_id, solution_method_id
+            constraintName: pk_mastery
+        - addForeignKeyConstraint:
+            baseTableName: mastery
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_mastery_user
+        - addForeignKeyConstraint:
+            baseTableName: mastery
+            baseColumnNames: student_id, user_id
+            referencedTableName: student
+            referencedColumnNames: id, user_id
+            constraintName: fk_mastery_student
+        - addForeignKeyConstraint:
+            baseTableName: mastery
+            baseColumnNames: topic_id
+            referencedTableName: taxonomy_node
+            referencedColumnNames: id
+            constraintName: fk_mastery_node
+        - addForeignKeyConstraint:
+            baseTableName: mastery
+            baseColumnNames: solution_method_id
+            referencedTableName: solution_method
+            referencedColumnNames: id
+            constraintName: fk_mastery_solution_method

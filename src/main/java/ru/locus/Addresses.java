@@ -27,6 +27,7 @@ public final class Addresses {
     public static final String GROUPS = "/groups";
     public static final String ASSIGNMENTS = "/assignments";
     public static final String WORKS = "/works";
+    public static final String MASTERY = "/mastery";
 
     /**
      * Отдача файла по подписанной ссылке. Адрес открыт без входа: пропуск даёт

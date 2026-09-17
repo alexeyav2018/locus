@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -45,9 +45,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 распределение идут через расширенный до действия вопрос `NodeContent`.
 Перестройка двигает и замороженную Задачу
 ([ADR-0034](openspec/context/adr/0034-perestrojka-silnee-zamorozki.md)).
-Число исчезающих отметок Владения показывается перед снятием, но сегодня
-это всегда ноль: перенос и счёт отметок — долг `mastery-marks`,
-подпёртый тестом `MasteryRestructureDebtTest`.
+Число исчезающих отметок Владения показывается перед снятием; перенос
+и счёт отметок пришли позже с `mastery-marks`.
 Затем `students-groups` — первая область личного контура: Ученик (имя
 и владелец, без учётной записи — сторожит `StudentIsNotAUserTest`) и Группа
 (именованный список Учеников того же Учителя, имя неповторимо у одного
@@ -57,8 +56,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 (`StudentsAreFilteredByOwnerTest`). Ученик удаляется, пока на него ничего
 не ссылается, Группа — в любой момент
 ([ADR-0035](openspec/context/adr/0035-udalenie-uchenika-i-gruppy.md));
-вопрос `StudentUsage` обязаны реализовать `assignments` и `submission-review`
-(оба отвечают) и `mastery-marks` — долг сторожит `StudentUsageDebtTest`.
+на вопрос `StudentUsage` отвечают `assignments`, `submission-review`
+и `mastery-marks` — что все три названы, сторожит `StudentUsageDebtTest`.
 Затем `assignments` — вторая область личного контура и первая, ссылающаяся
 на библиотеку: Задание (набор Задач одному Ученику со сроком и охватом
 теории `TheoryScope`) и Раздача (одно действие выдачи Группе; помнит
@@ -97,14 +96,34 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 (`WorksOfStudent`); отказ в удалении Ученика теперь называет все причины
 разом.
 
-Отметок владения по-прежнему нет.
+Затем `mastery-marks` — четвёртая область личного контура и смысловое
+ядро: отметка Владения (`Mastery`) — суждение Учителя о своём Ученике
+на паре «Тема × Метод», значение из шкалы `MasteryStatus`. Хранится
+только текущее значение и только с суждением: `неизвестно` — отсутствие
+строки, простановка `неизвестно` строку удаляет; при углублении Темы
+отметки переезжают на приёмник и сливаются по ADR-0013, если ячейка
+занята; справка «решено N из M» считает только проверенные Работы
+([ADR-0039](openspec/context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
+Ставятся на экране приёма `/works?assignment=` по принятой Работе —
+ячейки-кандидаты «Темы Задачи × её Методы», выборочно, без
+предзаполнения, `POST /mastery`; вердикт на отметки не влияет, Работа
+удаляется — отметка остаётся. `MasteryRepository` — с `UserId` всюду,
+кроме четырёх методов класса ADR-0036 (`countByTopic`, `countByMethod`,
+`rehomeTopic`, `deleteByTopic`), перечисленных поимённо
+в `OwnerIsRequiredByMasteryTest`; изоляция — `MasteryIsFilteredByOwnerTest`.
+Погашены три долга: дерево (`MasteryOnNode implements NodeContent` —
+переезд, исчезновение, настоящий счёт; `MasteryRestructureTest`),
+Ученики (`MasteryOfStudent implements StudentUsage` — «вынесено
+суждений (N)») и словарь (`MasteryOfMethod implements DictionaryUsage` —
+Метод с отметками не удаляется; `MasteryGuardsTheMethodTest`).
+Распределений, перечня пробелов и подбора по ним нет — это `mastery-views`.
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока одиннадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока двенадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
-`library-search`, `theory-materials`, `students-groups`, `assignments`
-и `submission-review`.
+`library-search`, `theory-materials`, `students-groups`, `assignments`,
+`submission-review` и `mastery-marks`.
 
 ### Первый вход
 
@@ -194,6 +213,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Вопросы библиотеки к личным контурам отвечаются без фильтра по владельцу — классом с тремя границами, методы перечислены поимённо ([ADR-0036](openspec/context/adr/0036-voprosy-biblioteki-bez-vladelca.md)).
 - Задание после выдачи не правится, кроме срока, и удаляется, пока по нему нет Работы ([ADR-0037](openspec/context/adr/0037-zadanie-neizmenno-posle-vydachi.md)).
 - Работа одна на пару «Задание × Задача», принимается до вердикта и удаляется в любой момент ([ADR-0038](openspec/context/adr/0038-rabota-odna-na-paru-i-udalyaetsya-svobodno.md)).
+- Отметка хранится только с суждением — «неизвестно» есть отсутствие строки; при переезде на приёмник отметки сливаются по ADR-0013; справка считает только проверенные Работы ([ADR-0039](openspec/context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
 
 ## Процесс: OpenSpec
 

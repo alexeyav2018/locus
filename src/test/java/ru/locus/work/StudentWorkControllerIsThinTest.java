@@ -24,10 +24,15 @@ import ru.locus.user.UserId;
  * Владельца контроллер не знает вовсе (ADR-0027): ни один обработчик
  * не принимает {@link UserId}, и {@link CurrentUser} контроллеру
  * не передаётся.
+ *
+ * Те же правила — для {@link AssignmentScreen}: он не контроллер,
+ * но собирает модель экрана приёма для двух контроллеров, и лазейка
+ * к репозиторию в нём была бы лазейкой в обоих.
  */
 class StudentWorkControllerIsThinTest {
 
-    private static final List<Class<?>> CONTROLLERS = List.of(StudentWorkController.class);
+    private static final List<Class<?>> CONTROLLERS =
+            List.of(StudentWorkController.class, AssignmentScreen.class);
 
     private static final List<Class<?>> FORBIDDEN =
             List.of(StudentWorkRepository.class, ru.locus.file.FileStorage.class, CurrentUser.class);
