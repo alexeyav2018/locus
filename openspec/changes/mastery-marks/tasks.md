@@ -34,7 +34,7 @@
 
 ## 3. Репозиторий
 
-- [ ] 3.1 Завести `MasteryRepository` на `JdbcClient` по `design.md`,
+- [x] 3.1 Завести `MasteryRepository` на `JdbcClient` по `design.md`,
       «Репозиторий»: `put(UserId, StudentId, TaxonomyNodeId,
       SolutionMethodId, MasteryStatus)` — `INSERT … ON CONFLICT
       (user_id, student_id, topic_id, solution_method_id) DO UPDATE SET
@@ -52,14 +52,14 @@
       считают обоих владельцев; `rehomeTopic`: переезд на пустой приёмник,
       слияние совпавших (остаётся одна), слияние разошедшихся (`UNCERTAIN`),
       смесь — в одном вызове; `deleteByTopic` не трогает соседние Темы.
-- [ ] 3.2 Тест `OwnerIsRequiredByMasteryTest` по образцу
+- [x] 3.2 Тест `OwnerIsRequiredByMasteryTest` по образцу
       `OwnerIsRequiredByAssignmentsTest`: у каждого публичного метода
       `MasteryRepository` среди параметров есть `UserId`, кроме четырёх
       перечисленных поимённо с причиной (`countByTopic`, `countByMethod`,
       `rehomeTopic`, `deleteByTopic` — вопросы и действия дерева и словаря
       о своей сущности, ADR-0036); в таблице `mastery` есть `user_id`.
       Проверка: тест зелёный.
-- [ ] 3.3 В `StudentWorkRepository` — `countCheckedByPairs(UserId, StudentId)
+- [x] 3.3 В `StudentWorkRepository` — `countCheckedByPairs(UserId, StudentId)
       → Map<Cell, Solved>` (`Solved(int correct, int checked)` в `work`;
       ключ — пара `(topic_id, solution_method_id)`), одним запросом:
       `student_work ⋈ assignment (student_id, user_id) ⋈ problem_topic ⋈

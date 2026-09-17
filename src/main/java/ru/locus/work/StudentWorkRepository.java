@@ -15,9 +15,11 @@ import java.util.Set;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import ru.locus.assignment.AssignmentId;
+import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.file.FileKey;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
+import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.UserId;
 
 /**
@@ -43,8 +45,9 @@ import ru.locus.user.UserId;
  * превращает её в отказ с текстом. Здесь все три ограничения —
  * последний рубеж, а не способ проверки (design.md, «Схема»).
  *
- * Ученика в таблице нет — он у Задания; {@link #findByStudent}
- * и {@link #countByStudent} идут соединением с {@code assignment}.
+ * Ученика в таблице нет — он у Задания; {@link #findByStudent},
+ * {@link #countByStudent} и {@link #countCheckedByPairs} идут соединением
+ * с {@code assignment}.
  * Колонки «проверена» нет: «не проверена» — это {@code verdict IS NULL}.
  *
  * Правил и проверок прав репозиторий не содержит: их ставит
@@ -225,6 +228,42 @@ public class StudentWorkRepository {
                 .params(owner.value(), student.value())
                 .query(Integer.class)
                 .single();
+    }
+
+    /**
+     * Справка «решено N из M» по каждой паре «Тема × Метод», на которой
+     * у Ученика владельца есть хотя бы одна ПРОВЕРЕННАЯ Работа, — одним
+     * запросом на всего Ученика, а не по ячейке: экран приёма показывает
+     * справку у каждой ячейки каждой Задачи с Работой.
+     *
+     * Пара берётся из разметки Задачи, по которой Работа: Работа с Задачей
+     * на двух Темах и двух Методах считается на всех четырёх парах. Пары
+     * без проверенных Работ в карте нет; непроверенные Работы
+     * ({@code verdict IS NULL}) не считаются вовсе — до вердикта Работа
+     * о владении не говорит ничего (ADR-0038). Чужой Ученик — пустая карта.
+     */
+    public Map<ProblemPair, Solved> countCheckedByPairs(UserId owner, StudentId student) {
+        Map<ProblemPair, Solved> solved = new LinkedHashMap<>();
+        database.sql("""
+                        select pt.topic_id, pm.solution_method_id,
+                               count(*) filter (where w.verdict = ?) as correct,
+                               count(*) as checked
+                        from student_work w
+                        join assignment a on a.id = w.assignment_id and a.user_id = w.user_id
+                        join problem_topic pt on pt.problem_id = w.problem_id
+                        join problem_solution_method pm on pm.problem_id = w.problem_id
+                        where w.user_id = ? and a.student_id = ? and w.verdict is not null
+                        group by pt.topic_id, pm.solution_method_id
+                        order by pt.topic_id, pm.solution_method_id
+                        """)
+                .params(Verdict.CORRECT.name(), owner.value(), student.value())
+                .query((rs, rowNum) -> Map.entry(
+                        new ProblemPair(new TaxonomyNodeId(rs.getLong("topic_id")),
+                                new SolutionMethodId(rs.getLong("solution_method_id"))),
+                        new Solved(rs.getInt("correct"), rs.getInt("checked"))))
+                .list()
+                .forEach(entry -> solved.put(entry.getKey(), entry.getValue()));
+        return solved;
     }
 
     private void insertFiles(UserId owner, long work, List<FileKey> files, int firstPosition) {

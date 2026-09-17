@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,9 @@ import ru.locus.TestLibrary;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.assignment.AssignmentRepository;
 import ru.locus.assignment.TheoryScope;
+import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.file.FileKey;
+import ru.locus.problem.ExamPart;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.student.StudentRepository;
@@ -275,6 +278,58 @@ class StudentWorkRepositoryTest extends IntegrationTest {
 
         assertThat(works.countByStudent(alice, student)).isEqualTo(2);
         assertThat(works.countByStudent(bob, student)).as("чужой Ученик — ноль").isZero();
+    }
+
+    /**
+     * Справка по паре считает только проверенные Работы Ученика владельца:
+     * три проверенные (две верно) и одна непроверенная дают «2 из 3».
+     * Пара, по которой Работ нет, в карте отсутствует — это не «0 из 0»,
+     * а отсутствие данных.
+     */
+    @Test
+    void checkedWorksAreCountedByPairForTheOwnersStudentOnly() {
+        StudentId student = students.create(alice, unique("Иванов Пётр"));
+        SolutionMethodId method = library.method();
+        List<ProblemId> problems = java.util.stream.IntStream.range(0, 4)
+                .mapToObj(i -> library.problem(topic, method))
+                .toList();
+        AssignmentId assignment = assignments.create(alice, student, null, ISSUED, ISSUED.plusDays(7),
+                TheoryScope.NONE, problems);
+        Issued sameOwnerOtherStudent = issue(alice, 1);
+        Issued otherOwner = issue(bob, 1);
+        works.create(alice, assignment, problems.get(0), RECEIVED, Verdict.CORRECT, "", List.of(key("jpg")));
+        works.create(alice, assignment, problems.get(1), RECEIVED, Verdict.CORRECT, "", List.of(key("jpg")));
+        works.create(alice, assignment, problems.get(2), RECEIVED, Verdict.INCORRECT, "", List.of(key("jpg")));
+        works.create(alice, assignment, problems.get(3), RECEIVED, null, "", List.of(key("jpg")));
+        works.create(alice, sameOwnerOtherStudent.assignment(), sameOwnerOtherStudent.problems().get(0), RECEIVED,
+                Verdict.CORRECT, "", List.of(key("jpg")));
+        works.create(bob, otherOwner.assignment(), otherOwner.problems().get(0), RECEIVED,
+                Verdict.CORRECT, "", List.of(key("jpg")));
+
+        Map<ProblemPair, Solved> solved = works.countCheckedByPairs(alice, student);
+
+        assertThat(solved).containsExactly(Map.entry(new ProblemPair(topic, method), new Solved(2, 3)));
+        assertThat(works.countCheckedByPairs(bob, student)).as("чужой Ученик — пусто").isEmpty();
+    }
+
+    /** Работа по Задаче на двух Темах и двух Методах — на всех четырёх парах. */
+    @Test
+    void aWorkOnAMultiplyMarkedProblemCountsOnEveryPair() {
+        StudentId student = students.create(alice, unique("Иванов Пётр"));
+        TaxonomyNodeId otherTopic = library.topic();
+        SolutionMethodId method = library.method();
+        SolutionMethodId otherMethod = library.method();
+        ProblemId problem = library.problem(List.of(topic, otherTopic), List.of(method, otherMethod), List.of(),
+                ExamPart.SECOND);
+        AssignmentId assignment = assignments.create(alice, student, null, ISSUED, ISSUED.plusDays(7),
+                TheoryScope.NONE, List.of(problem));
+        works.create(alice, assignment, problem, RECEIVED, Verdict.INCORRECT, "", List.of(key("jpg")));
+
+        assertThat(works.countCheckedByPairs(alice, student)).containsOnly(
+                Map.entry(new ProblemPair(topic, method), new Solved(0, 1)),
+                Map.entry(new ProblemPair(topic, otherMethod), new Solved(0, 1)),
+                Map.entry(new ProblemPair(otherTopic, method), new Solved(0, 1)),
+                Map.entry(new ProblemPair(otherTopic, otherMethod), new Solved(0, 1)));
     }
 
     private Issued issue(UserId owner, int problemCount) {
