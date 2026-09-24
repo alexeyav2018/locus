@@ -66,13 +66,13 @@
 
 ## 3. Экран
 
-- [ ] 3.1 В `MasteryController` — `GET /mastery` с `@RequestParam(required
+- [x] 3.1 В `MasteryController` — `GET /mastery` с `@RequestParam(required
       = false) Long student`: без параметра — `redirect:/students`;
       с параметром — `mastery.overviewOf` в модель как `overview`, шаблон
       `mastery/student`. `StudentNotFoundException` не перехватывать.
       Javadoc контроллера обновить: у области появился экран чтения.
       Проверка: `MasteryControllerIsThinTest` по-прежнему зелёный.
-- [ ] 3.2 Шаблон `templates/mastery/student.html`: заголовок «Владение —
+- [x] 3.2 Шаблон `templates/mastery/student.html`: заголовок «Владение —
       <имя Ученика>»; дерево целиком вложенными `<ul>` через
       `th:fragment`, у каждого узла — имя и либо четыре числа
       («владеет N · владеет неуверенно N · не владеет N · неизвестно N»),
@@ -89,7 +89,7 @@
       на странице нет `<form` и `<select`; у пробела ссылка
       `/problems?node=T&method=M`, и по ней в результатах — Задача,
       размеченная T и M; `GET /mastery` без параметра ведёт на `/students`.
-- [ ] 3.3 В `templates/student/student.html` — ссылка «Владение Ученика»
+- [x] 3.3 В `templates/student/student.html` — ссылка «Владение Ученика»
       на `@{/mastery(student=${student.id.value})}` рядом с Заданиями
       и Работами; комментарий шаблона дополнить. Проверка:
       `MasteryOverviewScreenTest` — на карточке Ученика есть ссылка
