@@ -36,7 +36,9 @@ import ru.locus.work.StudentWorkRepository;
  * Вторая половина: два Учителя ставят отметки своим Ученикам на одной
  * и той же паре «Тема × Метод» библиотеки, и каждый видит на экране
  * приёма только свою — пара общая, отметки личные, и фильтр по владельцу
- * лёг ровно на отметки.
+ * лёг ровно на отметки. Та же граница проверена и на экране Владения
+ * (`mastery-views`): чужой Ученик — 404, а «не владеет» на одной паре
+ * у обоих даёт каждому свой, отдельный пробел.
  *
  * Сторона ADR-0036 — что вопросы дерева и словаря считают отметки
  * обоих Учителей без фильтра — проверена в {@link MasteryRestructureTest}
@@ -118,6 +120,14 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
         assertThat(marks.countByStudent(bob.id(), alicesStudent)).isZero();
     }
 
+    /** Экран Владения чужого Ученика — 404, как несуществующий. */
+    @Test
+    void theScreenOfAnotherTeachersStudentIsNotFound() {
+        Browser.Page page = bobsBrowser.get("/mastery?student=" + alicesStudent.value());
+
+        assertThat(page.status()).isEqualTo(404);
+    }
+
     /** Обратная половина: одна пара библиотеки, две отметки у двух Учителей, каждый видит свою. */
     @Test
     void twoTeachersMarkTheSamePairAndEachSeesOnlyTheirOwn() {
@@ -142,6 +152,23 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
                 .containsExactly(Map.entry(new Cell(topic, method), MasteryStatus.NOT_MASTERED));
         assertThat(marks.findByStudent(bob.id(), alicesStudent)).as("Б не видит отметок Ученика А").isEmpty();
         assertThat(marks.countByTopic(topic)).as("вопрос дерева — без владельца (ADR-0036)").isEqualTo(2);
+    }
+
+    /** Оба поставили «не владеет» на одной паре — у каждого на экране Владения один пробел, свой. */
+    @Test
+    void twoTeachersMarkNotMasteredOnTheSamePairAndEachSeesOnlyTheirOwnGap() {
+        StudentId bobsStudent = students.create(bob.id(), TestLibrary.unique("Сидорова Анна"));
+        AssignmentId bobsAssignment = issue(bob, bobsStudent);
+        receive(bob, bobsAssignment);
+        Browser alicesBrowser = loggedIn(alice);
+        alicesBrowser.postForm("/mastery", form(alicesAssignment, "NOT_MASTERED"));
+        bobsBrowser.postForm("/mastery", form(bobsAssignment, "NOT_MASTERED"));
+
+        String alicesScreen = alicesBrowser.get("/mastery?student=" + alicesStudent.value()).body();
+        String bobsScreen = bobsBrowser.get("/mastery?student=" + bobsStudent.value()).body();
+
+        assertThat(alicesScreen).as("у А один пробел").containsOnlyOnce("Подобрать задачи");
+        assertThat(bobsScreen).as("и у Б один пробел, свой").containsOnlyOnce("Подобрать задачи");
     }
 
     private AssignmentId issue(TestAccounts.Account owner, StudentId student) {

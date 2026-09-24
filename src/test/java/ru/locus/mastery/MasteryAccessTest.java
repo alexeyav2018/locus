@@ -28,11 +28,14 @@ import ru.locus.work.StudentWorkRepository;
 
 /**
  * Задача 6.3: простановка отметок Владения доступна только роли Учителя.
+ * `mastery-views` добавила второй вход — {@code GET /mastery?student=},
+ * экран Владения Ученика, — и проверяется здесь той же тройкой.
  *
  * Как у Работ ({@code StudentWorkAccessTest}): Администратор без роли
  * Учителя получает 403 по прямому адресу, и ни одной отметки
  * не появляется; невошедший — форму входа; Учитель — переадресацию
- * на экран приёма. Обстановка — через репозитории от имени Учителя.
+ * на экран приёма (для простановки) или сам экран (для чтения).
+ * Обстановка — через репозитории от имени Учителя.
  */
 class MasteryAccessTest extends IntegrationTest {
 
@@ -87,6 +90,14 @@ class MasteryAccessTest extends IntegrationTest {
         assertThat(marks.countByStudent(owner.id(), student)).as("ни одной отметки").isZero();
     }
 
+    /** Тот же Администратор: экран Владения тоже недоступен. */
+    @Test
+    void administratorWithoutTeacherRoleIsRefusedTheScreen() {
+        Browser administrator = loggedIn(Role.ADMINISTRATOR);
+
+        assertThat(administrator.get("/mastery?student=" + student.value()).status()).isEqualTo(403);
+    }
+
     /** Учитель к простановке допущен: ответ — переадресация на экран приёма. */
     @Test
     void teacherIsAdmitted() {
@@ -99,6 +110,15 @@ class MasteryAccessTest extends IntegrationTest {
         assertThat(marks.countByStudent(owner.id(), student)).isEqualTo(1);
     }
 
+    /** Учитель допущен и к экрану Владения. */
+    @Test
+    void teacherIsAdmittedToTheScreen() {
+        Browser teacher = new Browser(port);
+        teacher.logIn(owner.login(), owner.password());
+
+        assertThat(teacher.get("/mastery?student=" + student.value()).status()).isEqualTo(200);
+    }
+
     /** Без входа — форма входа, и ничего не записано. */
     @Test
     void withoutLoginThePostLeadsToTheLoginForm() {
@@ -108,6 +128,16 @@ class MasteryAccessTest extends IntegrationTest {
 
         assertThat(page.redirectsTo("/login")).isTrue();
         assertThat(marks.countByStudent(owner.id(), student)).isZero();
+    }
+
+    /** Без входа экран Владения тоже ведёт на форму входа. */
+    @Test
+    void withoutLoginTheScreenLeadsToTheLoginForm() {
+        Browser visitor = new Browser(port);
+
+        Browser.Page page = visitor.get("/mastery?student=" + student.value());
+
+        assertThat(page.redirectsTo("/login")).isTrue();
     }
 
     private List<Map.Entry<String, String>> form(String status) {
