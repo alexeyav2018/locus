@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Владение — Locus</title>
+    <!--/*
+        Экран Владения одного Ученика — только чтение (ADR-0011): суждение
+        ставит человек на экране приёма Работы, здесь — ни одной формы.
+        У каждого узла с ячейками — все четыре числа распределения; узел
+        без ячеек в своём поддереве показывает «ячеек нет», а не
+        скрывается. Единого значения владения нет и не будет (ADR-0013):
+        доли, балла или одного статуса на узел, Раздел или Метод здесь
+        не появится, только четыре числа рядом.
+    */-->
+</head>
+<body>
+<h1 th:text="'Владение — ' + ${overview.student.name}">Владение — Иванов Пётр</h1>
+
+<h2>Дерево</h2>
+<ul th:replace="~{mastery/student :: branches(${overview.tree})}"></ul>
+
+<h2>По Методу</h2>
+<p th:if="${#lists.isEmpty(overview.methods)}">Методов с ячейками нет.</p>
+<table th:unless="${#lists.isEmpty(overview.methods)}">
+    <tr th:each="row : ${overview.methods}">
+        <td th:text="${row.method.name}">Замена переменной</td>
+        <td th:text="${#strings.concat('владеет ', row.distribution.mastered,
+                       ' · владеет неуверенно ', row.distribution.uncertain,
+                       ' · не владеет ', row.distribution.notMastered,
+                       ' · неизвестно ', row.distribution.unknown)}">владеет 1 · владеет неуверенно 0 · не владеет 1 · неизвестно 2</td>
+    </tr>
+</table>
+
+<h2>Пробелы</h2>
+<p th:if="${#lists.isEmpty(overview.gaps)}">Пробелов нет.</p>
+<ul th:unless="${#lists.isEmpty(overview.gaps)}">
+    <li th:each="gap : ${overview.gaps}">
+        <span th:text="${gap.topicPath} + ' — ' + ${gap.methodName}">Алгебра / Уравнения — Замена переменной</span>
+        <a th:href="@{/problems(node=${gap.topic.value}, method=${gap.method.value})}">Подобрать задачи</a>
+    </li>
+</ul>
+
+<p><a th:href="@{/students/{id}(id=${overview.student.id.value})}">К карточке Ученика</a></p>
+<p><a th:href="@{/students}">К списку Учеников</a></p>
+
+<ul th:fragment="branches(branches)">
+    <li th:each="branch : ${branches}">
+        <span th:text="${branch.node.name}">Алгебра</span>
+        <span th:if="${branch.distribution.cells() == 0}">ячеек нет</span>
+        <span th:unless="${branch.distribution.cells() == 0}"
+              th:text="${#strings.concat('владеет ', branch.distribution.mastered,
+                         ' · владеет неуверенно ', branch.distribution.uncertain,
+                         ' · не владеет ', branch.distribution.notMastered,
+                         ' · неизвестно ', branch.distribution.unknown)}">владеет 1 · владеет неуверенно 0 · не владеет 1 · неизвестно 2</span>
+        <ul th:if="${!#lists.isEmpty(branch.children)}" th:replace="~{mastery/student :: branches(${branch.children})}"></ul>
+    </li>
+</ul>
+
+</body>
+</html>

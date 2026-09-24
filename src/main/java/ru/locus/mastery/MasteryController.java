@@ -5,17 +5,20 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.problem.ProblemId;
+import ru.locus.student.StudentId;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.work.AssignmentScreen;
 
 /**
- * Простановка отметок Владения с экрана приёма Работ (С5, ADR-0011).
+ * Простановка отметок Владения с экрана приёма Работ (С5, ADR-0011)
+ * и экран Владения одного Ученика (`mastery-views`).
  *
  * Своего экрана у отметок нет: ячейки показывает экран приёма
  * ({@link AssignmentScreen}), а сюда приходит только форма одной Задачи —
@@ -36,6 +39,12 @@ import ru.locus.work.AssignmentScreen;
  * ({@link IllegalArgumentException}) показывается текстом на экране
  * приёма того же Задания, как отказы форм Работ. Чужое Задание — 404
  * от сервиса, здесь не перехватывается.
+ *
+ * {@code GET /mastery?student=} — второй, независимый вход: экран
+ * Владения одного Ученика целиком ({@link MasteryService#overviewOf}).
+ * Без параметра — к сводке Учеников, вход идёт от Ученика, как в Работы —
+ * от Задания. Чужой Ученик — {@link ru.locus.student.StudentNotFoundException}
+ * от сервиса, здесь не перехватывается.
  */
 @Controller
 public class MasteryController {
@@ -46,6 +55,15 @@ public class MasteryController {
     public MasteryController(MasteryService mastery, AssignmentScreen screen) {
         this.mastery = mastery;
         this.screen = screen;
+    }
+
+    @GetMapping(Addresses.MASTERY)
+    public String overview(@RequestParam(required = false) Long student, Model model) {
+        if (student == null) {
+            return "redirect:" + Addresses.STUDENTS;
+        }
+        model.addAttribute("overview", mastery.overviewOf(new StudentId(student)));
+        return "mastery/student";
     }
 
     @PostMapping(Addresses.MASTERY)

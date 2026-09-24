@@ -11,6 +11,9 @@
         Удаление отказывает, пока на Ученика что-нибудь ссылается
         (ADR-0035) — его Задания и Работы. Сообщение об отказе
         показывается здесь же.
+
+        Ссылки на Задания, Работы и Владение — только адреса: область
+        Учеников в коде не знает ни одной из этих областей (mastery-views).
     */-->
     <style>
         form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
@@ -35,6 +38,7 @@
        сводка сама отберёт по Ученику. */-->
 <p><a th:href="@{/assignments(student=${student.id.value})}">Задания Ученика</a></p>
 <p><a th:href="@{/works(student=${student.id.value})}">Работы Ученика</a></p>
+<p><a th:href="@{/mastery(student=${student.id.value})}">Владение Ученика</a></p>
 
 <h2>Действия</h2>
 <form method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
