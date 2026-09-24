@@ -284,6 +284,35 @@ public class ProblemRepository {
                 .list();
     }
 
+
+    /**
+     * Пары «Тема × Метод», порождённые разметкой Задач всего каталога, —
+     * ячейки экрана Владения (инвариант 4: не декартово произведение
+     * словарей). Один запрос на весь рубрикатор, а не {@link
+     * #findMethodsUsedInTopic} по каждой Теме дерева: у экрана Владения
+     * все Темы сразу, и N запросов на N Тем — лишнее.
+     *
+     * Порядок задаётся самим {@code order by}: строки идут по Теме,
+     * внутри Темы — по Методу, и группировка в {@link LinkedHashMap}
+     * его сохраняет.
+     */
+    public Map<TaxonomyNodeId, List<SolutionMethodId>> findMethodsUsedByTopic() {
+        Map<TaxonomyNodeId, List<SolutionMethodId>> byTopic = new LinkedHashMap<>();
+        database.sql("""
+                        select distinct pt.topic_id, psm.solution_method_id
+                        from problem_topic pt
+                        join problem_solution_method psm on psm.problem_id = pt.problem_id
+                        order by pt.topic_id, psm.solution_method_id
+                        """)
+                .query((rs, rowNum) -> Map.entry(
+                        new TaxonomyNodeId(rs.getLong("topic_id")),
+                        new SolutionMethodId(rs.getLong("solution_method_id"))))
+                .list()
+                .forEach(entry -> byTopic.computeIfAbsent(entry.getKey(), key -> new ArrayList<>())
+                        .add(entry.getValue()));
+        return byTopic;
+    }
+
     /** Сколько Задач размечено этой Темой — для проверок дерева. */
     public int countByTopic(TaxonomyNodeId topic) {
         return database.sql("select count(*) from problem_topic where topic_id = ?")

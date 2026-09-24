@@ -210,6 +210,16 @@ public class ProblemService {
         return problems.findMethodsUsedInTopic(topic);
     }
 
+
+    /**
+     * Пары «Тема × Метод», порождённые разметкой Задач всего каталога, —
+     * ячейки экрана Владения. Библиотечное чтение, владельца не принимает
+     * (ADR-0027).
+     */
+    public Map<TaxonomyNodeId, List<SolutionMethodId>> findMethodsUsedByTopic() {
+        return problems.findMethodsUsedByTopic();
+    }
+
     /**
      * Временная подписанная ссылка на PDF условия.
      *

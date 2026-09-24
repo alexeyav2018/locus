@@ -1,6 +1,6 @@
 ## 1. Вопрос библиотеки и распределение
 
-- [ ] 1.1 В `ProblemRepository` — `findMethodsUsedByTopic() →
+- [x] 1.1 В `ProblemRepository` — `findMethodsUsedByTopic() →
       Map<TaxonomyNodeId, List<SolutionMethodId>>` одним запросом
       `select distinct pt.topic_id, psm.solution_method_id from problem_topic pt
       join problem_solution_method psm on psm.problem_id = pt.problem_id`,
@@ -12,7 +12,7 @@
       Проверка: `ProblemRepositoryTest` — две Задачи на одной Теме с двумя
       и одним Методом дают у Темы два Метода без повторов; Тема без Задач
       в карте отсутствует; Задача с двумя Темами даёт пару каждой.
-- [ ] 1.2 Завести в `ru.locus.mastery` запись `Distribution(int mastered,
+- [x] 1.2 Завести в `ru.locus.mastery` запись `Distribution(int mastered,
       int uncertain, int notMastered, int unknown)` по `design.md`,
       «`Distribution`»: конструктор отвергает отрицательные; `plus(Distribution)`;
       `cells()` — сумма четырёх; `static of(Collection<MasteryStatus>)` —
@@ -22,7 +22,7 @@
       `of` из семи `MASTERED` и одного `NOT_MASTERED` даёт `(7,0,1,0)`,
       из одного и семи — `(1,0,7,0)`, и они не равны; `plus` складывает
       покомпонентно; `empty().cells() == 0`.
-- [ ] 1.3 Тест `NoSingleMasteryValueTest` отражением: у `Distribution`
+- [x] 1.3 Тест `NoSingleMasteryValueTest` отражением: у `Distribution`
       нет ни одного метода с возвращаемым типом `MasteryStatus`, `double`,
       `float`, `BigDecimal`; javadoc теста — признак готовности карточки
       «нигде нет единого значения владения». Проверка: тест зелёный.

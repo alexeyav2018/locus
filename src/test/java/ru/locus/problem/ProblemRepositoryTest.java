@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -201,6 +202,46 @@ class ProblemRepositoryTest extends IntegrationTest {
     @Test
     void topicWithoutProblemsUsesNoMethods() {
         assertThat(problems.findMethodsUsedInTopic(library.topic())).isEmpty();
+    }
+
+
+    /** Сценарий «Методы Темы карты» — по образцу {@link #findMethodsUsedByTopic()}. */
+    @Test
+    void methodsUsedByTopicGroupTwoProblemsOfOneTopicWithoutRepetition() {
+        TaxonomyNodeId topic = library.topic();
+        SolutionMethodId shared = library.method();
+        SolutionMethodId second = library.method();
+        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(topic), List.of(shared, second), List.of());
+        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(topic), List.of(shared), List.of());
+
+        assertThat(problems.findMethodsUsedByTopic().get(topic))
+                .as("общий Метод один раз, хотя употреблён дважды")
+                .containsExactlyInAnyOrder(shared, second);
+    }
+
+    /** Сценарий «Тема без Задач в карте отсутствует». */
+    @Test
+    void methodsUsedByTopicOmitsATopicWithoutProblems() {
+        TaxonomyNodeId topic = library.topic();
+
+        assertThat(problems.findMethodsUsedByTopic()).doesNotContainKey(topic);
+    }
+
+    /** Сценарий «Задача с двумя Темами даёт пару каждой». */
+    @Test
+    void methodsUsedByTopicGivesAPairToEachTopicOfAProblem() {
+        TaxonomyNodeId first = library.topic();
+        TaxonomyNodeId second = library.topic();
+        SolutionMethodId method = library.method();
+        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                List.of(first, second), List.of(method), List.of());
+
+        Map<TaxonomyNodeId, List<SolutionMethodId>> byTopic = problems.findMethodsUsedByTopic();
+
+        assertThat(byTopic.get(first)).containsExactly(method);
+        assertThat(byTopic.get(second)).containsExactly(method);
     }
 
     /** Сценарий «Метод из другой Темы». */
