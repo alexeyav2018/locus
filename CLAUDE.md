@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения, экран Владения
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -116,14 +116,27 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 Ученики (`MasteryOfStudent implements StudentUsage` — «вынесено
 суждений (N)») и словарь (`MasteryOfMethod implements DictionaryUsage` —
 Метод с отметками не удаляется; `MasteryGuardsTheMethodTest`).
-Распределений, перечня пробелов и подбора по ним нет — это `mastery-views`.
+
+Затем `mastery-views` — пятая и последняя работа личного контура редакции 1
+стратегии: экран `/mastery` показывает состояние Ученика — распределения
+по четырём статусам (`Distribution`) по Теме, по Разделу (складываются
+по поддереву) и по Методу (складываются сквозь Темы), и перечень пробелов
+(ячейки со статусом «не владеет») со ссылкой в существующий поиск библиотеки
+как подбором задач под пробел. Ячейки-кандидаты — Методы из разметки Задач
+Темы, объединённые с Методами уже стоящих отметок; узел без ячеек показывает
+это явно, а не нулевое распределение. Единого числового значения владения
+по-прежнему нет нигде — только распределения ([ADR-0013](openspec/context/adr/0013-agregaciya-raspredelenie.md)),
+что проверяет `NoSingleMasteryValueTest`. Экран только читает: ни одной формы
+на нём нет ([ADR-0011](openspec/context/adr/0011-otmetka-na-pare.md)). Вопрос
+библиотеки `findMethodsUsedByTopic` — без владельца, классом ADR-0036, как
+и остальные вопросы к общей библиотеке.
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока двенадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока тринадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
 `library-search`, `theory-materials`, `students-groups`, `assignments`,
-`submission-review` и `mastery-marks`.
+`submission-review`, `mastery-marks` и `mastery-views`.
 
 ### Первый вход
 
