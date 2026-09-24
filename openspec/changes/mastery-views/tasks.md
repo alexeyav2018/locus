@@ -29,7 +29,7 @@
 
 ## 2. Вид и сервис
 
-- [ ] 2.1 Завести записи вида по `design.md`, «Вид экрана»:
+- [x] 2.1 Завести записи вида по `design.md`, «Вид экрана»:
       `MasteryBranch(TaxonomyNode node, Distribution distribution,
       List<MasteryBranch> children)`, `MasteryOfMethodRow(SolutionMethod
       method, Distribution distribution)`, `Gap(TaxonomyNodeId topic,
@@ -38,7 +38,7 @@
       List<MasteryOfMethodRow> methods, List<Gap> gaps)`; конструкторы
       отвергают `null`, списки копируются. Проверка: компилируется,
       `get_diagnostics_for_file` чист.
-- [ ] 2.2 В `MasteryService` — `overviewOf(StudentId) → MasteryOverview`,
+- [x] 2.2 В `MasteryService` — `overviewOf(StudentId) → MasteryOverview`,
       `@PreAuthorize("hasRole('TEACHER')")`, владелец из `CurrentUser`:
       Ученик через `StudentService.student(id)` (чужой — `StudentNotFoundException`);
       отметки — `marks.findByStudent(owner, student)`; пары —

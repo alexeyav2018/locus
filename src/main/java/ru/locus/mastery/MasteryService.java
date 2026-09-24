@@ -1,8 +1,10 @@
 package ru.locus.mastery;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,12 +14,20 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.locus.assignment.Assignment;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.assignment.AssignmentService;
+import ru.locus.dictionary.SolutionMethod;
 import ru.locus.dictionary.SolutionMethodId;
+import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.problem.FoundProblem;
 import ru.locus.problem.Problem;
 import ru.locus.problem.ProblemId;
+import ru.locus.problem.ProblemService;
+import ru.locus.student.Student;
 import ru.locus.student.StudentId;
+import ru.locus.student.StudentService;
+import ru.locus.taxonomy.TaxonomyBranch;
 import ru.locus.taxonomy.TaxonomyNodeId;
+import ru.locus.taxonomy.TaxonomyPath;
+import ru.locus.taxonomy.TaxonomyService;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.UserId;
 import ru.locus.work.ProblemPair;
@@ -27,8 +37,9 @@ import ru.locus.work.StudentWorkRepository;
 
 /**
  * Простановка и показ отметок Владения — единственный вход области
- * для Учителя: ячейки на экране приёма по Заданию и выборочная
- * простановка по принятой Работе (ADR-0011, ADR-0039).
+ * для Учителя: ячейки на экране приёма по Заданию, выборочная
+ * простановка по принятой Работе (ADR-0011, ADR-0039) и второй вход —
+ * чтение распределения и пробелов по Ученику (`mastery-views`).
  *
  * <p>Ячейки не хранятся, а вычисляются на каждый показ (standards.md,
  * «Вычислимое вычисляется в запросе»): у Задачи с принятой Работой
@@ -51,7 +62,11 @@ import ru.locus.work.StudentWorkRepository;
  * {@code StudentWorkService}: тот тянет {@code StudentService}, который
  * собирает ответчиков {@code StudentUsage}, среди них {@link MasteryOfStudent} —
  * и через сервис отметок круг бы замкнулся. Зависимость {@code work → mastery}
- * (показ ячеек) идёт в одну сторону; обратной нет (design.md).
+ * (показ ячеек) идёт в одну сторону; обратной нет (design.md). Второй вход
+ * ({@link #overviewOf}), наоборот, зовёт {@link StudentService} напрямую —
+ * кольца здесь нет: {@code StudentService} зависит от {@code List<StudentUsage>},
+ * среди них {@link MasteryOfStudent}, а тот зависит от {@link MasteryRepository},
+ * не от этого сервиса.
  *
  * <p>Сервис никогда не зовёт методы репозитория без владельца
  * ({@code countByTopic}, {@code countByMethod}, {@code rehomeTopic},
@@ -64,15 +79,27 @@ public class MasteryService {
     private final MasteryRepository marks;
     private final AssignmentService assignments;
     private final StudentWorkRepository works;
+    private final StudentService students;
+    private final TaxonomyService taxonomy;
+    private final SolutionMethodService solutionMethods;
+    private final ProblemService problems;
     private final CurrentUser currentUser;
 
     public MasteryService(MasteryRepository marks,
                           AssignmentService assignments,
                           StudentWorkRepository works,
+                          StudentService students,
+                          TaxonomyService taxonomy,
+                          SolutionMethodService solutionMethods,
+                          ProblemService problems,
                           CurrentUser currentUser) {
         this.marks = marks;
         this.assignments = assignments;
         this.works = works;
+        this.students = students;
+        this.taxonomy = taxonomy;
+        this.solutionMethods = solutionMethods;
+        this.problems = problems;
         this.currentUser = currentUser;
     }
 
@@ -176,6 +203,104 @@ public class MasteryService {
         for (Mark mark : effective) {
             marks.put(owner, student, mark.topic(), mark.method(), mark.status());
         }
+    }
+
+    /**
+     * Владение одного Ученика целиком: дерево от корней с распределением
+     * каждого узла, таблица по Методу и перечень пробелов (`mastery-views`,
+     * design.md).
+     *
+     * <p>Ячейки Темы — Методы из {@link ProblemService#findMethodsUsedByTopic()}
+     * (разметка) ∪ Методы из суждений Ученика на этой Теме (замыкание
+     * правила: суждение без разметки сегодня не возникает, но не должно
+     * теряться молча, если появится). Ячейка без суждения — {@link
+     * MasteryStatus#UNKNOWN}. Распределение Раздела — {@link
+     * Distribution#plus} по потомкам (инвариант 8: ячейка принадлежит ровно
+     * одной Теме, Тема — ровно одному родителю, двойного счёта нет).
+     * Распределение Метода — {@code plus} по всем Темам, где он среди
+     * ячеек; в таблицу попадают только Методы с {@code cells() > 0}.
+     * Пробелы — суждения {@link MasteryStatus#NOT_MASTERED}, с полным
+     * путём Темы ({@link TaxonomyService#paths()}) и именем Метода, по
+     * пути Темы, затем по имени Метода.
+     *
+     * <p>На экран — по одному чтению дерева, путей, словаря Методов и пар
+     * разметки (все — библиотека, без владельца, ADR-0027) и одному чтению
+     * суждений Ученика ({@link MasteryRepository#findByStudent}, по
+     * владельцу).
+     *
+     * @throws ru.locus.student.StudentNotFoundException чужой или
+     *         несуществующий Ученик
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    public MasteryOverview overviewOf(StudentId studentId) {
+        UserId owner = owner();
+        Student student = students.student(studentId);
+        Map<Cell, MasteryStatus> statuses = marks.findByStudent(owner, student.id());
+        Map<TaxonomyNodeId, List<SolutionMethodId>> pairsByTopic = problems.findMethodsUsedByTopic();
+
+        Map<TaxonomyNodeId, LinkedHashSet<SolutionMethodId>> cellsByTopic = new LinkedHashMap<>();
+        pairsByTopic.forEach((topic, methods) ->
+                cellsByTopic.computeIfAbsent(topic, key -> new LinkedHashSet<>()).addAll(methods));
+        statuses.keySet().forEach(cell ->
+                cellsByTopic.computeIfAbsent(cell.topic(), key -> new LinkedHashSet<>()).add(cell.method()));
+
+        Map<TaxonomyNodeId, Distribution> distributionByTopic = new LinkedHashMap<>();
+        Map<SolutionMethodId, List<MasteryStatus>> statusesByMethod = new LinkedHashMap<>();
+        cellsByTopic.forEach((topic, methods) -> {
+            List<MasteryStatus> topicStatuses = new ArrayList<>();
+            for (SolutionMethodId method : methods) {
+                MasteryStatus status = statuses.getOrDefault(new Cell(topic, method), MasteryStatus.UNKNOWN);
+                topicStatuses.add(status);
+                statusesByMethod.computeIfAbsent(method, key -> new ArrayList<>()).add(status);
+            }
+            distributionByTopic.put(topic, Distribution.of(topicStatuses));
+        });
+
+        List<MasteryBranch> tree = new ArrayList<>();
+        for (TaxonomyBranch root : taxonomy.tree()) {
+            tree.add(buildBranch(root, distributionByTopic));
+        }
+
+        List<MasteryOfMethodRow> methodRows = new ArrayList<>();
+        for (SolutionMethod method : solutionMethods.all()) {
+            Distribution distribution = Distribution.of(statusesByMethod.getOrDefault(method.id(), List.of()));
+            if (distribution.cells() > 0) {
+                methodRows.add(new MasteryOfMethodRow(method, distribution));
+            }
+        }
+
+        Map<SolutionMethodId, String> methodNames = new LinkedHashMap<>();
+        solutionMethods.all().forEach(method -> methodNames.put(method.id(), method.name()));
+        Map<TaxonomyNodeId, String> topicPaths = new LinkedHashMap<>();
+        for (TaxonomyPath path : taxonomy.paths()) {
+            topicPaths.put(path.id(), path.path());
+        }
+        List<Gap> gaps = new ArrayList<>();
+        statuses.forEach((cell, status) -> {
+            if (status == MasteryStatus.NOT_MASTERED) {
+                gaps.add(new Gap(cell.topic(), topicPaths.get(cell.topic()),
+                        cell.method(), methodNames.get(cell.method())));
+            }
+        });
+        gaps.sort(Comparator.<Gap, String>comparing(Gap::topicPath).thenComparing(Gap::methodName));
+
+        return new MasteryOverview(student, tree, methodRows, gaps);
+    }
+
+    /** Ветвь дерева владения — распределение Темы с ячеек, Раздела — сложением поддерева. */
+    private static MasteryBranch buildBranch(TaxonomyBranch branch,
+                                              Map<TaxonomyNodeId, Distribution> distributionByTopic) {
+        List<MasteryBranch> children = new ArrayList<>();
+        Distribution distribution = Distribution.empty();
+        for (TaxonomyBranch child : branch.children()) {
+            MasteryBranch built = buildBranch(child, distributionByTopic);
+            children.add(built);
+            distribution = distribution.plus(built.distribution());
+        }
+        if (branch.node().isTopic()) {
+            distribution = distribution.plus(distributionByTopic.getOrDefault(branch.node().id(), Distribution.empty()));
+        }
+        return new MasteryBranch(branch.node(), distribution, children);
     }
 
     /** Ячейки-кандидаты Задачи — произведение её Тем и Методов. */
