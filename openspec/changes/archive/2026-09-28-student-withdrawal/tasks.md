@@ -64,9 +64,9 @@
 
 ## 5. Документы
 
-- [ ] 5.1 Добавить в `openspec/context/glossary.md` термин «выбытие» /
+- [x] 5.1 Добавить в `openspec/context/glossary.md` термин «выбытие» /
       «выбыл» рядом со строкой «Ученик» в блоке «Личный контур»
-- [ ] 5.2 Свериться с антипаттернами (`openspec/context/antipatterns.md`)
+- [x] 5.2 Свериться с антипаттернами (`openspec/context/antipatterns.md`)
       и стандартами (`openspec/context/standards.md`) по слоям —
       подтвердить, что контроллеры остались тонкими, а границу
       общего/личного не задели; проверить — `mvn clean package` зелёный
