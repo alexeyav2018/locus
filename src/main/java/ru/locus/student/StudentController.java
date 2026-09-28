@@ -41,8 +41,8 @@ public class StudentController {
     }
 
     @GetMapping(Addresses.STUDENTS)
-    public String list(Model model) {
-        return renderList(model);
+    public String list(@RequestParam(defaultValue = "false") boolean withdrawn, Model model) {
+        return renderList(withdrawn, model);
     }
 
     @PostMapping(Addresses.STUDENTS)
@@ -51,7 +51,7 @@ public class StudentController {
             return atStudent(students.create(name).value());
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
-            return renderList(model);
+            return renderList(false, model);
         }
     }
 
@@ -88,8 +88,23 @@ public class StudentController {
         return "redirect:" + Addresses.STUDENTS;
     }
 
-    private String renderList(Model model) {
-        model.addAttribute("students", students.all());
+    /** Помечает Ученика выбывшим и возвращает на его карточку. */
+    @PostMapping(Addresses.STUDENTS + "/{id}/withdrawal")
+    public String withdraw(@PathVariable long id) {
+        students.withdraw(new StudentId(id));
+        return atStudent(id);
+    }
+
+    /** Возвращает выбывшего Ученика в действующие и возвращает на его карточку. */
+    @PostMapping(Addresses.STUDENTS + "/{id}/withdrawal/undo")
+    public String restore(@PathVariable long id) {
+        students.restore(new StudentId(id));
+        return atStudent(id);
+    }
+
+    private String renderList(boolean withdrawn, Model model) {
+        model.addAttribute("students", withdrawn ? students.withdrawn() : students.active());
+        model.addAttribute("showingWithdrawn", withdrawn);
         return "student/list";
     }
 

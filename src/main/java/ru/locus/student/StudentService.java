@@ -45,10 +45,30 @@ public class StudentService {
         this.usages = usages;
     }
 
-    /** Все Ученики вошедшего Учителя, по алфавиту. */
+    /**
+     * Все Ученики вошедшего Учителя, по алфавиту, независимо от выбытия.
+     * Для мест, где выбытие не должно ничего прятать — сводка уже выданных
+     * Заданий должна показывать имя и выбывшего (ADR-0040); списку и выбору
+     * адресата при выдаче служат {@link #active()} и {@link #withdrawn()}.
+     */
     @PreAuthorize("hasRole('TEACHER')")
     public List<Student> all() {
         return students.findAll(owner());
+    }
+
+    /**
+     * Действующие Ученики вошедшего Учителя, по алфавиту. Список
+     * по умолчанию — выбывшие в нём не мешают (ADR-0040).
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    public List<Student> active() {
+        return students.findAll(owner(), false);
+    }
+
+    /** Выбывшие Ученики вошедшего Учителя, по алфавиту. */
+    @PreAuthorize("hasRole('TEACHER')")
+    public List<Student> withdrawn() {
+        return students.findAll(owner(), true);
     }
 
     /** Ученик вошедшего Учителя; чужой или несуществующий — {@link StudentNotFoundException}. */
@@ -78,6 +98,28 @@ public class StudentService {
         UserId owner = owner();
         Student student = existing(owner, id);
         students.rename(owner, student.id(), requireName(newName));
+    }
+
+    /**
+     * Помечает Ученика выбывшим: не удаление, а состояние (ADR-0040) —
+     * Задания, Работы, отметки Владения и членство в Группах не трогает,
+     * и Ученик пропадает только из списка действующих и из формы выдачи.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void withdraw(StudentId id) {
+        UserId owner = owner();
+        Student student = existing(owner, id);
+        students.setWithdrawn(owner, student.id(), true);
+    }
+
+    /** Возвращает выбывшего Ученика в действующие. */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void restore(StudentId id) {
+        UserId owner = owner();
+        Student student = existing(owner, id);
+        students.setWithdrawn(owner, student.id(), false);
     }
 
     /** Удаляет Ученика, если на него ничего не ссылается. */

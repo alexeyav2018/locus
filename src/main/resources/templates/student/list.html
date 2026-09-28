@@ -12,6 +12,10 @@
         только Учителю, а Пользователь без роли до шаблона не доходит.
         Вычислений в шаблоне нет: список собран сервисом уже отфильтрованным
         по владельцу — шаблон о владельце не знает и знать не должен.
+
+        Переключатель «показать выбывших» — GET-форма с условием в адресе
+        (`/students?withdrawn=true`), как у отбора Заданий: список
+        либо действующих, либо выбывших, а не двух вместе (ADR-0040).
     */-->
     <style>
         form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; }
@@ -20,19 +24,29 @@
     </style>
 </head>
 <body>
-<h1>Ученики</h1>
+<h1 th:text="${showingWithdrawn} ? 'Ученики — выбывшие' : 'Ученики'">Ученики</h1>
 
 <p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
 
-<p th:if="${#lists.isEmpty(students)}">Учеников пока нет.</p>
+<form method="get" th:action="@{/students}">
+    <label>
+        <input type="checkbox" name="withdrawn" value="true" th:checked="${showingWithdrawn}">
+        показать выбывших
+    </label>
+    <button type="submit">Показать</button>
+</form>
+
+<p th:if="${#lists.isEmpty(students)}"
+   th:text="${showingWithdrawn} ? 'Выбывших Учеников нет.' : 'Учеников пока нет.'">Учеников пока нет.</p>
 <ul>
     <li th:each="student : ${students}" th:id="'student-' + ${student.id.value}">
         <a th:href="@{/students/{id}(id=${student.id.value})}" th:text="${student.name}">Иванов Пётр</a>
+        <span th:if="${student.withdrawn}">(выбыл)</span>
     </li>
 </ul>
 
-<h2>Завести Ученика</h2>
-<form method="post" th:action="@{/students}">
+<h2 th:unless="${showingWithdrawn}">Завести Ученика</h2>
+<form th:unless="${showingWithdrawn}" method="post" th:action="@{/students}">
     <label>Имя <input type="text" name="name"></label>
     <button type="submit">Завести</button>
 </form>

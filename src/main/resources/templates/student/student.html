@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <title>Ученик — Locus</title>
     <!--/*
-        Карточка Ученика: имя, Группы, в которых он состоит, переименование
-        и удаление. Состав Групп правится на странице Группы, а не здесь:
-        состав — свойство Группы и задаётся целиком одной формой.
+        Карточка Ученика: имя, Группы, в которых он состоит, переименование,
+        выбытие и удаление. Состав Групп правится на странице Группы, а не
+        здесь: состав — свойство Группы и задаётся целиком одной формой.
 
         Удаление отказывает, пока на Ученика что-нибудь ссылается
         (ADR-0035) — его Задания и Работы. Сообщение об отказе
         показывается здесь же.
+
+        Выбытие — состояние, а не удаление (ADR-0040): кнопка переключается
+        в зависимости от текущего состояния и ни на что другое не влияет.
 
         Ссылки на Задания, Работы и Владение — только адреса: область
         Учеников в коде не знает ни одной из этих областей (mastery-views).
@@ -23,6 +26,7 @@
 </head>
 <body>
 <h1 th:text="${student.name}">Иванов Пётр</h1>
+<p th:if="${student.withdrawn}">Выбыл</p>
 
 <p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
 
@@ -44,6 +48,13 @@
 <form method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
     <label>Новое имя <input type="text" name="name" th:value="${student.name}"></label>
     <button type="submit">Переименовать</button>
+</form>
+
+<form th:if="${!student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal(id=${student.id.value})}">
+    <button type="submit">Пометить выбывшим</button>
+</form>
+<form th:if="${student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal/undo(id=${student.id.value})}">
+    <button type="submit">Вернуть</button>
 </form>
 
 <form method="post" th:action="@{/students/{id}/deletion(id=${student.id.value})}">
