@@ -183,7 +183,7 @@ public class AssignmentController {
 
     private String renderForm(List<Long> problemIds, Model model) {
         model.addAttribute("problems", problems.problems(problemIds(problemIds)));
-        model.addAttribute("students", students.all());
+        model.addAttribute("students", students.active());
         model.addAttribute("groups", groups.all());
         model.addAttribute("scopes", TheoryScope.values());
         return "assignment/form";

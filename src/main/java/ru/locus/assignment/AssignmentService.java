@@ -109,6 +109,8 @@ public class AssignmentService {
      * {@link ru.locus.student.StudentNotFoundException} из
      * {@link StudentService#student}. Задачи проверяются одним чтением
      * {@link ProblemService#problems}: отсутствующая — отказ до записи.
+     * Выбывшему Ученику выдача отклоняется независимо от того, показан
+     * ли он в форме (ADR-0040) — прямой POST не должен обходить правило.
      */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
@@ -118,19 +120,26 @@ public class AssignmentService {
                                        TheoryScope theoryScope) {
         Issue issue = prepare(problemIds, dueDate, theoryScope);
         Student student = students.student(studentId);
+        if (student.withdrawn()) {
+            throw new IllegalArgumentException(
+                    "Ученик «" + student.name() + "» выбыл: выдать ему Задание нельзя");
+        }
         return assignments.create(owner(), student.id(), null,
                 today(), issue.dueDate(), issue.theoryScope(), issue.problems());
     }
 
     /**
-     * Выдаёт Задание каждому Ученику своей Группы одним действием и помечает
-     * их общей Раздачей (ADR-0016).
+     * Выдаёт Задание каждому действующему Ученику своей Группы одним
+     * действием и помечает их общей Раздачей (ADR-0016).
      *
      * <p>Одна транзакция: Раздача с именем Группы на момент выдачи, затем
-     * Задание на каждого члена. Пустая Группа — отказ до записи: Раздача
-     * без единого Задания — не выдача, а след от неё. Чужая Группа
-     * неотличима от несуществующей — {@link ru.locus.student.GroupNotFoundException}
-     * из {@link GroupService#group}.
+     * Задание на каждого действующего члена. Выбывшие члены пропускаются
+     * (ADR-0040) — состав Группы не меняется, но Задание получают только
+     * действующие. Пустая Группа и Группа без единого действующего члена
+     * — отказ до записи: Раздача без единого Задания — не выдача, а след
+     * от неё. Чужая Группа неотличима от несуществующей —
+     * {@link ru.locus.student.GroupNotFoundException} из
+     * {@link GroupService#group}.
      */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
@@ -144,10 +153,15 @@ public class AssignmentService {
         if (members.isEmpty()) {
             throw new IllegalArgumentException("Группа «" + group.name() + "» пуста: выдавать некому");
         }
+        List<Student> active = members.stream().filter(member -> !member.withdrawn()).toList();
+        if (active.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "В группе «" + group.name() + "» не осталось действующих Учеников: выдавать некому");
+        }
         UserId owner = owner();
         LocalDate issuedOn = today();
         AssignmentBatchId batch = batches.create(owner, group.name(), issuedOn);
-        for (Student member : members) {
+        for (Student member : active) {
             assignments.create(owner, member.id(), batch,
                     issuedOn, issue.dueDate(), issue.theoryScope(), issue.problems());
         }
