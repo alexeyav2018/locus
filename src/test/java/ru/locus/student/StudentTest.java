@@ -8,13 +8,14 @@ import org.junit.jupiter.api.Test;
 import ru.locus.user.UserId;
 
 /**
- * Задача 3.1: состав записи Ученика — идентификатор, владелец и имя,
- * и больше ничего.
+ * Задача 3.1: состав записи Ученика — идентификатор, владелец, имя
+ * и состояние выбытия, и больше ничего.
  *
  * Владелец обязателен: это первая запись личного контура, и Ученик без
  * владельца — Ученик, которого увидят все (инвариант 11 domain-model.md).
  * Имя обязательно и не пустое после отсечения пробелов; уникальности
  * у него нет — однофамильцы обычны, и это проверяется на репозитории.
+ * Выбытие (ADR-0040) — отдельный булев признак без собственных ограничений.
  */
 class StudentTest {
 
@@ -23,25 +24,26 @@ class StudentTest {
 
     @Test
     void studentIsMadeOfIdentifierOwnerAndName() {
-        Student student = new Student(ID, OWNER, "Иванов Пётр");
+        Student student = new Student(ID, OWNER, "Иванов Пётр", false);
 
         assertThat(student.id()).isEqualTo(ID);
         assertThat(student.owner()).isEqualTo(OWNER);
         assertThat(student.name()).isEqualTo("Иванов Пётр");
+        assertThat(student.withdrawn()).isFalse();
     }
 
     @Test
     void emptyNameIsNotAStudent() {
-        assertThatThrownBy(() -> new Student(ID, OWNER, "   "))
+        assertThatThrownBy(() -> new Student(ID, OWNER, "   ", false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("пустым");
-        assertThatThrownBy(() -> new Student(ID, OWNER, null))
+        assertThatThrownBy(() -> new Student(ID, OWNER, null, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void studentWithoutOwnerIsRefused() {
-        assertThatThrownBy(() -> new Student(ID, null, "Иванов Пётр"))
+        assertThatThrownBy(() -> new Student(ID, null, "Иванов Пётр", false))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("владелец");
     }
@@ -52,9 +54,9 @@ class StudentTest {
      * {@code StudentIsNotAUserTest}.
      */
     @Test
-    void recordCarriesNothingButIdentifierOwnerAndName() {
+    void recordCarriesIdentifierOwnerNameAndWithdrawnAndNothingElse() {
         assertThat(Student.class.getRecordComponents())
                 .extracting(RecordComponent::getName)
-                .containsExactly("id", "owner", "name");
+                .containsExactly("id", "owner", "name", "withdrawn");
     }
 }

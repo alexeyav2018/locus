@@ -2,20 +2,22 @@
 
 ## 1. Схема и модель
 
-- [ ] 1.1 Миграция `0010-student-withdrawal.yaml`: `addColumn withdrawn
+- [x] 1.1 Миграция `0010-student-withdrawal.yaml`: `addColumn withdrawn
       boolean not null default false` на `student`; проверить —
       `mvn spring-boot:run` поднимает базу и применяет миграцию без ошибок
       на уже заполненной базе разработки
-- [ ] 1.2 Добавить поле `withdrawn` в `Student` (`Student.java:23`);
+- [x] 1.2 Добавить поле `withdrawn` в `Student` (`Student.java:23`);
       проверить — компиляция и существующие тесты `StudentRepositoryTest`
       не ломаются после правки конструктора (найти все вызовы через
       `find_referencing_symbols` перед правкой сигнатуры)
-- [ ] 1.3 `StudentRepository`: `findAll(UserId owner, boolean withdrawn)`
-      вместо `findAll(UserId owner)`, `withdraw`/`restore`
-      (`update student set withdrawn = ? where user_id = ? and id = ?`);
-      проверить тестом с двумя владельцами и обоими значениями флага
-      (форма — как у существующих методов, `OwnerIsRequiredByStudentsTest`
-      не должен потерять эти методы из списка)
+- [x] 1.3 `StudentRepository`: добавлен `findAll(UserId owner, boolean
+      withdrawn)` рядом с прежним `findAll(UserId owner)` (нужен и
+      неизменённый вариант «все независимо от состояния» — его использует
+      `AssignmentService.listed()` для показа имён в уже выданных Заданиях),
+      `setWithdrawn(UserId owner, StudentId id, boolean withdrawn)`;
+      проверено пятью новыми тестами в `StudentRepositoryTest` с двумя
+      владельцами и обоими значениями флага; `OwnerIsRequiredByStudentsTest`
+      прошёл без изменений списка репозиториев
 
 ## 2. Ведение выбытия и список
 

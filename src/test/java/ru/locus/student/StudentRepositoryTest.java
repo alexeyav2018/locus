@@ -152,6 +152,59 @@ class StudentRepositoryTest extends IntegrationTest {
                 .isPresent();
     }
 
+
+    @Test
+    void newStudentIsNotWithdrawn() {
+        StudentId id = students.create(alice, unique("Иванов Пётр"));
+
+        assertThat(students.findById(alice, id).orElseThrow().withdrawn()).isFalse();
+    }
+
+    @Test
+    void settingWithdrawnMarksTheStudent() {
+        StudentId id = students.create(alice, unique("Иванов Пётр"));
+
+        students.setWithdrawn(alice, id, true);
+
+        assertThat(students.findById(alice, id).orElseThrow().withdrawn()).isTrue();
+    }
+
+    @Test
+    void withdrawnStudentReturnsToActive() {
+        StudentId id = students.create(alice, unique("Иванов Пётр"));
+        students.setWithdrawn(alice, id, true);
+
+        students.setWithdrawn(alice, id, false);
+
+        assertThat(students.findById(alice, id).orElseThrow().withdrawn()).isFalse();
+    }
+
+    @Test
+    void anotherOwnerCannotWithdrawTheStudent() {
+        StudentId id = students.create(alice, unique("Иванов Пётр"));
+
+        students.setWithdrawn(bob, id, true);
+
+        assertThat(students.findById(alice, id).orElseThrow().withdrawn())
+                .as("выбытие чужого Ученика не меняет ни одной строки")
+                .isFalse();
+    }
+
+    @Test
+    void findAllWithWithdrawnFlagSeparatesByStateAndOwner() {
+        StudentId active = students.create(alice, unique("Активный"));
+        StudentId withdrawn = students.create(alice, unique("Выбывший"));
+        students.setWithdrawn(alice, withdrawn, true);
+        StudentId theirsWithdrawn = students.create(bob, unique("Чужой выбывший"));
+        students.setWithdrawn(bob, theirsWithdrawn, true);
+
+        assertThat(students.findAll(alice, false)).extracting(Student::id).contains(active).doesNotContain(withdrawn);
+        assertThat(students.findAll(alice, true))
+                .extracting(Student::id)
+                .contains(withdrawn)
+                .doesNotContain(active, theirsWithdrawn);
+    }
+
     @Test
     void unknownIdentifierIsNotFound() {
         long free = students.findAll(alice).stream()
