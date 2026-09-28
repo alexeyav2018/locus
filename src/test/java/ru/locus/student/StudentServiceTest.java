@@ -160,12 +160,48 @@ class StudentServiceTest extends IntegrationTest {
         assertThatThrownBy(() -> students.student(missing)).isInstanceOf(StudentNotFoundException.class);
         assertThatThrownBy(() -> students.rename(bobs, "Переименован")).isInstanceOf(StudentNotFoundException.class);
         assertThatThrownBy(() -> students.rename(missing, "Переименован")).isInstanceOf(StudentNotFoundException.class);
+        assertThatThrownBy(() -> students.withdraw(bobs)).isInstanceOf(StudentNotFoundException.class);
+        assertThatThrownBy(() -> students.withdraw(missing)).isInstanceOf(StudentNotFoundException.class);
+        assertThatThrownBy(() -> students.restore(bobs)).isInstanceOf(StudentNotFoundException.class);
+        assertThatThrownBy(() -> students.restore(missing)).isInstanceOf(StudentNotFoundException.class);
         assertThatThrownBy(() -> students.delete(bobs)).isInstanceOf(StudentNotFoundException.class);
         assertThatThrownBy(() -> students.delete(missing)).isInstanceOf(StudentNotFoundException.class);
 
         assertThat(students.all()).extracting(Student::id).doesNotContain(bobs);
         Student untouched = repository.findById(bob.id(), bobs).orElseThrow();
         assertThat(untouched.name()).as("Ученик другого Учителя остался прежним").isEqualTo(bobsName);
+        assertThat(untouched.withdrawn()).as("выбытие не подействовало на чужого Ученика").isFalse();
+    }
+
+    /** Сценарий «Учитель отмечает Ученика выбывшим» и «Учитель возвращает выбывшего». */
+    @Test
+    void withdrawnStudentLeavesTheActiveListAndReturnsOnRestore() {
+        StudentId id = students.create(unique("Иванов Пётр"));
+
+        students.withdraw(id);
+
+        assertThat(students.student(id).withdrawn()).isTrue();
+        assertThat(students.active()).extracting(Student::id).doesNotContain(id);
+        assertThat(students.withdrawn()).extracting(Student::id).contains(id);
+        assertThat(students.all()).as("из полного списка не пропадает").extracting(Student::id).contains(id);
+
+        students.restore(id);
+
+        assertThat(students.student(id).withdrawn()).isFalse();
+        assertThat(students.active()).extracting(Student::id).contains(id);
+        assertThat(students.withdrawn()).extracting(Student::id).doesNotContain(id);
+    }
+
+    /** Выбытие и возврат ни на что другое не влияют. */
+    @Test
+    void withdrawalDoesNotTouchTheRest() {
+        StudentId withdrawn = students.create(unique("Иванов Пётр"));
+        StudentId untouched = students.create(unique("Сидорова Анна"));
+
+        students.withdraw(withdrawn);
+
+        assertThat(students.student(untouched).withdrawn()).isFalse();
+        assertThat(students.student(withdrawn).name()).as("имя не меняется").contains("Иванов Пётр");
     }
 
     /** Сценарий «Администратор без роли Учителя»: недоступно и чтение. */
@@ -175,9 +211,13 @@ class StudentServiceTest extends IntegrationTest {
         LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
 
         assertThatThrownBy(students::all).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(students::active).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(students::withdrawn).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> students.student(existing)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> students.create("Новый")).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> students.rename(existing, "Переименован")).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> students.withdraw(existing)).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> students.restore(existing)).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> students.delete(existing)).isInstanceOf(AccessDeniedException.class);
 
         assertThat(repository.findById(alice.id(), existing)).as("Ученик остался на месте").isPresent();

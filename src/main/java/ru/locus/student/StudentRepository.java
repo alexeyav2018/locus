@@ -43,22 +43,34 @@ public class StudentRepository {
     }
 
     /**
-     * Все Ученики владельца, по алфавиту.
+     * Все Ученики владельца — и действующие, и выбывшие, — по алфавиту.
      *
      * Однофамильцы допустимы, поэтому вторым ключом порядка стоит
      * идентификатор: два одинаковых имени не должны меняться местами
      * от чтения к чтению.
      */
     public List<Student> findAll(UserId owner) {
-        return database.sql("select id, user_id, name from student where user_id = ? order by lower(name), id")
+        return database.sql("select id, user_id, name, withdrawn from student where user_id = ? order by lower(name), id")
                 .param(owner.value())
+                .query(StudentRepository::student)
+                .list();
+    }
+
+    /** Ученики владельца в заданном состоянии выбытия, по алфавиту — тот же порядок, что у {@link #findAll(UserId)}. */
+    public List<Student> findAll(UserId owner, boolean withdrawn) {
+        return database.sql("""
+                        select id, user_id, name, withdrawn from student
+                        where user_id = ? and withdrawn = ?
+                        order by lower(name), id
+                        """)
+                .params(owner.value(), withdrawn)
                 .query(StudentRepository::student)
                 .list();
     }
 
     /** Ученик владельца; чужой или несуществующий — пусто. */
     public Optional<Student> findById(UserId owner, StudentId id) {
-        return database.sql("select id, user_id, name from student where user_id = ? and id = ?")
+        return database.sql("select id, user_id, name, withdrawn from student where user_id = ? and id = ?")
                 .params(owner.value(), id.value())
                 .query(StudentRepository::student)
                 .optional();
@@ -80,6 +92,14 @@ public class StudentRepository {
                 .update();
     }
 
+
+    /** Переключает выбытие Ученика владельца; чужого не трогает. */
+    public void setWithdrawn(UserId owner, StudentId id, boolean withdrawn) {
+        database.sql("update student set withdrawn = ? where user_id = ? and id = ?")
+                .params(withdrawn, owner.value(), id.value())
+                .update();
+    }
+
     /** Удаляет Ученика владельца; чужого не трогает. */
     public void delete(UserId owner, StudentId id) {
         database.sql("delete from student where user_id = ? and id = ?")
@@ -88,6 +108,7 @@ public class StudentRepository {
     }
 
     private static Student student(ResultSet rs, int rowNum) throws SQLException {
-        return new Student(new StudentId(rs.getLong("id")), new UserId(rs.getLong("user_id")), rs.getString("name"));
+        return new Student(new StudentId(rs.getLong("id")), new UserId(rs.getLong("user_id")), rs.getString("name"),
+                rs.getBoolean("withdrawn"));
     }
 }

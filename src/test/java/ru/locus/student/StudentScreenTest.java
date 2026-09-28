@@ -124,6 +124,9 @@ class StudentScreenTest extends IntegrationTest {
         assertThat(body)
                 .contains("/students/" + student.value() + "/name")
                 .contains("Переименовать")
+                .contains("/students/" + student.value() + "/withdrawal")
+                .contains("Пометить выбывшим")
+                .doesNotContain("/withdrawal/undo")
                 .contains("/students/" + student.value() + "/deletion")
                 .contains("Удалить Ученика");
     }
@@ -170,6 +173,41 @@ class StudentScreenTest extends IntegrationTest {
         assertThat(teacher.get("/groups/" + group.value()).body())
                 .as("Группа осталась, Ученика в ней нет")
                 .contains("<h1>9Б</h1>")
+                .doesNotContain("Иванов Пётр");
+    }
+
+    /** Сценарий «Учитель отмечает Ученика выбывшим»: пропадает из списка по умолчанию. */
+    @Test
+    void withdrawalRemovesTheStudentFromTheDefaultListAndShowsUnderWithdrawn() {
+        TestAccounts.Account account = accounts.settled(Role.TEACHER);
+        StudentId student = students.create(account.id(), "Иванов Пётр");
+        Browser teacher = loggedIn(account);
+
+        Browser.Page done = teacher.postForm("/students/" + student.value() + "/withdrawal", Map.of());
+
+        assertThat(done.redirectsTo("/students/" + student.value())).isTrue();
+        assertThat(teacher.get("/students/" + student.value()).body()).contains("Выбыл");
+        assertThat(teacher.get("/students").body()).as("по умолчанию выбывший не показан").doesNotContain("Иванов Пётр");
+        assertThat(teacher.get("/students?withdrawn=true").body())
+                .as("выбывший показан в перечне выбывших")
+                .contains("Иванов Пётр");
+    }
+
+    /** Сценарий «Учитель возвращает выбывшего»: снова в списке по умолчанию. */
+    @Test
+    void restoringBringsTheStudentBackToTheDefaultList() {
+        TestAccounts.Account account = accounts.settled(Role.TEACHER);
+        StudentId student = students.create(account.id(), "Иванов Пётр");
+        Browser teacher = loggedIn(account);
+        teacher.postForm("/students/" + student.value() + "/withdrawal", Map.of());
+
+        Browser.Page done = teacher.postForm("/students/" + student.value() + "/withdrawal/undo", Map.of());
+
+        assertThat(done.redirectsTo("/students/" + student.value())).isTrue();
+        assertThat(teacher.get("/students/" + student.value()).body()).doesNotContain("Выбыл");
+        assertThat(teacher.get("/students").body()).as("вернулся в список по умолчанию").contains("Иванов Пётр");
+        assertThat(teacher.get("/students?withdrawn=true").body())
+                .as("из перечня выбывших пропал")
                 .doesNotContain("Иванов Пётр");
     }
 

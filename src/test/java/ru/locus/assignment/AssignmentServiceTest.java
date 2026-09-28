@@ -137,6 +137,46 @@ class AssignmentServiceTest extends IntegrationTest {
         assertThat(service.batches()).extracting(AssignmentBatch::id).contains(batch);
     }
 
+
+    /** Сценарий «Выдача Группе с выбывшими членами» (ADR-0040): пропущены, состав не тронут. */
+    @Test
+    void issuingToAGroupSkipsWithdrawnMembers() {
+        ProblemId problem = library.problem(library.topic());
+        List<StudentId> members = IntStream.range(0, 5)
+                .mapToObj(i -> students.create(TestLibrary.unique("Ученик " + i)))
+                .toList();
+        students.withdraw(members.get(1));
+        students.withdraw(members.get(3));
+        GroupId group = groups.create(TestLibrary.unique("Группа с выбывшими"));
+        groups.setMembers(group, members);
+
+        AssignmentBatchId batch = service.issueToGroup(group, List.of(problem), LocalDate.now(), TheoryScope.NONE);
+
+        List<ListedAssignment> issued = service.ofBatch(batch);
+        assertThat(issued).hasSize(3);
+        assertThat(issued).extracting(listed -> listed.assignment().student())
+                .containsExactlyInAnyOrder(members.get(0), members.get(2), members.get(4));
+        assertThat(groups.members(group)).as("состав Группы не меняется").hasSize(5);
+    }
+
+    /** Сценарий «Группа, где выбыли все»: отказ отдельным сообщением, ничего не создаётся. */
+    @Test
+    void groupWithOnlyWithdrawnMembersIsRefused() {
+        ProblemId problem = library.problem(library.topic());
+        StudentId student = students.create(TestLibrary.unique("Выбывший"));
+        students.withdraw(student);
+        GroupId group = groups.create(TestLibrary.unique("Все выбыли"));
+        groups.setMembers(group, List.of(student));
+        int batchesBefore = service.batches().size();
+
+        assertThatThrownBy(() -> service.issueToGroup(group, List.of(problem), LocalDate.now(), TheoryScope.NONE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("действующих");
+
+        assertThat(service.batches()).hasSize(batchesBefore);
+        assertThat(service.list(AssignmentFilter.none())).isEmpty();
+    }
+
     /** Сценарий «Пустая Группа»: ни Задания, ни Раздачи. */
     @Test
     void emptyGroupIsRefusedBeforeAnythingIsWritten() {
@@ -227,6 +267,34 @@ class AssignmentServiceTest extends IntegrationTest {
 
         assertThat(service.list(AssignmentFilter.none())).isEmpty();
         assertThat(repository.countByStudent(bob.id(), bobsStudent)).as("у Боба ничего не появилось").isZero();
+    }
+
+
+    /** Сценарий «Выдача выбывшему Ученику» (ADR-0040): отказ и напрямую, в обход формы. */
+    @Test
+    void withdrawnStudentIsRefusedDirectIssuance() {
+        ProblemId problem = library.problem(library.topic());
+        StudentId student = students.create(TestLibrary.unique("Выбывший"));
+        students.withdraw(student);
+
+        assertThatThrownBy(() -> service.issueToStudent(student, List.of(problem), LocalDate.now(), TheoryScope.NONE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("выбыл");
+
+        assertThat(service.list(AssignmentFilter.none())).isEmpty();
+    }
+
+    /** Сценарий «Выбытие после выдачи»: ранее выданное Задание остаётся у Ученика. */
+    @Test
+    void withdrawalAfterIssuanceDoesNotAffectExistingAssignment() {
+        ProblemId problem = library.problem(library.topic());
+        StudentId student = students.create(TestLibrary.unique("Иванов"));
+        AssignmentId id = service.issueToStudent(student, List.of(problem), LocalDate.now(), TheoryScope.NONE);
+
+        students.withdraw(student);
+
+        List<ListedAssignment> ofStudent = service.list(new AssignmentFilter(student, null, null, null, false));
+        assertThat(ofStudent).extracting(l -> l.assignment().id()).containsExactly(id);
     }
 
     /** Чужое Задание и чужая Раздача — как несуществующие: чтение, перенос срока, удаление. */

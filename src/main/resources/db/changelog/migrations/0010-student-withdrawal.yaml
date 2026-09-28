@@ -1,0 +1,23 @@
+# Выбытие Ученика (ADR-0040, элемент бэклога student-withdrawal).
+#
+# Один бит на карточке: выбыл ли Ученик. Не отдельная сущность — состояние
+# принадлежит ровно одной записи и не несёт собственных атрибутов, в отличие
+# от отметки Владения. По умолчанию false — существующие Ученики остаются
+# действующими, поведение списков для них не меняется.
+databaseChangeLog:
+  - changeSet:
+      id: 0010-student-withdrawal
+      author: locus
+      comment: >-
+        Ученик может быть отмечен выбывшим — убирается из повседневных
+        списков и выбора адресата при выдаче, но не теряет историю
+      changes:
+        - addColumn:
+            tableName: student
+            columns:
+              - column:
+                  name: withdrawn
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

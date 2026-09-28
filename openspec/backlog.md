@@ -118,7 +118,7 @@
 | 22 | `schedule` | — | `students-groups` | — | L | нет | личное | отложено |
 | 23 | `silent-failure-principle` | Д | — | — | S | нет | не затрагивает | ✅ |
 | 24 | `backlog-skill-arcs` | Л | `backlog-stage-column` | — | L | нет | не затрагивает | ждёт условия |
-| 25 | `student-withdrawal` | — | `assignments` | — | S | нет | личное | |
+| 25 | `student-withdrawal` | — | `assignments` | — | S | нет | личное | ✅ |
 
 ## 4. Карточки
 
