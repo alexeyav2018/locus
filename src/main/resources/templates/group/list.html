@@ -25,17 +25,20 @@
 <p class="empty" th:if="${#lists.isEmpty(groups)}">Групп пока нет.</p>
 <ul class="items">
     <li class="item" th:each="group : ${groups}" th:id="'group-' + ${group.id.value}">
-        <a th:href="@{/groups/{id}(id=${group.id.value})}" th:text="${group.name}">9Б</a>
+        <a th:href="@{/groups/{id}(id=${group.id.value},from=${shell.here})}" th:text="${group.name}">9Б</a>
     </li>
 </ul>
 
-<div class="card">
-    <h2>Завести Группу</h2>
-    <form class="inline-form" method="post" th:action="@{/groups}">
-        <label>Имя <input type="text" name="name" autocomplete="off"></label>
-        <button type="submit" class="btn-primary">Завести</button>
-    </form>
-</div>
+<details class="more more--primary" th:attr="open=${shell.opened('/groups')} ? 'open'">
+    <summary>Завести Группу</summary>
+    <div class="more-body">
+        <form class="inline-form" method="post" th:action="@{/groups}">
+            <label>Имя <input type="text" name="name" autocomplete="off" th:value="${shell.echo('name', '/groups')}"></label>
+            <button type="submit" class="btn-primary">Завести</button>
+            <button type="button" data-close>Отмена</button>
+        </form>
+    </div>
+</details>
 </main>
 </body>
 </html>

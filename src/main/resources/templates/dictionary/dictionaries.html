@@ -62,18 +62,28 @@
             <h2 th:text="${selectedMethod.name}">Разложение на множители</h2>
             <p class="muted">Метод: вторая ось измерения владения, наравне с Темой</p>
 
-            <div th:if="${administrator}">
-                <form class="inline-form" method="post" th:action="@{/dictionaries/methods/{id}/name(id=${selectedMethod.id.value})}">
-                    <label>Новое имя <input type="text" name="name"></label>
-                    <button type="submit">Переименовать</button>
-                </form>
-
-                <div class="danger-zone">
-                    <form method="post" data-confirm="Это действие необратимо."
-                          th:action="@{/dictionaries/methods/{id}/deletion(id=${selectedMethod.id.value})}">
-                        <button type="submit" class="btn-danger">Удалить</button>
-                    </form>
-                </div>
+            <div th:if="${administrator}" class="folds">
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+                    <summary>Изменить имя</summary>
+                    <div class="more-body">
+                        <form class="inline-form" method="post"
+                              th:action="@{/dictionaries/methods/{id}/name(id=${selectedMethod.id.value})}">
+                            <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
+                            <button type="submit" class="btn-primary">Переименовать</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+                    <summary>Удаление</summary>
+                    <div class="more-body">
+                        <form method="post" data-confirm="Это действие необратимо."
+                              th:action="@{/dictionaries/methods/{id}/deletion(id=${selectedMethod.id.value})}">
+                            <button type="submit" class="btn-danger">Удалить</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
             </div>
         </div>
 
@@ -81,19 +91,28 @@
             <h2 th:text="${selectedCharacteristic.name}">Повышенной сложности</h2>
             <p class="muted">Характеристика: уточняет поиск, во владении не участвует</p>
 
-            <div th:if="${administrator}">
-                <form class="inline-form" method="post"
-                      th:action="@{/dictionaries/characteristics/{id}/name(id=${selectedCharacteristic.id.value})}">
-                    <label>Новое имя <input type="text" name="name"></label>
-                    <button type="submit">Переименовать</button>
-                </form>
-
-                <div class="danger-zone">
-                    <form method="post" data-confirm="Это действие необратимо."
-                          th:action="@{/dictionaries/characteristics/{id}/deletion(id=${selectedCharacteristic.id.value})}">
-                        <button type="submit" class="btn-danger">Удалить</button>
-                    </form>
-                </div>
+            <div th:if="${administrator}" class="folds">
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+                    <summary>Изменить имя</summary>
+                    <div class="more-body">
+                        <form class="inline-form" method="post"
+                              th:action="@{/dictionaries/characteristics/{id}/name(id=${selectedCharacteristic.id.value})}">
+                            <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
+                            <button type="submit" class="btn-primary">Переименовать</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+                    <summary>Удаление</summary>
+                    <div class="more-body">
+                        <form method="post" data-confirm="Это действие необратимо."
+                              th:action="@{/dictionaries/characteristics/{id}/deletion(id=${selectedCharacteristic.id.value})}">
+                            <button type="submit" class="btn-danger">Удалить</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
             </div>
         </div>
 
@@ -102,17 +121,29 @@
 
         <!--/* Заведение не зависит от выбора: в пустой словарь иначе
                не попасть — выбирать там нечего. */-->
-        <div class="card" th:if="${administrator}">
-            <h2>Завести запись</h2>
-            <form class="inline-form" method="post" th:action="@{/dictionaries/methods}">
-                <label>Имя Метода <input type="text" name="name"></label>
-                <button type="submit" class="btn-primary">Завести Метод</button>
-            </form>
-
-            <form class="inline-form" method="post" th:action="@{/dictionaries/characteristics}">
-                <label>Имя Характеристики <input type="text" name="name"></label>
-                <button type="submit" class="btn-primary">Завести Характеристику</button>
-            </form>
+        <div class="folds" th:if="${administrator}">
+            <details class="more more--primary" name="new-entry"
+                     th:attr="open=${shell.opened('/methods')} ? 'open'">
+                <summary>Новый Метод</summary>
+                <div class="more-body">
+                    <form class="inline-form" method="post" th:action="@{/dictionaries/methods}">
+                        <label>Имя Метода <input type="text" name="name" th:value="${shell.echo('name', '/methods')}"></label>
+                        <button type="submit" class="btn-primary">Завести Метод</button>
+                        <button type="button" data-close>Отмена</button>
+                    </form>
+                </div>
+            </details>
+            <details class="more more--primary" name="new-entry"
+                     th:attr="open=${shell.opened('/characteristics')} ? 'open'">
+                <summary>Новая Характеристика</summary>
+                <div class="more-body">
+                    <form class="inline-form" method="post" th:action="@{/dictionaries/characteristics}">
+                        <label>Имя Характеристики <input type="text" name="name" th:value="${shell.echo('name', '/characteristics')}"></label>
+                        <button type="submit" class="btn-primary">Завести Характеристику</button>
+                        <button type="button" data-close>Отмена</button>
+                    </form>
+                </div>
+            </details>
         </div>
     </div>
 </div>

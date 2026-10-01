@@ -139,8 +139,8 @@ a:hover { color: var(--primary-hover); }
     box-shadow: var(--shadow);
 }
 .topbar-inner {
-    max-width: 78rem; margin: 0 auto; padding: 0 1rem;
-    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    max-width: 90rem; margin: 0 auto; padding: 0 1rem;
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
 }
 .brand {
     display: inline-flex; align-items: center; gap: 0.5rem;
@@ -158,7 +158,7 @@ a:hover { color: var(--primary-hover); }
     overflow-x: auto; scrollbar-width: none;
 }
 .mainnav::-webkit-scrollbar { display: none; }
-.navgroup { display: flex; align-items: center; gap: 0.15rem; padding-left: 0.75rem; margin-left: 0.5rem; border-left: 1px solid var(--border); }
+.navgroup { display: flex; align-items: center; gap: 0.1rem; padding-left: 0.6rem; margin-left: 0.4rem; border-left: 1px solid var(--border); }
 .navgroup:first-child { border-left: 0; padding-left: 0; margin-left: 0; }
 .navgroup-label {
     font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
@@ -167,8 +167,8 @@ a:hover { color: var(--primary-hover); }
 .navgroup--shared .navgroup-label { color: var(--shared); }
 .navgroup--personal .navgroup-label { color: var(--personal); }
 .navlink {
-    display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 0.7rem;
-    color: var(--text); text-decoration: none; font-weight: 550; white-space: nowrap;
+    display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 0.55rem;
+    color: var(--text); text-decoration: none; font-weight: 550; white-space: nowrap; font-size: 0.95rem;
     border-radius: var(--radius-sm); border-bottom: 3px solid transparent;
 }
 .navlink:hover { background: var(--surface-2); color: var(--text); }
@@ -180,11 +180,19 @@ a:hover { color: var(--primary-hover); }
     padding: 0 0.7rem; border-radius: 999px; color: var(--muted); text-decoration: none; font-size: 0.9rem;
 }
 .me:hover { background: var(--surface-2); color: var(--text); }
+.logout { margin: 0; display: inline-flex; }
+.logout button { min-height: 2.25rem; padding: 0 0.8rem; font-size: 0.88rem; border-color: var(--border); color: var(--muted); font-weight: 550; }
+
+/* Подписи групп уступают место ссылкам, когда шапка не помещается в строку. */
+@media (max-width: 1240px) {
+    .navgroup-label { display: none; }
+}
 
 @media (max-width: 760px) {
     .topbar-inner { gap: 0; padding: 0 0.5rem; }
     .brand { padding: 0 0.5rem; }
     .me { order: 2; margin-left: auto; }
+    .logout { order: 2; }
     /* Все разделы видны сразу, без скрытой прокрутки: перенос на вторую строку. */
     .mainnav { order: 3; flex: 1 0 100%; flex-wrap: wrap; overflow: visible; padding-bottom: 0.25rem; }
     .navgroup { flex-wrap: wrap; padding-left: 0; margin-left: 0; border-left: 0; }
@@ -342,7 +350,17 @@ details.more > summary {
 details.more > summary::-webkit-details-marker { display: none; }
 details.more > summary::before { content: "▸"; transition: transform 0.15s; color: var(--muted); }
 details.more[open] > summary::before { transform: rotate(90deg); }
-details.more > .more-body { padding: 0.25rem 1rem 0.75rem; border-top: 1px solid var(--border); }
+details.more > .more-body { padding: 0.75rem 1rem 0.5rem; border-top: 1px solid var(--border); }
+details.more > summary:hover { background: var(--surface-2); }
+details.more[open] { border-color: var(--border-strong); box-shadow: var(--shadow); }
+details.more--primary > summary { color: var(--primary); }
+details.more > .more-body > :last-child { margin-bottom: 0.25rem; }
+.more-body .form-actions { margin-top: 0.5rem; }
+.folds { margin: 0 0 1rem; }
+.folds > details.more { margin-bottom: 0.5rem; }
+/* «Отмена» блока нужна только со скриптом: без него блок закрывает заголовок. */
+[data-close] { display: none; }
+.js [data-close] { display: inline-flex; }
 .danger-zone { border: 1px solid var(--bad); border-radius: var(--radius); padding: 0.75rem 1rem 0.25rem; margin-top: 1rem; }
 .danger-zone > h3 { color: var(--bad); margin-top: 0; font-size: 0.95rem; }
 
@@ -478,6 +496,15 @@ form#issue {
 .auth-brand { display: flex; align-items: center; gap: 0.6rem; justify-content: center; margin-bottom: 1.25rem; font-size: 1.4rem; font-weight: 750; }
 .auth-card input[type=text], .auth-card input[type=password] { max-width: none; }
 .auth-card button[type=submit] { width: 100%; }
+
+/* Просмотр файла и страница ошибки */
+.viewer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin: 0 0 1rem; text-align: center; }
+.viewer img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.viewer object { display: block; width: 100%; height: 75vh; min-height: 22rem; border: 0; }
+.viewer-fallback { padding: 1.25rem 0.5rem; }
+.error-page { text-align: center; padding: 2.5rem 0.5rem; }
+.error-page .code { font-size: 3.5rem; font-weight: 800; color: var(--border-strong); line-height: 1; }
+.error-page .row { justify-content: center; margin-top: 1rem; }
 
 @media print {
     .topbar, .skip-link, form#issue { display: none; }

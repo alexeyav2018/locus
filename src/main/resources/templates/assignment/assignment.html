@@ -24,7 +24,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back"><a th:href="@{/assignments}">← К Заданиям</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/assignments')}}">← К Заданиям</a></p>
 <div class="page-head">
     <div>
         <h1 th:text="'Задание для ' + ${listed.studentName}">Задание для Иванов Пётр</h1>
@@ -45,18 +45,18 @@
         <span class="badge badge--bad" th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</span>
     </div>
     <p th:if="${listed.assignment.batch != null}">Выдано Группе —
-        <a th:href="@{/assignments/batches/{id}(id=${listed.assignment.batch.value})}">к Раздаче</a></p>
+        <a th:href="@{/assignments/batches/{id}(id=${listed.assignment.batch.value},from=${shell.here})}">к Раздаче</a></p>
     <!--/* Только адрес: о Работах эта область в коде не знает,
            экран приёма сам отберёт по Заданию. */-->
     <div class="row">
-        <a class="btn btn-primary" th:href="@{/works(assignment=${listed.assignment.id.value})}">Работы</a>
+        <a class="btn btn-primary" th:href="@{/works(assignment=${listed.assignment.id.value},from=${shell.here})}">Работы</a>
     </div>
 </div>
 
 <h2>Задачи</h2>
 <ul class="items problems">
     <li class="item" th:each="problem : ${problems}">
-        <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+        <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
            th:text="'№ ' + ${problem.number}">№ 12</a>
         <span class="grow muted" th:if="${problem.problem.hasCaption}"
               th:text="${problem.problem.caption}">Ященко, вариант 12</span>
@@ -82,16 +82,28 @@
 </ul>
 
 <h2>Действия</h2>
-<form class="inline-form" method="post" th:action="@{/assignments/{id}/due-date(id=${listed.assignment.id.value})}">
-    <label>Новый срок <input type="date" name="dueDate" th:value="${listed.assignment.dueDate}"></label>
-    <button type="submit">Перенести срок</button>
-</form>
+<div class="folds">
+    <details class="more" name="assignment-actions" th:attr="open=${shell.opened('/due-date')} ? 'open'">
+        <summary>Срок</summary>
+        <div class="more-body">
+            <form class="inline-form" method="post" th:action="@{/assignments/{id}/due-date(id=${listed.assignment.id.value})}">
+                <label>Новый срок <input type="date" name="dueDate" th:value="${listed.assignment.dueDate}"></label>
+                <button type="submit" class="btn-primary">Перенести срок</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 
-<div class="danger-zone">
-    <form method="post" data-confirm="Это действие необратимо."
-          th:action="@{/assignments/{id}/deletion(id=${listed.assignment.id.value})}">
-        <button type="submit" class="btn-danger">Удалить Задание</button>
-    </form>
+    <details class="more" name="assignment-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{/assignments/{id}/deletion(id=${listed.assignment.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Задание</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 </div>
 </main>
 </body>

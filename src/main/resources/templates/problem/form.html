@@ -16,8 +16,8 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back" th:if="${problem}"><a th:href="@{/problems/{id}(id=${problem.id.value})}">← К Задаче</a></p>
-<p class="back" th:unless="${problem}"><a th:href="@{/taxonomy}">← К рубрикатору</a></p>
+<p class="back" th:if="${problem}"><a th:href="@{${shell.backOr('/problems/' + problem.id.value)}}">← К Задаче</a></p>
+<p class="back" th:unless="${problem}"><a th:href="@{${shell.backOr('/taxonomy')}}">← К рубрикатору</a></p>
 <div class="page-head">
     <h1 th:if="${problem}" th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
     <h1 th:unless="${problem}">Новая Задача</h1>
@@ -28,7 +28,7 @@
 
 <form method="post"
       enctype="multipart/form-data"
-      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value})} : @{/problems}">
+      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
 
     <label>Подпись
         <input type="text" name="caption" th:value="${problem} ? ${problem.caption} : ''">
@@ -78,16 +78,19 @@
         </select>
     </fieldset>
 
-    <fieldset>
-        <legend>Характеристики</legend>
-        <p class="hint">Необязательны.</p>
-        <select name="characteristicIds" multiple size="6">
-            <option th:each="characteristic : ${characteristics}"
-                    th:value="${characteristic.id.value}"
-                    th:text="${characteristic.name}"
-                    th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
-        </select>
-    </fieldset>
+    <!--/* Необязательное — под кнопкой; у Задачи с уже выбранными
+           Характеристиками блок раскрыт, чтобы выбор был виден. */-->
+    <details class="more" th:attr="open=${problem != null and not #lists.isEmpty(problem.characteristics)} ? 'open'">
+        <summary>Характеристики (необязательно)</summary>
+        <div class="more-body">
+            <select name="characteristicIds" multiple size="6">
+                <option th:each="characteristic : ${characteristics}"
+                        th:value="${characteristic.id.value}"
+                        th:text="${characteristic.name}"
+                        th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
+            </select>
+        </div>
+    </details>
 
     <fieldset th:unless="${problem}">
         <legend>Файлы</legend>
@@ -97,23 +100,44 @@
         <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
     </fieldset>
 
-    <button type="submit" class="btn-primary" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+    <div class="form-actions">
+        <button type="submit" class="btn-primary" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+        <a class="btn" th:if="${problem}" th:href="@{${shell.backOr('/problems/' + problem.id.value)}}">Отмена</a>
+        <a class="btn" th:unless="${problem}" th:href="@{${shell.backOr('/taxonomy')}}">Отмена</a>
+    </div>
 </form>
 
-<div class="card" th:if="${problem}">
+<div th:if="${problem}">
     <h2>Замена файлов</h2>
-    <form method="post" enctype="multipart/form-data"
-          th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
-        <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
-        <button type="submit" class="btn-sm">Заменить условие</button>
-    </form>
-    <form method="post" enctype="multipart/form-data"
-          th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
-        <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
-        <button type="submit" class="btn-sm">Заменить решение</button>
-    </form>
+    <div class="folds">
+        <details class="more" name="replace-file" th:attr="open=${shell.opened('/condition')} ? 'open'">
+            <summary>Другой PDF условия</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
+                    <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить условие</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+        <details class="more" name="replace-file" th:attr="open=${shell.opened('/solution')} ? 'open'">
+            <summary>Другой PDF решения</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
+                    <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить решение</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
 </div>
-
 </main>
 </body>
 </html>

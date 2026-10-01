@@ -23,7 +23,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back"><a th:href="@{/problems}">← К поиску Задач</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/problems')}}">← К поиску Задач</a></p>
 <div class="page-head">
     <div>
         <h1>Выдача Задания</h1>
@@ -35,6 +35,7 @@
 <p class="alert" role="alert" th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
 
 <form method="post" th:action="@{/assignments}">
+    <input type="hidden" name="from" th:value="${shell.back}">
     <fieldset>
         <legend>Задачи</legend>
         <p th:if="${#lists.isEmpty(problems)}">Ни одной Задачи не отмечено — вернитесь
@@ -43,7 +44,7 @@
         <ul class="items problems" th:unless="${#lists.isEmpty(problems)}">
             <li class="item" th:each="problem : ${problems}">
                 <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
-                <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+                <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
                 <span class="grow muted" th:if="${problem.problem.hasCaption}"
                       th:text="${problem.problem.caption}">Ященко, вариант 12</span>
@@ -96,7 +97,10 @@
         </label>
     </fieldset>
 
-    <button type="submit" class="btn-primary">Выдать</button>
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Выдать</button>
+        <a class="btn" th:href="@{${shell.backOr('/problems')}}">Отмена</a>
+    </div>
 </form>
 </main>
 </body>

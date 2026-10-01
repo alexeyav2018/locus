@@ -123,7 +123,7 @@
                 <input type="checkbox" name="problem" form="issue" th:if="${teacher}"
                        th:value="${problem.problem.id.value}"
                        th:id="'problem-' + ${problem.problem.id.value}">
-                <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+                <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
                 <span class="muted" th:if="${problem.problem.hasCaption}"
                       th:text="${problem.problem.caption}">Ященко, вариант 12</span>
@@ -144,6 +144,7 @@
                (design.md, «Экраны»). Показывается только Учителю: у прочих
                Учеников нет, и выдавать некому. */-->
         <form method="get" th:action="@{/assignments/new}" id="issue" th:if="${teacher}">
+            <input type="hidden" name="from" th:value="${shell.here}">
             <button type="submit" class="btn-primary">Выдать отмеченные</button>
             <span class="muted small">Отметьте Задачи галочками — выдача пойдёт на следующем шаге.</span>
         </form>

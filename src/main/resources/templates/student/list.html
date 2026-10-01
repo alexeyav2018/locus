@@ -31,32 +31,32 @@
 
 <p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
 
-<form class="inline-form" method="get" th:action="@{/students}">
-    <label>
-        <input type="checkbox" name="withdrawn" value="true" th:checked="${showingWithdrawn}">
-        показать выбывших
-    </label>
-    <button type="submit" class="btn-sm">Показать</button>
-</form>
+<p>
+    <a class="btn btn-sm" th:unless="${showingWithdrawn}" th:href="@{/students(withdrawn=true)}">Показать выбывших</a>
+    <a class="btn btn-sm" th:if="${showingWithdrawn}" th:href="@{/students}">К действующим</a>
+</p>
 
 <p class="empty" th:if="${#lists.isEmpty(students)}"
    th:text="${showingWithdrawn} ? 'Выбывших Учеников нет.' : 'Учеников пока нет.'">Учеников пока нет.</p>
 <ul class="items">
     <li class="item" th:each="student : ${students}" th:id="'student-' + ${student.id.value}">
-        <a class="grow" th:href="@{/students/{id}(id=${student.id.value})}" th:text="${student.name}">Иванов Пётр</a>
+        <a class="grow" th:href="@{/students/{id}(id=${student.id.value},from=${shell.here})}" th:text="${student.name}">Иванов Пётр</a>
         <span class="badge" th:if="${student.withdrawn}">(выбыл)</span>
-        <a class="btn btn-sm" th:href="@{/mastery(student=${student.id.value})}">Владение</a>
-        <a class="btn btn-sm" th:href="@{/works(student=${student.id.value})}">Работы</a>
+        <a class="btn btn-sm" th:href="@{/mastery(student=${student.id.value},from=${shell.here})}">Владение</a>
+        <a class="btn btn-sm" th:href="@{/works(student=${student.id.value},from=${shell.here})}">Работы</a>
     </li>
 </ul>
 
-<div class="card" th:unless="${showingWithdrawn}">
-    <h2>Завести Ученика</h2>
-    <form class="inline-form" method="post" th:action="@{/students}">
-        <label>Имя <input type="text" name="name" autocomplete="off"></label>
-        <button type="submit" class="btn-primary">Завести</button>
-    </form>
-</div>
+<details class="more more--primary" th:unless="${showingWithdrawn}" th:attr="open=${shell.opened('/students')} ? 'open'">
+    <summary>Завести Ученика</summary>
+    <div class="more-body">
+        <form class="inline-form" method="post" th:action="@{/students}">
+            <label>Имя <input type="text" name="name" autocomplete="off" th:value="${shell.echo('name', '/students')}"></label>
+            <button type="submit" class="btn-primary">Завести</button>
+            <button type="button" data-close>Отмена</button>
+        </form>
+    </div>
+</details>
 </main>
 </body>
 </html>

@@ -15,7 +15,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back"><a th:href="@{/taxonomy(node=${material.node.value})}">← К узлу в рубрикаторе</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/taxonomy?node=' + material.node.value)}}">← К узлу в рубрикаторе</a></p>
 <div class="page-head">
     <div>
         <h1 th:text="${material.title}">Тригонометрические тождества</h1>
@@ -33,7 +33,7 @@
 
     <dt>Содержимое</dt>
     <dd th:if="${material.hasFile}">
-        <a class="btn btn-primary" th:href="@{/theory/{id}/file(id=${material.id.value})}">Открыть файл</a>
+        <a class="btn btn-primary" th:href="@{/theory/{id}/view(id=${material.id.value},from=${shell.here})}">Открыть файл</a>
         <span class="hint" style="display:block">Ссылка действует ограниченное время; постоянного адреса у файла нет.</span>
     </dd>
     <dd th:unless="${material.hasFile}">
@@ -46,13 +46,19 @@
 <div th:if="${administrator}">
     <h2>Действия</h2>
     <div class="row">
-        <a class="btn" th:href="@{/theory/{id}/edit(id=${material.id.value})}">Править материал</a>
+        <a class="btn" th:href="@{/theory/{id}/edit(id=${material.id.value},from=${shell.back})}">Править материал</a>
     </div>
-    <div class="danger-zone">
-        <form method="post" data-confirm="Это действие необратимо."
-              th:action="@{/theory/{id}/deletion(id=${material.id.value})}">
-            <button type="submit" class="btn-danger">Удалить материал</button>
-        </form>
+    <div class="folds" style="margin-top:.75rem">
+        <details class="more" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+            <summary>Удаление</summary>
+            <div class="more-body">
+                <form method="post" data-confirm="Это действие необратимо."
+                      th:action="@{/theory/{id}/deletion(id=${material.id.value})}">
+                    <button type="submit" class="btn-danger">Удалить материал</button>
+                    <button type="button" data-close>Отмена</button>
+                </form>
+            </div>
+        </details>
     </div>
 </div>
 </main>

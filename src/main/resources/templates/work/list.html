@@ -17,7 +17,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--narrow">
-<p class="back"><a th:href="@{/students/{id}(id=${student.id.value})}">← К Ученику</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/students/' + student.id.value)}}">← К Ученику</a></p>
 <div class="page-head">
     <div>
         <h1 th:text="'Работы: ' + ${student.name}">Работы: Иванов Пётр</h1>
@@ -34,7 +34,7 @@
         <span class="badge badge--ok" th:if="${work.checked and work.verdict.name() == 'CORRECT'}" th:text="${work.verdict.title}">верно</span>
         <span class="badge badge--bad" th:if="${work.checked and work.verdict.name() != 'CORRECT'}" th:text="${work.verdict.title}">неверно</span>
         <span class="badge badge--warn" th:unless="${work.checked}" th:text="'не проверена'">не проверена</span>
-        <a class="btn btn-sm" th:href="@{/works(assignment=${work.assignment.value})}">к Заданию</a>
+        <a class="btn btn-sm" th:href="@{/works(assignment=${work.assignment.value},from=${shell.here})}">к Заданию</a>
     </li>
 </ul>
 </main>

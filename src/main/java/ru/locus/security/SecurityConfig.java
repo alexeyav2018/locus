@@ -44,6 +44,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http, CurrentUser currentUser) throws Exception {
         RequestMatcher staticResources = PathRequest.toStaticResources().atCommonLocations();
         http
+                // Страница просмотра (ADR-0042) встраивает файл рамкой с того же
+                // источника; чужим сайтам встраивать наши страницы по-прежнему нельзя.
+                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers(staticResources).permitAll()
                         .requestMatchers(Addresses.LOGIN).permitAll()

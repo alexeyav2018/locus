@@ -20,8 +20,8 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back" th:if="${material}"><a th:href="@{/theory/{id}(id=${material.id.value})}">← К материалу</a></p>
-<p class="back" th:unless="${material}"><a th:href="@{/taxonomy}">← К рубрикатору</a></p>
+<p class="back" th:if="${material}"><a th:href="@{${shell.backOr('/theory/' + material.id.value)}}">← К материалу</a></p>
+<p class="back" th:unless="${material}"><a th:href="@{${shell.backOr('/taxonomy')}}">← К рубрикатору</a></p>
 <div class="page-head">
     <h1 th:if="${material}" th:text="${material.title}">Тригонометрические тождества</h1>
     <h1 th:unless="${material}">Новый Теоретический материал</h1>
@@ -32,7 +32,7 @@
 
 <form method="post"
       enctype="multipart/form-data"
-      th:action="${material} ? @{/theory/{id}(id=${material.id.value})} : @{/theory}">
+      th:action="${material} ? @{/theory/{id}(id=${material.id.value},from=${shell.back})} : @{/theory(from=${shell.back})}">
 
     <label>Название
         <input type="text" name="title" th:value="${material} ? ${material.title} : ''">
@@ -66,23 +66,36 @@
         </label>
     </fieldset>
 
-    <button type="submit" class="btn-primary" th:text="${material} ? 'Сохранить' : 'Завести материал'">Завести материал</button>
+    <div class="form-actions">
+        <button type="submit" class="btn-primary" th:text="${material} ? 'Сохранить' : 'Завести материал'">Завести материал</button>
+        <a class="btn" th:if="${material}" th:href="@{${shell.backOr('/theory/' + material.id.value)}}">Отмена</a>
+        <a class="btn" th:unless="${material}" th:href="@{${shell.backOr('/taxonomy')}}">Отмена</a>
+    </div>
 </form>
 
-<div class="card" th:if="${material}">
+<div th:if="${material}">
     <h2>Замена содержимого</h2>
-    <p class="hint">Файл на другой файл, файл на ссылку, ссылка на файл — это
-        одна и та же правка. Прежний файл уносится вместе с заменой.</p>
-    <form method="post" enctype="multipart/form-data"
-          th:action="@{/theory/{id}/content(id=${material.id.value})}">
-        <label>Новый файл <input type="file" name="file"></label>
-        <label>Либо новая ссылка
-            <input type="text" name="link" placeholder="https://">
-        </label>
-        <button type="submit">Заменить содержимое</button>
-    </form>
+    <div class="folds">
+        <details class="more" th:attr="open=${shell.opened('/content')} ? 'open'">
+            <summary>Другой файл или ссылка</summary>
+            <div class="more-body">
+                <p class="hint">Файл на другой файл, файл на ссылку, ссылка на файл — это
+                    одна и та же правка. Прежний файл уносится вместе с заменой.</p>
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/theory/{id}/content(id=${material.id.value})}">
+                    <label>Новый файл <input type="file" name="file"></label>
+                    <label>Либо новая ссылка
+                        <input type="text" name="link" placeholder="https://">
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить содержимое</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
 </div>
-
 </main>
 </body>
 </html>

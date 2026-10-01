@@ -41,27 +41,40 @@
                     </div>
                 </td>
                 <td>
-                    <form class="inline-form" method="post" th:action="@{/users/{id}/password(id=${user.id.value})}">
-                        <input type="password" name="newPassword" aria-label="Новый пароль" autocomplete="new-password">
-                        <button type="submit" class="btn-sm">Сбросить пароль</button>
-                    </form>
+                    <details class="more" th:attr="open=${shell.opened('/users/' + user.id.value + '/password')} ? 'open'">
+                        <summary>Новый пароль</summary>
+                        <div class="more-body">
+                            <form class="inline-form" method="post" th:action="@{/users/{id}/password(id=${user.id.value})}">
+                                <input type="password" name="newPassword" aria-label="Новый пароль" autocomplete="new-password">
+                                <button type="submit" class="btn-sm btn-primary">Сбросить пароль</button>
+                                <button type="button" class="btn-sm" data-close>Отмена</button>
+                            </form>
+                        </div>
+                    </details>
                 </td>
             </tr>
             </tbody>
         </table>
     </div>
 
-    <h2>Завести учётную запись</h2>
-    <form class="card" method="post" th:action="@{/users}">
-        <label for="login">Имя входа
-            <input type="text" id="login" name="login" autocomplete="off" autocapitalize="none">
-        </label>
-        <label for="initialPassword">Начальный пароль
-            <input type="password" id="initialPassword" name="initialPassword" autocomplete="new-password">
-        </label>
-        <p class="hint">Пользователь сменит его при первом входе.</p>
-        <button type="submit" class="btn-primary">Завести</button>
-    </form>
+    <details class="more more--primary" th:attr="open=${shell.opened('/users')} ? 'open'">
+        <summary>Завести учётную запись</summary>
+        <div class="more-body">
+            <form method="post" th:action="@{/users}">
+                <label for="login">Имя входа
+                    <input type="text" id="login" name="login" autocomplete="off" autocapitalize="none" th:value="${shell.echo('login', '/users')}">
+                </label>
+                <label for="initialPassword">Начальный пароль
+                    <input type="password" id="initialPassword" name="initialPassword" autocomplete="new-password">
+                </label>
+                <p class="hint">Пользователь сменит его при первом входе.</p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Завести</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
 </main>
 </body>
 </html>

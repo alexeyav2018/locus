@@ -11,7 +11,7 @@
     (CLAUDE.md, «Доменный инвариант»). Данные берёт ShellAdvice; у посетителя
     без входа шапки нет.
 
-    В шапке нет форм: выход — на странице смены пароля, куда ведёт имя вошедшего.
+    В шапке одна форма — «Выйти» (ADR-0042): выход нужен с любого экрана.
     Комментарии — в форме Thymeleaf: до браузера они не доходят.
 */-->
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
@@ -53,7 +53,10 @@
                        th:attr="aria-current=${shell.section == 'users'} ? 'page'">Учётные записи</a>
                 </div>
             </nav>
-            <a class="me" th:href="@{/password}" title="Пароль и выход" th:text="${shell.login}">admin</a>
+            <a class="me" th:href="@{/password}" title="Сменить пароль" th:text="${shell.login}">admin</a>
+            <form class="logout" method="post" th:action="@{/logout}">
+                <button type="submit">Выйти</button>
+            </form>
         </div>
     </header>
 </th:block>

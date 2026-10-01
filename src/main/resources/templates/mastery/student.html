@@ -16,7 +16,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back"><a th:href="@{/students/{id}(id=${overview.student.id.value})}">← К карточке Ученика</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/students/' + overview.student.id.value)}}">← К карточке Ученика</a></p>
 <div class="page-head">
     <div>
         <h1 th:text="'Владение — ' + ${overview.student.name}">Владение — Иванов Пётр</h1>
@@ -37,7 +37,7 @@
 <ul class="items" th:unless="${#lists.isEmpty(overview.gaps)}">
     <li class="item" th:each="gap : ${overview.gaps}">
         <span class="grow" th:text="${gap.topicPath} + ' — ' + ${gap.methodName}">Алгебра / Уравнения — Замена переменной</span>
-        <a class="btn btn-sm btn-primary" th:href="@{/problems(node=${gap.topic.value}, method=${gap.method.value})}">Подобрать задачи</a>
+        <a class="btn btn-sm btn-primary" th:href="@{/problems(node=${gap.topic.value}, method=${gap.method.value}, from=${shell.here})}">Подобрать задачи</a>
     </li>
 </ul>
 

@@ -22,7 +22,7 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page page--medium">
-<p class="back"><a th:href="@{/students}">← К списку Учеников</a></p>
+<p class="back"><a th:href="@{${shell.backOr('/students')}}">← К списку Учеников</a></p>
 <div class="page-head">
     <div>
         <h1 th:text="${student.name}">Иванов Пётр</h1>
@@ -34,11 +34,11 @@
 <p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
 
 <div class="tiles">
-    <a class="tile tile--personal" th:href="@{/mastery(student=${student.id.value})}">
+    <a class="tile tile--personal" th:href="@{/mastery(student=${student.id.value},from=${shell.here})}">
         <span class="tile-title">Владение</span><span class="tile-text">Где силён, где пробелы</span></a>
-    <a class="tile tile--personal" th:href="@{/works(student=${student.id.value})}">
+    <a class="tile tile--personal" th:href="@{/works(student=${student.id.value},from=${shell.here})}">
         <span class="tile-title">Работы Ученика</span><span class="tile-text">Что принято и проверено</span></a>
-    <a class="tile tile--personal" th:href="@{/assignments(student=${student.id.value})}">
+    <a class="tile tile--personal" th:href="@{/assignments(student=${student.id.value},from=${shell.here})}">
         <span class="tile-title">Задания Ученика</span><span class="tile-text">Что выдано и что не сдано</span></a>
 </div>
 
@@ -53,25 +53,40 @@
 <!--/* Только адрес: о Заданиях эта область в коде не знает,
        сводка сама отберёт по Ученику. */-->
 <h2>Действия</h2>
-<form class="inline-form" method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
-    <label>Новое имя <input type="text" name="name" th:value="${student.name}"></label>
-    <button type="submit">Переименовать</button>
-</form>
+<div class="folds">
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+        <summary>Изменить имя</summary>
+        <div class="more-body">
+            <form class="inline-form" method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
+                <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')} ?: ${student.name}"></label>
+                <button type="submit" class="btn-primary">Переименовать</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 
-<div class="row">
-    <form class="inline" th:if="${!student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal(id=${student.id.value})}">
-        <button type="submit">Пометить выбывшим</button>
-    </form>
-    <form class="inline" th:if="${student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal/undo(id=${student.id.value})}">
-        <button type="submit">Вернуть</button>
-    </form>
-</div>
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/withdrawal', '/withdrawal/undo')} ? 'open'">
+        <summary>Состояние</summary>
+        <div class="more-body">
+            <form class="inline" th:if="${!student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal(id=${student.id.value})}">
+                <button type="submit">Пометить выбывшим</button>
+            </form>
+            <form class="inline" th:if="${student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal/undo(id=${student.id.value})}">
+                <button type="submit">Вернуть</button>
+            </form>
+        </div>
+    </details>
 
-<div class="danger-zone">
-    <form method="post" data-confirm="Это действие необратимо."
-          th:action="@{/students/{id}/deletion(id=${student.id.value})}">
-        <button type="submit" class="btn-danger">Удалить Ученика</button>
-    </form>
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{/students/{id}/deletion(id=${student.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Ученика</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 </div>
 </main>
 </body>

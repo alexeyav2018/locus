@@ -6,6 +6,22 @@
 (function () {
     'use strict';
 
+    // 0. Признак «скрипт работает»: по нему показываются кнопки «Отмена» в блоках.
+    document.documentElement.classList.add('js');
+    document.addEventListener('click', function (event) {
+        var close = event.target.closest && event.target.closest('[data-close]');
+        if (close) {
+            var block = close.closest('details');
+            if (block) {
+                block.open = false;
+                var summary = block.querySelector('summary');
+                if (summary) {
+                    summary.focus();
+                }
+            }
+        }
+    });
+
     // 1. Подтверждение необратимых действий: <form data-confirm="Это необратимо.">.
     //    Вопрос называет действие словами с кнопки, а текст берёт из атрибута.
     document.addEventListener('submit', function (event) {
