@@ -160,10 +160,10 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока тринадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока четырнадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
 `library-search`, `theory-materials`, `students-groups`, `assignments`,
-`submission-review`, `mastery-marks` и `mastery-views`.
+`submission-review`, `mastery-marks`, `mastery-views` и `interface-navigation`.
 
 ### Первый вход
 
