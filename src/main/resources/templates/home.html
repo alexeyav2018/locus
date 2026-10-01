@@ -1,31 +1,95 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Locus</title>
 </head>
 <body>
-<h1>Locus</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page">
+    <div class="hero">
+        <h1>Locus</h1>
+        <p class="lead">Вошли как <span th:text="${login}">admin</span>.
+            <span th:if="${teacher}">Здесь — то, что требует внимания, и быстрые переходы.</span></p>
+    </div>
 
-<p>Вошли как <span th:text="${login}">admin</span>.</p>
-<p>Общая библиотека — рубрикатор, словари Методов и Характеристик, каталог Задач
-    и Теоретические материалы — видна всем. Ученики и Группы у каждого
-    Учителя свои.</p>
+    <!--/* Для Учителя главная начинается с дела, а не с перечня разделов:
+           что просрочено и кому. Данные личные — сервисы уже отфильтровали
+           их по владельцу (ADR-0027); у Администратора без роли Учителя
+           этого блока нет. «Не сдано» приходит вычисленным (инвариант 12). */-->
+    <section class="card card--personal stack" th:if="${teacher}" style="margin-bottom:1.25rem" aria-labelledby="attention">
+        <div class="card-title">
+            <h2 id="attention">Требует внимания</h2>
+            <span class="scope scope--personal">Мой кабинет</span>
+        </div>
+        <p class="empty" th:if="${notSubmittedCount == 0}">Несданных Заданий нет — всё в порядке.</p>
+        <div th:unless="${notSubmittedCount == 0}">
+            <p><span class="stat stat--bad" th:text="${notSubmittedCount}">3</span>
+                <span class="muted">— несданных Заданий</span></p>
+            <ul class="items">
+                <li class="item" th:each="item : ${notSubmitted}">
+                    <a class="grow" th:href="@{/assignments/{id}(id=${item.assignment.id.value})}"
+                       th:text="${item.studentName}">Иванов Пётр</a>
+                    <span class="muted small"
+                          th:text="'срок ' + ${#temporals.format(item.assignment.dueDate, 'dd.MM.yyyy')}">срок 08.09.2026</span>
+                    <span class="badge badge--bad" th:text="'не сдано'">не сдано</span>
+                    <a class="btn btn-sm" th:href="@{/works(assignment=${item.assignment.id.value})}">Принять Работы</a>
+                </li>
+            </ul>
+            <a th:href="@{/assignments(notSubmitted=true)}">Все несданные →</a>
+        </div>
+        <div class="row">
+            <a class="btn btn-primary" th:href="@{/problems}">Подобрать и выдать Задачи</a>
+            <a class="btn" th:href="@{/students}"
+               th:text="'Ученики (' + ${studentCount} + ')'">Ученики</a>
+        </div>
+    </section>
 
-<ul>
-    <li><a th:href="@{/taxonomy}">Рубрикатор</a></li>
-    <li><a th:href="@{/dictionaries}">Словари</a></li>
-    <li><a th:href="@{/problems}">Задачи</a> — поиск по всей библиотеке; лежат они
-        на Темах рубрикатора</li>
-    <li th:if="${teacher}"><a th:href="@{/students}">Ученики</a></li>
-    <li th:if="${teacher}"><a th:href="@{/groups}">Группы</a></li>
-    <li th:if="${teacher}"><a th:href="@{/assignments}">Задания</a></li>
-    <li th:if="${administrator}"><a th:href="@{/users}">Учётные записи</a></li>
-    <li><a th:href="@{/password}">Сменить пароль</a></li>
-</ul>
+    <h2 class="small muted" style="text-transform:uppercase;letter-spacing:.05em">Библиотека — общая для всех учителей</h2>
+    <p class="muted">Рубрикатор, словари Методов и Характеристик, каталог Задач
+        и Теоретические материалы видны всем.</p>
+    <div class="tiles">
+        <a class="tile tile--shared" th:href="@{/taxonomy}">
+            <span class="tile-title">Рубрикатор</span>
+            <span class="tile-text">Разделы и Темы; на Темах лежат Задачи и теория</span></a>
+        <a class="tile tile--shared" th:href="@{/problems}">
+            <span class="tile-title">Задачи</span>
+            <span class="tile-text">Поиск по всей библиотеке: узел, Методы, Характеристики, Часть</span></a>
+        <a class="tile tile--shared" th:href="@{/dictionaries}">
+            <span class="tile-title">Словари</span>
+            <span class="tile-text">Методы и Характеристики</span></a>
+    </div>
 
-<form method="post" th:action="@{/logout}">
-    <button type="submit">Выйти</button>
-</form>
+    <th:block th:if="${teacher}">
+        <h2 class="small muted" style="text-transform:uppercase;letter-spacing:.05em">Мой кабинет — только мои Ученики</h2>
+        <div class="tiles">
+            <a class="tile tile--personal" th:href="@{/students}">
+                <span class="tile-title">Ученики</span>
+                <span class="tile-text">Карточки, Работы и Владение</span></a>
+            <a class="tile tile--personal" th:href="@{/groups}">
+                <span class="tile-title">Группы</span>
+                <span class="tile-text">Составы для общей выдачи</span></a>
+            <a class="tile tile--personal" th:href="@{/assignments}">
+                <span class="tile-title">Задания</span>
+                <span class="tile-text">Что выдано, сроки, «не сдано»</span></a>
+        </div>
+    </th:block>
+
+    <th:block th:if="${administrator}">
+        <h2 class="small muted" style="text-transform:uppercase;letter-spacing:.05em">Администрирование</h2>
+        <div class="tiles">
+            <a class="tile" th:href="@{/users}">
+                <span class="tile-title">Учётные записи</span>
+                <span class="tile-text">Роли и пароли</span></a>
+        </div>
+    </th:block>
+
+    <div class="row">
+        <a class="btn btn-sm" th:href="@{/password}">Сменить пароль</a>
+        <form class="inline" method="post" th:action="@{/logout}">
+            <button type="submit" class="btn-sm">Выйти</button>
+        </form>
+    </div>
+</main>
 </body>
 </html>

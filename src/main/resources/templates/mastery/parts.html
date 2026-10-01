@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!--/*
+    Части экрана Владения: ветвь дерева, вызывающая сама себя, и полоса
+    распределения. Вынесены в свой файл, чтобы определения не выводились
+    на странице вместе с содержимым.
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<ul th:fragment="branches(branches)">
+    <li th:each="branch : ${branches}">
+        <div class="mastery-row">
+            <span class="name" th:text="${branch.node.name}">Алгебра</span>
+            <span class="muted small" th:if="${branch.distribution.cells() == 0}">ячеек нет</span>
+            <span th:unless="${branch.distribution.cells() == 0}"
+                  th:replace="~{mastery/parts :: bar(${branch.distribution})}"></span>
+            <span class="legend" th:unless="${branch.distribution.cells() == 0}"
+                  th:text="${#strings.concat('владеет ', branch.distribution.mastered,
+                         ' · владеет неуверенно ', branch.distribution.uncertain,
+                         ' · не владеет ', branch.distribution.notMastered,
+                         ' · неизвестно ', branch.distribution.unknown)}">владеет 1 · владеет неуверенно 0 · не владеет 1 · неизвестно 2</span>
+        </div>
+        <ul th:if="${!#lists.isEmpty(branch.children)}" th:replace="~{mastery/parts :: branches(${branch.children})}"></ul>
+    </li>
+</ul>
+
+<span class="dist" aria-hidden="true" th:fragment="bar(distribution)">
+    <i class="m" th:style="'flex-grow:' + ${distribution.mastered}"></i>
+    <i class="u" th:style="'flex-grow:' + ${distribution.uncertain}"></i>
+    <i class="n" th:style="'flex-grow:' + ${distribution.notMastered}"></i>
+    <i class="x" th:style="'flex-grow:' + ${distribution.unknown}"></i>
+</span>
+
+</body>
+</html>

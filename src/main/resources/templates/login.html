@@ -1,25 +1,32 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Вход — Locus</title>
 </head>
 <body>
-<h1>Вход</h1>
+<main id="main" class="auth">
+    <div class="auth-card">
+        <div class="auth-brand"><span class="brand-mark" aria-hidden="true"></span>Locus</div>
+        <div class="card">
+            <h1>Вход</h1>
+            <p class="lead">Рабочее место учителя математики.</p>
 
-<p th:if="${error}" th:text="${error}">Неверное имя входа или пароль</p>
-<p th:if="${notice}" th:text="${notice}">Сеанс завершён</p>
+            <div class="alert" role="alert" th:if="${error}"><p th:text="${error}">Неверное имя входа или пароль</p></div>
+            <div class="alert alert--notice" role="status" th:if="${notice}"><p th:text="${notice}">Сеанс завершён</p></div>
 
-<form method="post" th:action="@{/login}">
-    <p>
-        <label for="username">Имя входа</label>
-        <input type="text" id="username" name="username" autofocus>
-    </p>
-    <p>
-        <label for="password">Пароль</label>
-        <input type="password" id="password" name="password">
-    </p>
-    <button type="submit">Войти</button>
-</form>
+            <form method="post" th:action="@{/login}">
+                <label for="username">Имя входа
+                    <input type="text" id="username" name="username" autofocus autocomplete="username"
+                           autocapitalize="none" spellcheck="false">
+                </label>
+                <label for="password">Пароль
+                    <input type="password" id="password" name="password" autocomplete="current-password">
+                </label>
+                <button type="submit" class="btn-primary">Войти</button>
+            </form>
+        </div>
+    </div>
+</main>
 </body>
 </html>

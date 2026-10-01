@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Выдача Задания — Locus</title>
     <!--/*
         Форма выдачи: Задачи, отмеченные в поиске по библиотеке (С4), срок,
@@ -19,24 +19,20 @@
         ссылки, а не копии: выданная Задача заморожена (ADR-0030), и здесь
         она такова, какова в библиотеке.
     */-->
-    <style>
-        form { max-width: 52rem; }
-        fieldset { margin: 0 0 1.5rem; padding: 0.75rem 1rem 1rem; }
-        legend { padding: 0 0.35rem; }
-        label { display: block; margin: 0.35rem 0; }
-        select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
-        input[type=date] { padding: 0.35rem; }
-        button { padding: 0.35rem 0.9rem; }
-        .scopes label { display: inline-block; margin-right: 1.25rem; }
-        .problems { margin: 0; padding-left: 1.25rem; }
-        .problems li { margin-bottom: 0.5rem; }
-        .problems .marks { margin: 0.15rem 0 0; }
-    </style>
 </head>
 <body>
-<h1>Выдача Задания</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{/problems}">← К поиску Задач</a></p>
+<div class="page-head">
+    <div>
+        <h1>Выдача Задания</h1>
+        <p class="lead">Три шага: Задачи — срок и теория — кому. Выдача одним действием.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
 
 <form method="post" th:action="@{/assignments}">
     <fieldset>
@@ -44,14 +40,14 @@
         <p th:if="${#lists.isEmpty(problems)}">Ни одной Задачи не отмечено — вернитесь
             к <a th:href="@{/problems}">поиску по библиотеке</a> и отметьте Задачи
             в найденном.</p>
-        <ul class="problems" th:unless="${#lists.isEmpty(problems)}">
-            <li th:each="problem : ${problems}">
+        <ul class="items problems" th:unless="${#lists.isEmpty(problems)}">
+            <li class="item" th:each="problem : ${problems}">
                 <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
                 <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
-                <span th:if="${problem.problem.hasCaption}"
+                <span class="grow muted" th:if="${problem.problem.hasCaption}"
                       th:text="${problem.problem.caption}">Ященко, вариант 12</span>
-                <span th:text="${problem.problem.part.title}">вторая часть</span>
+                <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
                 <p class="marks"
                    th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
                 <p class="marks"
@@ -67,7 +63,7 @@
         <label>Срок сдачи <input type="date" name="dueDate" th:value="${dueDate}"></label>
         <!--/* Охват по умолчанию — «без теории» (спека, «Теория прикрепляется
                охватом»): пока ничего не выбрано, отмечено первое значение. */-->
-        <p class="scopes">
+        <p class="scopes modes">
             <label th:each="scope : ${scopes}">
                 <input type="radio" name="theoryScope" th:value="${scope}"
                        th:checked="${theoryScope == scope or (theoryScope == null and scope.name() == 'NONE')}">
@@ -100,10 +96,8 @@
         </label>
     </fieldset>
 
-    <button type="submit">Выдать</button>
+    <button type="submit" class="btn-primary">Выдать</button>
 </form>
-
-<p><a th:href="@{/problems}">К поиску Задач</a></p>
-<p><a th:href="@{/assignments}">К Заданиям</a></p>
+</main>
 </body>
 </html>

@@ -141,6 +141,14 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 и он не предлагается в форме; Раздача Группе пропускает выбывших членов,
 отклоняясь только если действующих не осталось.
 
+Затем `ui-redesign` — новый интерфейс при прежней архитектуре: единая
+система оформления (`static/css/locus.css`), общий каркас с шапкой
+(`templates/fragments/shell.html`, данные — `ShellAdvice`), цветом разведены
+общее и личное, главная учителя начинается с несданных Заданий, Владение
+показано полосами распределения. Концепция — `openspec/context/ux-concept.md`,
+решение — [ADR-0041](openspec/context/adr/0041-edinaya-sistema-oformleniya.md).
+Свои `<style>` и встроенные скрипты в шаблонах не заводятся.
+
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
 а там пока тринадцать возможностей: `application-startup`, `users-and-roles`,
@@ -188,6 +196,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 | `openspec/context/domain-model.md` | сущности, связи, 12 инвариантов | при работе с моделью данных или правами |
 | `openspec/context/scenarios.md` | рабочие сценарии учителя | при написании спецификаций |
 | `openspec/context/architecture.md` | стек, слои, хранилище, размещение | при проектировании и реализации |
+| `openspec/context/ux-concept.md` | концепция интерфейса и правила для новых экранов | при любой работе над шаблонами |
 | `openspec/context/adr/` | журнал решений с обоснованием и отвергнутым | когда предложение противоречит принятому |
 | `openspec/context/strategy.md` | редакция: горизонт, предпосылки, вехи, не-цели, отложенное | при оценке объёма |
 | `openspec/context/standards.md` | правила работы с кодом | при реализации |
@@ -237,6 +246,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Задание после выдачи не правится, кроме срока, и удаляется, пока по нему нет Работы ([ADR-0037](openspec/context/adr/0037-zadanie-neizmenno-posle-vydachi.md)).
 - Работа одна на пару «Задание × Задача», принимается до вердикта и удаляется в любой момент ([ADR-0038](openspec/context/adr/0038-rabota-odna-na-paru-i-udalyaetsya-svobodno.md)).
 - Отметка хранится только с суждением — «неизвестно» есть отсутствие строки; при переезде на приёмник отметки сливаются по ADR-0013; справка считает только проверенные Работы ([ADR-0039](openspec/context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
+- Интерфейс — единый CSS и общий каркас, JavaScript только точечный и из одного файла ([ADR-0041](openspec/context/adr/0041-edinaya-sistema-oformleniya.md)).
 - Выбытие Ученика — флаг на карточке, переключаемый свободно, без каскада на Группы; Раздача пропускает выбывших членов ([ADR-0040](openspec/context/adr/0040-vybytie-uchenika-flag.md)).
 
 ## Процесс: OpenSpec
