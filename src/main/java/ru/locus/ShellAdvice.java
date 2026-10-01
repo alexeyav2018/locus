@@ -2,6 +2,9 @@ package ru.locus;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.boot.info.GitProperties;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import ru.locus.user.CurrentUser;
@@ -25,9 +28,44 @@ import ru.locus.user.User;
 public class ShellAdvice {
 
     private final CurrentUser currentUser;
+    private final Build build;
 
-    public ShellAdvice(CurrentUser currentUser) {
+    public ShellAdvice(CurrentUser currentUser, ObjectProvider<BuildProperties> buildProperties,
+                       ObjectProvider<GitProperties> gitProperties) {
         this.currentUser = currentUser;
+        BuildProperties built = buildProperties.getIfAvailable();
+        GitProperties git = gitProperties.getIfAvailable();
+        this.build = new Build(built == null ? null : built.getVersion(),
+                git == null ? null : git.get("commit.id.abbrev"));
+    }
+
+    /**
+     * Что показывает подвал: версия сборки и короткий хеш коммита (ADR-0043).
+     * Любая часть может отсутствовать — сборка без метаданных или вне
+     * git-каталога; подвал показывает то, что есть, и не падает.
+     *
+     * @param version версия из {@code pom.xml} либо {@code null}
+     * @param commit  короткий хеш коммита либо {@code null}
+     */
+    public record Build(String version, String commit) {
+
+        public Build {
+            version = blankToNull(version);
+            commit = blankToNull(commit);
+        }
+
+        private static String blankToNull(String value) {
+            return value == null || value.isBlank() ? null : value.trim();
+        }
+    }
+
+    /**
+     * Версия и хеш для подвала. Отдельно от {@code shell}: у посетителя без
+     * входа и на странице ошибки шапки нет, а подвал нужен именно им.
+     */
+    @ModelAttribute("build")
+    public Build build() {
+        return build;
     }
 
     /**

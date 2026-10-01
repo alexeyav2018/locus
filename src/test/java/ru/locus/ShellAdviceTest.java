@@ -32,6 +32,14 @@ class ShellAdviceTest {
     }
 
     @Test
+    void buildKeepsWhatIsKnownAndDropsWhatIsBlank() {
+        assertThat(new ShellAdvice.Build("1.0.0", "a1b2c3d")).isEqualTo(new ShellAdvice.Build("1.0.0", "a1b2c3d"));
+        assertThat(new ShellAdvice.Build("1.0.0", null).commit()).isNull();
+        assertThat(new ShellAdvice.Build("1.0.0", "  ").commit()).isNull();
+        assertThat(new ShellAdvice.Build(null, null).version()).isNull();
+    }
+
+    @Test
     void nothingOpensWithoutARefusal() {
         assertThat(shell(null, "/taxonomy?node=7", null).opened("/name", "/parent")).isFalse();
     }

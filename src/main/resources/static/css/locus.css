@@ -204,6 +204,10 @@ a:hover { color: var(--primary-hover); }
 .page--narrow { max-width: 42rem; }
 .page--medium { max-width: 56rem; }
 
+/* Ярлык версии: в правом нижнем углу окна, поверх страницы, но не перехватывает нажатий. */
+.buildinfo { position: fixed; right: 0.5rem; bottom: 0.5rem; z-index: 5; display: flex; gap: 0 0.4rem; padding: 0.15rem 0.5rem; border-radius: 0.4rem; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem; opacity: 0.85; pointer-events: none; }
+.buildinfo-commit { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1.5rem; margin-bottom: 1rem; }
 .page-head > div { flex: 1 1 18rem; min-width: 0; }
 .page-head h1 { margin-bottom: 0.15rem; }
@@ -491,7 +495,7 @@ form#issue {
 .verdicts label { margin: 0; }
 
 /* Вход */
-.auth { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem 1rem; }
+.auth { min-height: calc(100vh - 3.5rem); display: grid; place-items: center; padding: 1.5rem 1rem; }
 .auth-card { width: 100%; max-width: 24rem; }
 .auth-brand { display: flex; align-items: center; gap: 0.6rem; justify-content: center; margin-bottom: 1.25rem; font-size: 1.4rem; font-weight: 750; }
 .auth-card input[type=text], .auth-card input[type=password] { max-width: none; }

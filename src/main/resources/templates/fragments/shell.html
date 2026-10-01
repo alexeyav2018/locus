@@ -11,6 +11,13 @@
     (CLAUDE.md, «Доменный инвариант»). Данные берёт ShellAdvice; у посетителя
     без входа шапки нет.
 
+    Подвал (fragment «footer») — версия сборки и короткий хеш коммита (ADR-0043).
+    Подключается последним в <body> КАЖДОЙ страницы, в том числе формы входа и
+    страницы ошибки: данные берёт ShellAdvice.build, а не shell, так что подвал
+    есть и у посетителя без входа. Забытый подвал сторожит
+    EveryPageShowsTheVersionTest:
+        <th:block th:replace="~{fragments/shell :: footer}"/>
+
     В шапке одна форма — «Выйти» (ADR-0042): выход нужен с любого экрана.
     Комментарии — в форме Thymeleaf: до браузера они не доходят.
 */-->
@@ -59,6 +66,12 @@
             </form>
         </div>
     </header>
+</th:block>
+<th:block th:fragment="footer">
+    <footer class="buildinfo" th:if="${build != null and build.version != null}">
+        <span>Locus <span class="buildinfo-version" th:text="${build.version}">1.0.0</span></span>
+        <span class="buildinfo-commit" th:if="${build.commit != null}" th:text="'· ' + ${build.commit}">· a1b2c3d</span>
+    </footer>
 </th:block>
 </body>
 </html>

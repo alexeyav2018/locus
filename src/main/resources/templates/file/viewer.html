@@ -37,5 +37,6 @@
         <a class="btn" th:unless="${view.image}" th:href="${view.link}" target="_blank" rel="noopener">Открыть PDF</a>
     </div>
 </main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>
