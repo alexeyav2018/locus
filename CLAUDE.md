@@ -141,12 +141,29 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 и он не предлагается в форме; Раздача Группе пропускает выбывших членов,
 отклоняясь только если действующих не осталось.
 
+Затем `ui-redesign` — новый интерфейс при прежней архитектуре: единая
+система оформления (`static/css/locus.css`), общий каркас с шапкой
+(`templates/fragments/shell.html`, данные — `ShellAdvice`), цветом разведены
+общее и личное, главная учителя начинается с несданных Заданий, Владение
+показано полосами распределения. Концепция — `openspec/context/ux-concept.md`,
+решение — [ADR-0041](openspec/context/adr/0041-edinaya-sistema-oformleniya.md).
+Свои `<style>` и встроенные скрипты в шаблонах не заводятся.
+
+Затем `interface-focus` — порядок на экране и навигация без браузера:
+вторичное (правка, перенос, удаление, замена файлов, заведение) — под
+раскрывающимися блоками на той же странице, при отказе сервиса раскрыт блок
+именно этого действия; «Отмена» в формах; контекстный возврат параметром `from`
+(`ReturnTo` пропускает только внутренние адреса); свои страницы ошибок
+403/404/500; просмотр файлов внутри системы (`file/viewer.html`); «Выйти»
+в шапке ([ADR-0042](openspec/context/adr/0042-vtorichnoe-po-knopke-i-vozvrat.md)).
+Встроенный просмотр PDF на телефонах ненадёжен — у него запасная кнопка.
+
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока тринадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока четырнадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
 `library-search`, `theory-materials`, `students-groups`, `assignments`,
-`submission-review`, `mastery-marks` и `mastery-views`.
+`submission-review`, `mastery-marks`, `mastery-views` и `interface-navigation`.
 
 ### Первый вход
 
@@ -188,6 +205,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 | `openspec/context/domain-model.md` | сущности, связи, 12 инвариантов | при работе с моделью данных или правами |
 | `openspec/context/scenarios.md` | рабочие сценарии учителя | при написании спецификаций |
 | `openspec/context/architecture.md` | стек, слои, хранилище, размещение | при проектировании и реализации |
+| `openspec/context/ux-concept.md` | концепция интерфейса и правила для новых экранов | при любой работе над шаблонами |
 | `openspec/context/adr/` | журнал решений с обоснованием и отвергнутым | когда предложение противоречит принятому |
 | `openspec/context/strategy.md` | редакция: горизонт, предпосылки, вехи, не-цели, отложенное | при оценке объёма |
 | `openspec/context/standards.md` | правила работы с кодом | при реализации |
@@ -237,6 +255,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Задание после выдачи не правится, кроме срока, и удаляется, пока по нему нет Работы ([ADR-0037](openspec/context/adr/0037-zadanie-neizmenno-posle-vydachi.md)).
 - Работа одна на пару «Задание × Задача», принимается до вердикта и удаляется в любой момент ([ADR-0038](openspec/context/adr/0038-rabota-odna-na-paru-i-udalyaetsya-svobodno.md)).
 - Отметка хранится только с суждением — «неизвестно» есть отсутствие строки; при переезде на приёмник отметки сливаются по ADR-0013; справка считает только проверенные Работы ([ADR-0039](openspec/context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
+- Интерфейс — единый CSS и общий каркас, JavaScript только точечный и из одного файла ([ADR-0041](openspec/context/adr/0041-edinaya-sistema-oformleniya.md)).
+- Вторичное — по кнопке на той же странице, возврат — параметром `from`, файлы — на странице просмотра ([ADR-0042](openspec/context/adr/0042-vtorichnoe-po-knopke-i-vozvrat.md)).
 - Выбытие Ученика — флаг на карточке, переключаемый свободно, без каскада на Группы; Раздача пропускает выбывших членов ([ADR-0040](openspec/context/adr/0040-vybytie-uchenika-flag.md)).
 
 ## Процесс: OpenSpec

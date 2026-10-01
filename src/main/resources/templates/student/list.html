@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Ученики — Locus</title>
     <!--/*
         Список Учеников вошедшего Учителя и форма заведения на той же
@@ -17,40 +17,46 @@
         (`/students?withdrawn=true`), как у отбора Заданий: список
         либо действующих, либо выбывших, а не двух вместе (ADR-0040).
     */-->
-    <style>
-        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; }
-        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
-        button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1 th:text="${showingWithdrawn} ? 'Ученики — выбывшие' : 'Ученики'">Ученики</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<div class="page-head">
+    <div>
+        <h1 th:text="${showingWithdrawn} ? 'Ученики — выбывшие' : 'Ученики'">Ученики</h1>
+        <p class="lead">Ваши Ученики. Другие Учителя их не видят.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
 
-<form method="get" th:action="@{/students}">
-    <label>
-        <input type="checkbox" name="withdrawn" value="true" th:checked="${showingWithdrawn}">
-        показать выбывших
-    </label>
-    <button type="submit">Показать</button>
-</form>
+<p>
+    <a class="btn btn-sm" th:unless="${showingWithdrawn}" th:href="@{/students(withdrawn=true)}">Показать выбывших</a>
+    <a class="btn btn-sm" th:if="${showingWithdrawn}" th:href="@{/students}">К действующим</a>
+</p>
 
-<p th:if="${#lists.isEmpty(students)}"
+<p class="empty" th:if="${#lists.isEmpty(students)}"
    th:text="${showingWithdrawn} ? 'Выбывших Учеников нет.' : 'Учеников пока нет.'">Учеников пока нет.</p>
-<ul>
-    <li th:each="student : ${students}" th:id="'student-' + ${student.id.value}">
-        <a th:href="@{/students/{id}(id=${student.id.value})}" th:text="${student.name}">Иванов Пётр</a>
-        <span th:if="${student.withdrawn}">(выбыл)</span>
+<ul class="items">
+    <li class="item" th:each="student : ${students}" th:id="'student-' + ${student.id.value}">
+        <a class="grow" th:href="@{/students/{id}(id=${student.id.value},from=${shell.here})}" th:text="${student.name}">Иванов Пётр</a>
+        <span class="badge" th:if="${student.withdrawn}">(выбыл)</span>
+        <a class="btn btn-sm" th:href="@{/mastery(student=${student.id.value},from=${shell.here})}">Владение</a>
+        <a class="btn btn-sm" th:href="@{/works(student=${student.id.value},from=${shell.here})}">Работы</a>
     </li>
 </ul>
 
-<h2 th:unless="${showingWithdrawn}">Завести Ученика</h2>
-<form th:unless="${showingWithdrawn}" method="post" th:action="@{/students}">
-    <label>Имя <input type="text" name="name"></label>
-    <button type="submit">Завести</button>
-</form>
-
-<p><a th:href="@{/}">На главную</a></p>
+<details class="more more--primary" th:unless="${showingWithdrawn}" th:attr="open=${shell.opened('/students')} ? 'open'">
+    <summary>Завести Ученика</summary>
+    <div class="more-body">
+        <form class="inline-form" method="post" th:action="@{/students}">
+            <label>Имя <input type="text" name="name" autocomplete="off" th:value="${shell.echo('name', '/students')}"></label>
+            <button type="submit" class="btn-primary">Завести</button>
+            <button type="button" data-close>Отмена</button>
+        </form>
+    </div>
+</details>
+</main>
 </body>
 </html>

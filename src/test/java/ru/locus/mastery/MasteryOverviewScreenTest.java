@@ -112,7 +112,9 @@ class MasteryOverviewScreenTest extends IntegrationTest {
     void pageHasNoFormsOrSelects() {
         String body = teacher.get(screen()).body();
 
-        assertThat(body).doesNotContain("<form").doesNotContain("<select");
+        // Единственная форма на экране — «Выйти» в общей шапке (ADR-0042); экран по-прежнему только читает.
+        String withoutLogout = body.replaceAll("(?s)<form class=\"logout\".*?</form>", "");
+        assertThat(withoutLogout).doesNotContain("<form").doesNotContain("<select");
     }
 
     @Test

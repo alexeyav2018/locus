@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Раздача — Locus</title>
     <!--/*
         Страница Раздачи: имя Группы на момент выдачи, дата и Задания
@@ -16,23 +16,25 @@
         Задание удержано Работой, отклоняется всё, и отказ показывается
         здесь же.
     */-->
-    <style>
-        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
-        button { padding: 0.35rem 0.9rem; }
-        table { border-collapse: collapse; }
-        th, td { padding: 0.35rem 0.75rem; text-align: left; border-bottom: 1px solid #ccc; }
-    </style>
 </head>
 <body>
-<h1 th:text="'Раздача Группе «' + ${batch.groupName} + '»'">Раздача Группе «9Б»</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/assignments')}}">← К Заданиям</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Раздача Группе «' + ${batch.groupName} + '»'">Раздача Группе «9Б»</h1>
+        <p class="lead" th:text="'Выдано: ' + ${#temporals.format(batch.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">По Заданию есть Работа</p>
-
-<p th:text="'Выдано: ' + ${#temporals.format(batch.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">По Заданию есть Работа</p>
 
 <h2>Задания</h2>
-<p th:if="${#lists.isEmpty(assignments)}">Заданий в Раздаче не осталось.</p>
-<table th:unless="${#lists.isEmpty(assignments)}">
+<p class="empty" th:if="${#lists.isEmpty(assignments)}">Заданий в Раздаче не осталось.</p>
+<div class="table-wrap" th:unless="${#lists.isEmpty(assignments)}">
+<table>
     <thead>
     <tr>
         <th>Ученик</th>
@@ -42,20 +44,26 @@
     </thead>
     <tbody>
     <tr th:each="item : ${assignments}" th:id="'assignment-' + ${item.assignment.id.value}">
-        <td><a th:href="@{/assignments/{id}(id=${item.assignment.id.value})}"
+        <td><a th:href="@{/assignments/{id}(id=${item.assignment.id.value},from=${shell.here})}"
                th:text="${item.studentName}">Иванов Пётр</a></td>
         <td th:text="${#temporals.format(item.assignment.dueDate, 'dd.MM.yyyy')}">08.09.2026</td>
         <!--/* «Не сдано» — одним словом в одном th:text. */-->
-        <td><span th:if="${item.notSubmitted}" th:text="'не сдано'">не сдано</span></td>
+        <td><span class="badge badge--bad" th:if="${item.notSubmitted}" th:text="'не сдано'">не сдано</span></td>
     </tr>
     </tbody>
 </table>
+</div>
 
-<h2>Действия</h2>
-<form method="post" th:action="@{/assignments/batches/{id}/deletion(id=${batch.id.value})}">
-    <button type="submit">Удалить Раздачу со всеми Заданиями</button>
-</form>
-
-<p><a th:href="@{/assignments}">К Заданиям</a></p>
+<details class="more" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+    <summary>Удаление</summary>
+    <div class="more-body">
+        <form method="post" data-confirm="Это действие необратимо."
+              th:action="@{/assignments/batches/{id}/deletion(id=${batch.id.value})}">
+            <button type="submit" class="btn-danger">Удалить Раздачу со всеми Заданиями</button>
+            <button type="button" data-close>Отмена</button>
+        </form>
+    </div>
+</details>
+</main>
 </body>
 </html>

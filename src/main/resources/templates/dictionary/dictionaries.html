@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Словари — Locus</title>
     <!--/*
-        Три колонки: два словаря и панель действий. Оформления сверх этого
-        нет: внешний вид в работу не входит. Расстояния здесь не украшение —
-        формы подряд без промежутков читаются как одна, и кнопка удаления
-        оказывается вплотную к чужому полю ввода. CSS — не внешняя библиотека
-        и не код, исполняемый в браузере; запрет ADR-0020 его не касается.
+        Три колонки: два словаря и панель действий. Оформление — общее
+        (static/css/locus.css), своих стилей у экрана нет.
 
         Комментарии в форме Thymeleaf, а не обычные HTML: они объясняют
         решение разработчику и в выдачу попадать не должны. Обычный
@@ -20,43 +17,25 @@
         найдена контроллером, роль пришла готовым признаком. Всё, что здесь
         решается, — показать или нет.
     */-->
-    <style>
-        .screen { display: flex; gap: 3rem; align-items: flex-start; }
-        .screen .dictionary { flex: 1 1 0; }
-        .screen .actions { flex: 1 1 0; }
-        .selected { font-weight: bold; }
-
-        .screen .actions > div { margin-bottom: 2.5rem; }
-        .screen .actions h2 { margin: 0 0 0.5rem; }
-        .screen .actions > div > p { margin: 0 0 1.5rem; }
-        .screen .actions form {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.6rem;
-            margin: 0 0 1.75rem;
-        }
-        .screen .actions label { display: block; }
-        .screen .actions input[type=text] {
-            display: block;
-            margin-top: 0.35rem;
-            padding: 0.35rem;
-            min-width: 16rem;
-            max-width: 100%;
-        }
-        .screen .actions button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1>Словари</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page">
+<div class="page-head">
+    <div>
+        <h1>Словари</h1>
+        <p class="lead">Методы и Характеристики — общие списки для всей библиотеки.</p>
+    </div>
+    <span class="scope scope--shared">Общее · ведёт Администратор</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Имя занято</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя занято</p>
 
-<div class="screen">
-    <div class="dictionary">
+<div class="split split--even">
+    <div class="dictionary card card--shared">
         <h2>Методы</h2>
-        <p th:if="${#lists.isEmpty(methods)}">Словарь Методов пуст.</p>
-        <ul>
+        <p class="empty" th:if="${#lists.isEmpty(methods)}">Словарь Методов пуст.</p>
+        <ul class="tree">
             <li th:each="method : ${methods}" th:id="'method-' + ${method.id.value}">
                 <a th:href="@{/dictionaries(method=${method.id.value})}"
                    th:classappend="${method.id.value == selectedMethodId} ? 'selected'"
@@ -65,10 +44,10 @@
         </ul>
     </div>
 
-    <div class="dictionary">
+    <div class="dictionary card card--shared">
         <h2>Характеристики</h2>
-        <p th:if="${#lists.isEmpty(characteristics)}">Словарь Характеристик пуст.</p>
-        <ul>
+        <p class="empty" th:if="${#lists.isEmpty(characteristics)}">Словарь Характеристик пуст.</p>
+        <ul class="tree">
             <li th:each="characteristic : ${characteristics}"
                 th:id="'characteristic-' + ${characteristic.id.value}">
                 <a th:href="@{/dictionaries(characteristic=${characteristic.id.value})}"
@@ -78,61 +57,96 @@
         </ul>
     </div>
 
-    <div class="actions">
-        <div th:if="${selectedMethod}">
+    <div class="actions stack">
+        <div class="card" th:if="${selectedMethod}">
             <h2 th:text="${selectedMethod.name}">Разложение на множители</h2>
-            <p>Метод: вторая ось измерения владения, наравне с Темой</p>
+            <p class="muted">Метод: вторая ось измерения владения, наравне с Темой</p>
 
-            <div th:if="${administrator}">
-                <form method="post" th:action="@{/dictionaries/methods/{id}/name(id=${selectedMethod.id.value})}">
-                    <label>Новое имя <input type="text" name="name"></label>
-                    <button type="submit">Переименовать</button>
-                </form>
-
-                <form method="post" th:action="@{/dictionaries/methods/{id}/deletion(id=${selectedMethod.id.value})}">
-                    <button type="submit">Удалить</button>
-                </form>
+            <div th:if="${administrator}" class="folds">
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+                    <summary>Изменить имя</summary>
+                    <div class="more-body">
+                        <form class="inline-form" method="post"
+                              th:action="@{/dictionaries/methods/{id}/name(id=${selectedMethod.id.value})}">
+                            <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
+                            <button type="submit" class="btn-primary">Переименовать</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+                    <summary>Удаление</summary>
+                    <div class="more-body">
+                        <form method="post" data-confirm="Это действие необратимо."
+                              th:action="@{/dictionaries/methods/{id}/deletion(id=${selectedMethod.id.value})}">
+                            <button type="submit" class="btn-danger">Удалить</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
             </div>
         </div>
 
-        <div th:if="${selectedCharacteristic}">
+        <div class="card" th:if="${selectedCharacteristic}">
             <h2 th:text="${selectedCharacteristic.name}">Повышенной сложности</h2>
-            <p>Характеристика: уточняет поиск, во владении не участвует</p>
+            <p class="muted">Характеристика: уточняет поиск, во владении не участвует</p>
 
-            <div th:if="${administrator}">
-                <form method="post"
-                      th:action="@{/dictionaries/characteristics/{id}/name(id=${selectedCharacteristic.id.value})}">
-                    <label>Новое имя <input type="text" name="name"></label>
-                    <button type="submit">Переименовать</button>
-                </form>
-
-                <form method="post"
-                      th:action="@{/dictionaries/characteristics/{id}/deletion(id=${selectedCharacteristic.id.value})}">
-                    <button type="submit">Удалить</button>
-                </form>
+            <div th:if="${administrator}" class="folds">
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+                    <summary>Изменить имя</summary>
+                    <div class="more-body">
+                        <form class="inline-form" method="post"
+                              th:action="@{/dictionaries/characteristics/{id}/name(id=${selectedCharacteristic.id.value})}">
+                            <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
+                            <button type="submit" class="btn-primary">Переименовать</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
+                <details class="more" name="entry-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+                    <summary>Удаление</summary>
+                    <div class="more-body">
+                        <form method="post" data-confirm="Это действие необратимо."
+                              th:action="@{/dictionaries/characteristics/{id}/deletion(id=${selectedCharacteristic.id.value})}">
+                            <button type="submit" class="btn-danger">Удалить</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
             </div>
         </div>
 
-        <p th:if="${selectedMethod == null and selectedCharacteristic == null}">
+        <p class="empty" th:if="${selectedMethod == null and selectedCharacteristic == null}">
             Выберите запись в списке, чтобы работать с ней.</p>
 
         <!--/* Заведение не зависит от выбора: в пустой словарь иначе
                не попасть — выбирать там нечего. */-->
-        <div th:if="${administrator}">
-            <h2>Завести запись</h2>
-            <form method="post" th:action="@{/dictionaries/methods}">
-                <label>Имя Метода <input type="text" name="name"></label>
-                <button type="submit">Завести Метод</button>
-            </form>
-
-            <form method="post" th:action="@{/dictionaries/characteristics}">
-                <label>Имя Характеристики <input type="text" name="name"></label>
-                <button type="submit">Завести Характеристику</button>
-            </form>
+        <div class="folds" th:if="${administrator}">
+            <details class="more more--primary" name="new-entry"
+                     th:attr="open=${shell.opened('/methods')} ? 'open'">
+                <summary>Новый Метод</summary>
+                <div class="more-body">
+                    <form class="inline-form" method="post" th:action="@{/dictionaries/methods}">
+                        <label>Имя Метода <input type="text" name="name" th:value="${shell.echo('name', '/methods')}"></label>
+                        <button type="submit" class="btn-primary">Завести Метод</button>
+                        <button type="button" data-close>Отмена</button>
+                    </form>
+                </div>
+            </details>
+            <details class="more more--primary" name="new-entry"
+                     th:attr="open=${shell.opened('/characteristics')} ? 'open'">
+                <summary>Новая Характеристика</summary>
+                <div class="more-body">
+                    <form class="inline-form" method="post" th:action="@{/dictionaries/characteristics}">
+                        <label>Имя Характеристики <input type="text" name="name" th:value="${shell.echo('name', '/characteristics')}"></label>
+                        <button type="submit" class="btn-primary">Завести Характеристику</button>
+                        <button type="button" data-close>Отмена</button>
+                    </form>
+                </div>
+            </details>
         </div>
     </div>
 </div>
-
-<p><a th:href="@{/}">На главную</a></p>
+</main>
 </body>
 </html>

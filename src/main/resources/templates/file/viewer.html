@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--/*
+    Просмотр файла внутри системы (ADR-0042): картинка либо встроенный PDF
+    и кнопка «Назад» — вместо ссылки в чужую вкладку, из которой выходят
+    средствами браузера. Ссылка на файл временная и подписанная (ADR-0021);
+    она считается при показе страницы и живёт минуты.
+
+    Встроенный PDF показывают не все браузеры (на телефонах чаще всего нет),
+    поэтому у него всегда есть запасная кнопка «Открыть PDF» — содержимое
+    <object>, видимое, когда встроенный просмотр недоступен, — и вторая рядом.
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title th:text="${view.title} + ' — Locus'">Файл — Locus</title>
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+    <p class="back"><a th:href="@{${shell.backOr(view.fallback)}}">← Назад</a></p>
+    <div class="page-head">
+        <h1 th:text="${view.title}">Файл</h1>
+    </div>
+
+    <div class="viewer">
+        <img th:if="${view.image}" th:src="${view.link}" th:alt="${view.title}">
+        <object th:unless="${view.image}" type="application/pdf" th:data="${view.link}" th:attr="aria-label=${view.title}">
+            <div class="viewer-fallback">
+                <p>Этот браузер не показывает PDF на странице.</p>
+                <a class="btn btn-primary" th:href="${view.link}" target="_blank" rel="noopener">Открыть PDF</a>
+            </div>
+        </object>
+    </div>
+
+    <div class="row">
+        <a class="btn btn-primary" th:href="@{${shell.backOr(view.fallback)}}">Назад</a>
+        <a class="btn" th:unless="${view.image}" th:href="${view.link}" target="_blank" rel="noopener">Открыть PDF</a>
+    </div>
+</main>
+</body>
+</html>

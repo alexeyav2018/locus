@@ -1,91 +1,55 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Рубрикатор — Locus</title>
-    <!--/*
-        Две колонки, подсветка выбранного узла и воздух между действиями.
-        Оформления сверх этого нет: внешний вид в работу не входит. Расстояния
-        здесь не украшение — четыре формы подряд без промежутков читаются как
-        одна, и кнопка удаления оказывается вплотную к чужому полю ввода.
-        CSS — не внешняя библиотека и не код, исполняемый в браузере; запрет
-        ADR-0020 его не касается.
-
-        Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
-        разработчику и в выдачу попадать не должен. Обычный комментарий уходит
-        в страницу вместе с названиями действий — и Учитель, которому действий
-        не предлагают, всё равно читает их в исходном тексте.
-    */-->
-    <style>
-        .screen { display: flex; gap: 3rem; align-items: flex-start; }
-        .screen .tree { flex: 2 1 0; }
-        .screen .actions { flex: 1 1 0; }
-        .selected { font-weight: bold; }
-        .screen .actions .problems h3 { margin: 0 0 0.5rem; }
-        .screen .actions .problems ul { margin: 0 0 0.75rem; padding-left: 1.25rem; }
-        .screen .actions .materials h3 { margin: 0 0 0.5rem; }
-        .screen .actions .materials ul { margin: 0 0 0.75rem; padding-left: 1.25rem; }
-
-        .screen .actions > div { margin-bottom: 2.5rem; }
-        .screen .actions h2 { margin: 0 0 0.5rem; }
-        .screen .actions > div > p { margin: 0 0 1.5rem; }
-        .screen .actions form {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.6rem;
-            margin: 0 0 1.75rem;
-        }
-        .screen .actions label { display: block; }
-        .screen .actions input[type=text],
-        .screen .actions select {
-            display: block;
-            margin-top: 0.35rem;
-            padding: 0.35rem;
-            min-width: 16rem;
-            max-width: 100%;
-        }
-        .screen .actions button { padding: 0.35rem 0.9rem; }
-        .screen .actions .distribution h3 { margin: 0; }
-        .screen .actions .distribution p { margin: 0; }
-        .screen .actions .distribution ul { margin: 0; padding-left: 1.25rem; }
-        .screen .actions .distribution li { margin-bottom: 0.6rem; }
-    </style>
 </head>
 <body>
-<h1>Рубрикатор</h1>
-
-<p th:if="${error}" th:text="${error}">Имя занято</p>
-
-<div class="screen">
-    <div class="tree">
-        <p th:if="${#lists.isEmpty(tree)}">Дерево пусто.</p>
-        <ul th:replace="~{taxonomy/branches :: branches(${tree})}"></ul>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page">
+<div class="page-head">
+    <div>
+        <h1>Рубрикатор</h1>
+        <p class="lead">Дерево Разделов и Тем. Выберите узел — справа его Задачи и теория.</p>
     </div>
+    <span class="scope scope--shared">Общее · ведёт Администратор</span>
+</div>
 
-    <div class="actions">
-        <div th:if="${selected}">
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя занято</p>
+
+<div class="split">
+    <nav class="card sticky tree-card" aria-label="Дерево рубрикатора">
+        <p class="empty" th:if="${#lists.isEmpty(tree)}">Дерево пусто.</p>
+        <div class="tree">
+            <ul th:replace="~{taxonomy/branches :: branches(${tree})}"></ul>
+        </div>
+    </nav>
+
+    <div class="actions stack">
+        <div class="card card--shared" th:if="${selected}">
             <h2 th:text="${selected.name}">Уравнения</h2>
-            <p th:text="${selectedPath}">Алгебра / Уравнения</p>
-            <p th:if="${selected.section}">Раздел: несёт теорию, но не задачи</p>
-            <p th:if="${selected.topic}">Тема: несёт задачи и отметки владения</p>
+            <p class="muted" th:text="${selectedPath}">Алгебра / Уравнения</p>
+            <p th:if="${selected.section}"><span class="badge badge--info">Раздел</span>
+                <span class="muted">несёт теорию, но не задачи</span></p>
+            <p th:if="${selected.topic}"><span class="badge badge--ok">Тема</span>
+                <span class="muted">несёт задачи и отметки владения</span></p>
 
             <!--/* Задачи Темы — здесь, а не отдельным экраном со вторым
                    деревом: «выбрать Тему» — единственная навигация, которая
                    у библиотеки сегодня есть (design.md, «Экран»). */-->
             <div class="problems" th:if="${selected.topic}">
                 <h3>Задачи Темы</h3>
-                <p th:if="${#lists.isEmpty(problems)}">Задач на этой Теме нет.</p>
-                <ul th:unless="${#lists.isEmpty(problems)}">
-                    <li th:each="problem : ${problems}">
-                        <a th:href="@{/problems/{id}(id=${problem.id.value})}"
+                <p class="empty" th:if="${#lists.isEmpty(problems)}">Задач на этой Теме нет.</p>
+                <ul class="items" th:unless="${#lists.isEmpty(problems)}">
+                    <li class="item" th:each="problem : ${problems}">
+                        <a th:href="@{/problems/{id}(id=${problem.id.value},from=${shell.here})}"
                            th:text="'№ ' + ${problem.number}">№ 12</a>
-                        <span th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
-                        <span th:text="${problem.part.title}">вторая часть</span>
+                        <span class="grow muted" th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
+                        <span class="badge" th:text="${problem.part.title}">вторая часть</span>
                     </li>
                 </ul>
                 <p th:if="${administrator}">
-                    <a th:href="@{/problems/new(topic=${selected.id.value})}">Завести Задачу</a>
+                    <a class="btn btn-sm btn-primary" th:href="@{/problems/new(topic=${selected.id.value},from=${shell.here})}">Завести Задачу</a>
                 </p>
             </div>
 
@@ -94,12 +58,12 @@
                    на вопрос «где во всей библиотеке есть такие Задачи».
                    У Раздела ссылка тем более нужна: своих Задач он не несёт,
                    а поиск по нему обходит всё поддерево. */-->
-            <p><a th:href="@{/problems(node=${selected.id.value})}">Искать по библиотеке</a></p>
+            <p><a class="btn btn-sm" th:href="@{/problems(node=${selected.id.value})}">Искать по библиотеке</a></p>
 
             <!--/* У Раздела — объяснение, а не пустой список: пустой список
                    читался бы как «здесь ничего нет», и Администратор завёл бы
                    дубли уже существующих Задач (design.md, «Экран»). */-->
-            <p class="problems" th:if="${selected.section}">Задачи несут только Темы —
+            <p class="problems empty" th:if="${selected.section}">Задачи несут только Темы —
                 листья дерева. Выберите Тему, чтобы увидеть её Задачи.</p>
 
             <!--/* Теория показывается на любом узле, а не только на Теме:
@@ -109,26 +73,35 @@
                    листе непонятно, куда идти. */-->
             <div class="materials">
                 <h3>Теоретические материалы</h3>
-                <p th:if="${#lists.isEmpty(materials)}">Материалов на этом узле нет.</p>
-                <ul th:unless="${#lists.isEmpty(materials)}">
-                    <li th:each="item : ${materials}">
-                        <a th:href="@{/theory/{id}(id=${item.material.id.value})}"
+                <p class="empty" th:if="${#lists.isEmpty(materials)}">Материалов на этом узле нет.</p>
+                <ul class="items" th:unless="${#lists.isEmpty(materials)}">
+                    <li class="item" th:each="item : ${materials}">
+                        <a th:href="@{/theory/{id}(id=${item.material.id.value},from=${shell.here})}"
                            th:text="${item.material.title}">Тригонометрические тождества</a>
-                        <span th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
-                        <span th:unless="${item.own}"
+                        <span class="badge" th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
+                        <span class="badge badge--info" th:unless="${item.own}"
                               th:text="'унаследован с узла: ' + ${item.source}">унаследован с узла: Тригонометрия</span>
                     </li>
                 </ul>
                 <p th:if="${administrator}">
-                    <a th:href="@{/theory/new(node=${selected.id.value})}">Завести материал</a>
+                    <a class="btn btn-sm btn-primary" th:href="@{/theory/new(node=${selected.id.value},from=${shell.here})}">Завести материал</a>
                 </p>
             </div>
 
             <div th:if="${administrator}">
-                <form method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">
-                    <label>Новое имя <input type="text" name="name"></label>
-                    <button type="submit">Переименовать</button>
-                </form>
+                <hr>
+                <h3>Правка узла</h3>
+                <div class="folds">
+                <details class="more" name="node-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+                    <summary>Изменить имя</summary>
+                    <div class="more-body">
+                        <form class="inline-form" method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">
+                            <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
+                            <button type="submit" class="btn-primary">Переименовать</button>
+                            <button type="button" data-close>Отмена</button>
+                        </form>
+                    </div>
+                </details>
 
                 <!--/* На Теме с Задачами потомок заводится только с Темой-приёмником,
                        на которую переезжают Задачи: с появлением потомка Тема
@@ -137,34 +110,52 @@
                        случай: Тему делят, оставляя накопленное в первой из новых.
                        Сама углубляемая Тема из списка исключена: после операции
                        она Раздел, и сервис отказал бы в любом случае. */-->
-                <form method="post" th:action="@{/taxonomy}">
-                    <input type="hidden" name="parentId" th:value="${selected.id.value}">
-                    <label>Имя потомка <input type="text" name="name"></label>
-                    <label th:if="${restructure}">Тема-приёмник для Задач
-                        <select name="receiver">
-                            <option th:value="${createdChild}" selected>— создаваемый потомок —</option>
-                            <option th:each="path : ${receivers}"
-                                    th:unless="${path.id.value == selected.id.value}"
-                                    th:value="${path.id.value}"
-                                    th:text="${path.path}">Алгебра / Уравнения</option>
-                        </select>
-                    </label>
-                    <button type="submit">Добавить потомка</button>
-                </form>
+                <details class="more" name="node-actions"
+                         th:attr="open=${shell.opened('/taxonomy') and shell.postedParam('parentId') != null} ? 'open'">
+                    <summary>Новый потомок</summary>
+                    <div class="more-body">
+                        <form method="post" th:action="@{/taxonomy}">
+                            <input type="hidden" name="parentId" th:value="${selected.id.value}">
+                            <label>Имя потомка <input type="text" name="name"
+                                    th:value="${shell.postedParam('parentId') != null} ? ${shell.echo('name', '/taxonomy')}"></label>
+                            <label th:if="${restructure}">Тема-приёмник для Задач
+                                <select name="receiver">
+                                    <option th:value="${createdChild}" selected>— создаваемый потомок —</option>
+                                    <option th:each="path : ${receivers}"
+                                            th:unless="${path.id.value == selected.id.value}"
+                                            th:value="${path.id.value}"
+                                            th:text="${path.path}">Алгебра / Уравнения</option>
+                                </select>
+                            </label>
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Добавить потомка</button>
+                                <button type="button" data-close>Отмена</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
 
                 <!--/* Список выбора родителя один на страницу: повторённый
                        у каждого узла, он рос бы квадратично. */-->
-                <form method="post" th:action="@{/taxonomy/{id}/parent(id=${selected.id.value})}">
-                    <label>Перенести под
-                        <select name="parentId">
-                            <option value="">— в корень —</option>
-                            <option th:each="path : ${paths}"
-                                    th:value="${path.id.value}"
-                                    th:text="${path.path}">Алгебра / Уравнения</option>
-                        </select>
-                    </label>
-                    <button type="submit">Перенести</button>
-                </form>
+                <details class="more" name="node-actions" th:attr="open=${shell.opened('/parent')} ? 'open'">
+                    <summary>Перенести узел</summary>
+                    <div class="more-body">
+                        <form method="post" th:action="@{/taxonomy/{id}/parent(id=${selected.id.value})}">
+                            <label>Перенести под
+                                <select name="parentId">
+                                    <option value="">— в корень —</option>
+                                    <option th:each="path : ${paths}"
+                                            th:value="${path.id.value}"
+                                            th:text="${path.path}">Алгебра / Уравнения</option>
+                                </select>
+                            </label>
+                            <div class="form-actions">
+                                <button type="submit">Перенести</button>
+                                <button type="button" data-close>Отмена</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
 
                 <!--/* Обычное удаление снимает только пустой узел. На Теме
                        с Задачами оно всегда отказало бы, поэтому вместо него
@@ -178,24 +169,31 @@
                        подтверждения: отметки не переезжают ни на один приёмник
                        и невосполнимы. Это единственное место, где Администратору
                        видно личное чужих учителей, — и только число (ADR-0005,
-                       ADR-0027). Сегодня оно всегда ноль: отметок ещё нет. */-->
+                       ADR-0027). */-->
+                <details class="more" name="node-actions"
+                         th:attr="open=${shell.opened('/deletion', '/distribution')} ? 'open'">
+                    <summary>Удаление</summary>
+                    <div class="more-body">
                 <form method="post" th:unless="${restructure}"
+                      data-confirm="Это действие необратимо."
                       th:action="@{/taxonomy/{id}/deletion(id=${selected.id.value})}">
-                    <button type="submit">Удалить</button>
+                    <button type="submit" class="btn-danger">Удалить</button>
+                    <button type="button" data-close>Отмена</button>
                 </form>
                 <form method="post" th:if="${restructure}" class="distribution"
+                      data-confirm="Это действие необратимо."
                       th:action="@{/taxonomy/{id}/distribution(id=${selected.id.value})}">
-                    <h3>Снять Тему с распределением Задач</h3>
+                    <h4>Снять Тему с распределением Задач</h4>
                     <p>Тема снимается вместе с разметкой: каждой её Задаче укажите
                         Тему-приёмник, на которую она переедет.</p>
                     <p th:if="${vanishingMarks == 0}">Исчезающих отметок Владения нет.</p>
                     <p th:unless="${vanishingMarks == 0}">Вместе с Темой исчезнут отметки Владения:
                         <strong th:text="${vanishingMarks}">3</strong> — ни на один приёмник они
                         не переедут.</p>
-                    <ul>
-                        <li th:each="problem : ${problems}">
-                            <label>
-                                <span th:text="'№ ' + ${problem.number}">№ 12</span>
+                    <ul class="items">
+                        <li class="item" th:each="problem : ${problems}">
+                            <label class="grow">
+                                <span class="item-title" th:text="'№ ' + ${problem.number}">№ 12</span>
                                 <span th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
                                 <!--/* Список приёмников здесь свой: считается по дереву
                                        после снятия, и родитель, остающийся без потомков,
@@ -209,23 +207,33 @@
                             </label>
                         </li>
                     </ul>
-                    <button type="submit">Снять с распределением</button>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-danger">Снять с распределением</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
                 </form>
+                    </div>
+                </details>
+                </div>
             </div>
         </div>
 
-        <p th:unless="${selected}">Выберите узел в дереве, чтобы работать с ним.</p>
+        <p class="empty" th:unless="${selected}">Выберите узел в дереве, чтобы работать с ним.</p>
 
-        <div th:if="${administrator}">
-            <h2>Завести корневой узел</h2>
-            <form method="post" th:action="@{/taxonomy}">
-                <label>Имя <input type="text" name="name"></label>
-                <button type="submit">Завести</button>
-            </form>
-        </div>
+        <details class="more more--primary" th:if="${administrator}"
+                 th:attr="open=${shell.opened('/taxonomy') and shell.postedParam('parentId') == null} ? 'open'">
+            <summary>Завести корневой узел</summary>
+            <div class="more-body">
+                <form class="inline-form" method="post" th:action="@{/taxonomy}">
+                    <label>Имя <input type="text" name="name"
+                                      th:value="${shell.postedParam('parentId') == null} ? ${shell.echo('name', '/taxonomy')}"></label>
+                    <button type="submit" class="btn-primary">Завести</button>
+                    <button type="button" data-close>Отмена</button>
+                </form>
+            </div>
+        </details>
     </div>
 </div>
-
-<p><a th:href="@{/}">На главную</a></p>
+</main>
 </body>
 </html>

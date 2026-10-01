@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Ученик — Locus</title>
     <!--/*
         Карточка Ученика: имя, Группы, в которых он состоит, переименование,
@@ -18,49 +18,76 @@
         Ссылки на Задания, Работы и Владение — только адреса: область
         Учеников в коде не знает ни одной из этих областей (mastery-views).
     */-->
-    <style>
-        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
-        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
-        button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1 th:text="${student.name}">Иванов Пётр</h1>
-<p th:if="${student.withdrawn}">Выбыл</p>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/students')}}">← К списку Учеников</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="${student.name}">Иванов Пётр</h1>
+        <p><span class="badge badge--warn" th:if="${student.withdrawn}">Выбыл</span></p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя Ученика не может быть пустым</p>
+
+<div class="tiles">
+    <a class="tile tile--personal" th:href="@{/mastery(student=${student.id.value},from=${shell.here})}">
+        <span class="tile-title">Владение</span><span class="tile-text">Где силён, где пробелы</span></a>
+    <a class="tile tile--personal" th:href="@{/works(student=${student.id.value},from=${shell.here})}">
+        <span class="tile-title">Работы Ученика</span><span class="tile-text">Что принято и проверено</span></a>
+    <a class="tile tile--personal" th:href="@{/assignments(student=${student.id.value},from=${shell.here})}">
+        <span class="tile-title">Задания Ученика</span><span class="tile-text">Что выдано и что не сдано</span></a>
+</div>
 
 <h2>Группы</h2>
-<p th:if="${#lists.isEmpty(groups)}">Ни в одной Группе не состоит.</p>
-<ul>
-    <li th:each="group : ${groups}">
+<p class="empty" th:if="${#lists.isEmpty(groups)}">Ни в одной Группе не состоит.</p>
+<ul class="items">
+    <li class="item" th:each="group : ${groups}">
         <a th:href="@{/groups/{id}(id=${group.id.value})}" th:text="${group.name}">9Б</a>
     </li>
 </ul>
 
 <!--/* Только адрес: о Заданиях эта область в коде не знает,
        сводка сама отберёт по Ученику. */-->
-<p><a th:href="@{/assignments(student=${student.id.value})}">Задания Ученика</a></p>
-<p><a th:href="@{/works(student=${student.id.value})}">Работы Ученика</a></p>
-<p><a th:href="@{/mastery(student=${student.id.value})}">Владение Ученика</a></p>
-
 <h2>Действия</h2>
-<form method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
-    <label>Новое имя <input type="text" name="name" th:value="${student.name}"></label>
-    <button type="submit">Переименовать</button>
-</form>
+<div class="folds">
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+        <summary>Изменить имя</summary>
+        <div class="more-body">
+            <form class="inline-form" method="post" th:action="@{/students/{id}/name(id=${student.id.value})}">
+                <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')} ?: ${student.name}"></label>
+                <button type="submit" class="btn-primary">Переименовать</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 
-<form th:if="${!student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal(id=${student.id.value})}">
-    <button type="submit">Пометить выбывшим</button>
-</form>
-<form th:if="${student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal/undo(id=${student.id.value})}">
-    <button type="submit">Вернуть</button>
-</form>
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/withdrawal', '/withdrawal/undo')} ? 'open'">
+        <summary>Состояние</summary>
+        <div class="more-body">
+            <form class="inline" th:if="${!student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal(id=${student.id.value})}">
+                <button type="submit">Пометить выбывшим</button>
+            </form>
+            <form class="inline" th:if="${student.withdrawn}" method="post" th:action="@{/students/{id}/withdrawal/undo(id=${student.id.value})}">
+                <button type="submit">Вернуть</button>
+            </form>
+        </div>
+    </details>
 
-<form method="post" th:action="@{/students/{id}/deletion(id=${student.id.value})}">
-    <button type="submit">Удалить Ученика</button>
-</form>
-
-<p><a th:href="@{/students}">К списку Учеников</a></p>
+    <details class="more" name="student-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{/students/{id}/deletion(id=${student.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Ученика</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
 </body>
 </html>

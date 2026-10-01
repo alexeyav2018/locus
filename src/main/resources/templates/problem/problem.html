@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Задача — Locus</title>
     <!--/*
         Ссылки на файлы временные и подписанные: постоянного адреса у PDF
@@ -9,51 +9,64 @@
         через несколько минут перестаёт работать — и это требование, а не
         неудобство: PDF с решениями не должны попадать к ученикам.
     */-->
-    <style>
-        dt { font-weight: bold; margin-top: 0.75rem; }
-        dd { margin: 0.25rem 0 0 1.5rem; }
-        form { display: inline-block; margin-right: 1rem; }
-        button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1 th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/problems')}}">← К поиску Задач</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+        <p class="lead" th:if="${problem.hasCaption}" th:text="${problem.caption}">Сборник Ященко, вариант 12, № 8</p>
+        <p class="lead" th:unless="${problem.hasCaption}">Подписи нет: Задача различается номером.</p>
+    </div>
+    <span class="scope scope--shared">Общая библиотека</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Задача уже используется</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Задача уже используется</p>
 
-<p th:if="${problem.hasCaption}" th:text="${problem.caption}">Сборник Ященко, вариант 12, № 8</p>
-<p th:unless="${problem.hasCaption}">Подписи нет: Задача различается номером.</p>
+<div class="card card--shared">
+    <dl>
+        <dt>Часть ЕГЭ</dt>
+        <dd th:text="${problem.part.title}">вторая часть</dd>
 
-<dl>
-    <dt>Часть ЕГЭ</dt>
-    <dd th:text="${problem.part.title}">вторая часть</dd>
+        <dt>Темы</dt>
+        <dd th:each="topic : ${topicNames}" th:text="${topic}">Алгебра / Уравнения</dd>
 
-    <dt>Темы</dt>
-    <dd th:each="topic : ${topicNames}" th:text="${topic}">Алгебра / Уравнения</dd>
+        <dt>Методы</dt>
+        <dd th:each="method : ${methodNames}" th:text="${method}">Замена переменной</dd>
 
-    <dt>Методы</dt>
-    <dd th:each="method : ${methodNames}" th:text="${method}">Замена переменной</dd>
-
-    <dt>Характеристики</dt>
-    <dd th:if="${#lists.isEmpty(characteristicNames)}">не указаны</dd>
-    <dd th:each="characteristic : ${characteristicNames}" th:text="${characteristic}">Двойной угол</dd>
-</dl>
+        <dt>Характеристики</dt>
+        <dd class="muted" th:if="${#lists.isEmpty(characteristicNames)}">не указаны</dd>
+        <dd th:each="characteristic : ${characteristicNames}" th:text="${characteristic}">Двойной угол</dd>
+    </dl>
+</div>
 
 <h2>Файлы</h2>
-<p>Ссылки действуют ограниченное время; постоянного адреса у файла нет.</p>
-<ul>
-    <li><a th:href="${conditionLink}">PDF условия</a></li>
-    <li><a th:href="${solutionLink}">PDF решения</a></li>
-</ul>
+<div class="row">
+    <a class="btn btn-primary" th:href="@{/problems/{id}/condition(id=${problem.id.value},from=${shell.here})}">PDF условия</a>
+    <a class="btn" th:href="@{/problems/{id}/solution(id=${problem.id.value},from=${shell.here})}">PDF решения</a>
+</div>
+<p class="hint">Ссылки действуют ограниченное время; постоянного адреса у файла нет.</p>
 
 <div th:if="${administrator}">
     <h2>Действия</h2>
-    <p><a th:href="@{/problems/{id}/edit(id=${problem.id.value})}">Править Задачу</a></p>
-    <form method="post" th:action="@{/problems/{id}/deletion(id=${problem.id.value})}">
-        <button type="submit">Удалить Задачу</button>
-    </form>
+    <div class="row">
+        <a class="btn" th:href="@{/problems/{id}/edit(id=${problem.id.value},from=${shell.back})}">Править Задачу</a>
+    </div>
+    <div class="folds" style="margin-top:.75rem">
+        <details class="more" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+            <summary>Удаление</summary>
+            <div class="more-body">
+                <form method="post" data-confirm="Это действие необратимо."
+                      th:action="@{/problems/{id}/deletion(id=${problem.id.value})}">
+                    <button type="submit" class="btn-danger">Удалить Задачу</button>
+                    <button type="button" data-close>Отмена</button>
+                </form>
+            </div>
+        </details>
+    </div>
 </div>
-
-<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+</main>
 </body>
 </html>

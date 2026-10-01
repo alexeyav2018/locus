@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<!--/*
+    Общий каркас страниц: подключение оформления и шапка с разделами.
+
+    Страница берёт его так:
+        <head> <th:block th:replace="~{fragments/shell :: head}"/> <title>…</title> </head>
+        <body> <th:block th:replace="~{fragments/shell :: header}"/> <main id="main" class="page">…</main>
+
+    Шапка делит разделы на «Библиотеку» (общее, под Администратором) и «Кабинет»
+    (личное, у каждого Учителя) — той же границей, что проходит по данным
+    (CLAUDE.md, «Доменный инвариант»). Данные берёт ShellAdvice; у посетителя
+    без входа шапки нет.
+
+    В шапке одна форма — «Выйти» (ADR-0042): выход нужен с любого экрана.
+    Комментарии — в форме Thymeleaf: до браузера они не доходят.
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" th:href="@{/css/locus.css}">
+    <script th:src="@{/js/locus.js}" defer></script>
+</head>
+<body>
+<th:block th:fragment="header">
+    <a class="skip-link" href="#main">К содержимому</a>
+    <header class="topbar" th:if="${shell != null}">
+        <div class="topbar-inner">
+            <a class="brand" th:href="@{/}" aria-label="Locus — главная"><span class="brand-mark" aria-hidden="true"></span>Locus</a>
+            <nav class="mainnav" aria-label="Разделы">
+                <div class="navgroup navgroup--shared">
+                    <span class="navgroup-label">Библиотека</span>
+                    <a class="navlink" th:href="@{/taxonomy}" th:classappend="${shell.section == 'taxonomy'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'taxonomy'} ? 'page'">Рубрикатор</a>
+                    <a class="navlink" th:href="@{/problems}" th:classappend="${shell.section == 'problems'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'problems'} ? 'page'">Задачи</a>
+                    <a class="navlink" th:href="@{/dictionaries}" th:classappend="${shell.section == 'dictionaries'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'dictionaries'} ? 'page'">Словари</a>
+                </div>
+                <div class="navgroup navgroup--personal" th:if="${shell.teacher}">
+                    <span class="navgroup-label">Кабинет</span>
+                    <a class="navlink" th:href="@{/students}" th:classappend="${shell.section == 'students'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'students'} ? 'page'">Ученики</a>
+                    <a class="navlink" th:href="@{/groups}" th:classappend="${shell.section == 'groups'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'groups'} ? 'page'">Группы</a>
+                    <a class="navlink" th:href="@{/assignments}" th:classappend="${shell.section == 'assignments'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'assignments'} ? 'page'">Задания</a>
+                </div>
+                <div class="navgroup navgroup--admin" th:if="${shell.administrator}">
+                    <span class="navgroup-label">Админ</span>
+                    <a class="navlink" th:href="@{/users}" th:classappend="${shell.section == 'users'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'users'} ? 'page'">Учётные записи</a>
+                </div>
+            </nav>
+            <a class="me" th:href="@{/password}" title="Сменить пароль" th:text="${shell.login}">admin</a>
+            <form class="logout" method="post" th:action="@{/logout}">
+                <button type="submit">Выйти</button>
+            </form>
+        </div>
+    </header>
+</th:block>
+</body>
+</html>

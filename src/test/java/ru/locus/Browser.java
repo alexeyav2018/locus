@@ -33,6 +33,12 @@ public final class Browser {
     private static final Pattern CSRF = Pattern.compile(
             "name=\"_csrf\"\\s+value=\"([^\"]+)\"|value=\"([^\"]+)\"\\s+name=\"_csrf\"");
 
+    /**
+     * Что говорит о себе браузер: страницу он просит как HTML. Без этого
+     * заголовка Spring отвечает на ошибку JSON-ом, а не страницей ошибки.
+     */
+    private static final String ACCEPT = "text/html,application/xhtml+xml,*/*;q=0.8";
+
     private final HttpClient http = HttpClient.newBuilder()
             .cookieHandler(new CookieManager())
             .followRedirects(HttpClient.Redirect.NEVER)
@@ -44,7 +50,8 @@ public final class Browser {
         this.baseUrl = "http://localhost:" + port;
     }
 
-    public record Page(int status, String contentType, String body, String location) {
+    public record Page(int status, String contentType, String body, String location,
+                       java.util.Optional<String> frameOptions) {
 
         public boolean redirectsTo(String path) {
             return (status == 302 || status == 303) && location != null && location.endsWith(path);
@@ -52,7 +59,7 @@ public final class Browser {
     }
 
     public Page get(String path) {
-        return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).GET().build());
+        return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).header("Accept", ACCEPT).GET().build());
     }
 
     /** Переходит по адресу и, если ответ — переадресация, идёт по ней. */
@@ -76,6 +83,7 @@ public final class Browser {
         List<Map.Entry<String, String>> withToken = new ArrayList<>(fields);
         withToken.add(Map.entry("_csrf", csrfTokenFrom(action)));
         return send(HttpRequest.newBuilder(URI.create(baseUrl + action))
+                .header("Accept", ACCEPT)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(urlEncoded(withToken), StandardCharsets.UTF_8))
                 .build());
@@ -127,6 +135,7 @@ public final class Browser {
         write(body, "--" + boundary + "--\r\n");
 
         return send(HttpRequest.newBuilder(URI.create(baseUrl + action))
+                .header("Accept", ACCEPT)
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray()))
                 .build());
@@ -194,7 +203,8 @@ public final class Browser {
                     response.statusCode(),
                     response.headers().firstValue("Content-Type").orElse(""),
                     response.body(),
-                    response.headers().firstValue("Location").orElse(null));
+                    response.headers().firstValue("Location").orElse(null),
+                    response.headers().firstValue("X-Frame-Options"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         } catch (InterruptedException e) {

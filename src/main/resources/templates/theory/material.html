@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Теоретический материал — Locus</title>
     <!--/*
         Приложенный файл открывается через /theory/{id}/file: подписанная
@@ -11,41 +11,56 @@
         Внешний адрес, наоборот, стоит здесь как есть: подписывать чужой адрес
         нечем и незачем.
     */-->
-    <style>
-        dt { font-weight: bold; margin-top: 0.75rem; }
-        dd { margin: 0.25rem 0 0 1.5rem; }
-        form { display: inline-block; margin-right: 1rem; }
-        button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1 th:text="${material.title}">Тригонометрические тождества</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/taxonomy?node=' + material.node.value)}}">← К узлу в рубрикаторе</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="${material.title}">Тригонометрические тождества</h1>
+        <p class="lead">Теоретический материал</p>
+    </div>
+    <span class="scope scope--shared">Общая библиотека</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Теоретического материала не существует</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Теоретического материала не существует</p>
 
+<div class="card card--shared">
 <dl>
     <dt>Узел рубрикатора</dt>
     <dd th:text="${nodePath}">Алгебра / Тригонометрия</dd>
 
     <dt>Содержимое</dt>
     <dd th:if="${material.hasFile}">
-        <a th:href="@{/theory/{id}/file(id=${material.id.value})}">Открыть файл</a>
-        <span>Ссылка действует ограниченное время; постоянного адреса у файла нет.</span>
+        <a class="btn btn-primary" th:href="@{/theory/{id}/view(id=${material.id.value},from=${shell.here})}">Открыть файл</a>
+        <span class="hint" style="display:block">Ссылка действует ограниченное время; постоянного адреса у файла нет.</span>
     </dd>
     <dd th:unless="${material.hasFile}">
         <a th:href="${material.link}" th:text="${material.link}">https://example.org/конспект</a>
-        <span>Внешний адрес: система не проверяет, отвечает ли он.</span>
+        <span class="hint" style="display:block">Внешний адрес: система не проверяет, отвечает ли он.</span>
     </dd>
 </dl>
+</div>
 
 <div th:if="${administrator}">
     <h2>Действия</h2>
-    <p><a th:href="@{/theory/{id}/edit(id=${material.id.value})}">Править материал</a></p>
-    <form method="post" th:action="@{/theory/{id}/deletion(id=${material.id.value})}">
-        <button type="submit">Удалить материал</button>
-    </form>
+    <div class="row">
+        <a class="btn" th:href="@{/theory/{id}/edit(id=${material.id.value},from=${shell.back})}">Править материал</a>
+    </div>
+    <div class="folds" style="margin-top:.75rem">
+        <details class="more" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+            <summary>Удаление</summary>
+            <div class="more-body">
+                <form method="post" data-confirm="Это действие необратимо."
+                      th:action="@{/theory/{id}/deletion(id=${material.id.value})}">
+                    <button type="submit" class="btn-danger">Удалить материал</button>
+                    <button type="button" data-close>Отмена</button>
+                </form>
+            </div>
+        </details>
+    </div>
 </div>
-
-<p><a th:href="@{/taxonomy(node=${material.node.value})}">К узлу в рубрикаторе</a></p>
+</main>
 </body>
 </html>
