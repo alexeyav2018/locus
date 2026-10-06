@@ -88,7 +88,7 @@
 
 ## 4. Пределы загрузки
 
-- [ ] 4.1 `spring.servlet.multipart` поднять до 100 МБ / 110 МБ; общий
+- [x] 4.1 `spring.servlet.multipart` поднять до 100 МБ / 110 МБ; общий
       предел в `locus.upload.max-file-size`/`max-request-size` (20 МБ /
       100 МБ); `UploadLimitInterceptor` и `@LargeUpload` на загрузке
       черновика; проверить — тест: черновик крупнее 20 МБ принимается;

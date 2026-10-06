@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import ru.locus.Addresses;
+import ru.locus.upload.LargeUpload;
 
 /**
  * Загрузка исходника для сборки PDF слота Задачи (ADR-0041).
@@ -41,7 +42,11 @@ public class AssemblyDraftController {
      * Принимает исходник и отдаёт его строку сборки со всеми страницами.
      * Неподходящий исходник — тот же фрагмент-отказ с кодом 422: скрипт
      * показывает текст у слота, форма при этом не теряется.
+     *
+     * Предел загрузки — инструмента, а не общий: сборник весит десятки
+     * мегабайт ({@link LargeUpload}).
      */
+    @LargeUpload
     @PostMapping(Addresses.PROBLEMS + "/drafts")
     public String upload(@RequestParam String slot,
                          @RequestParam MultipartFile source,
