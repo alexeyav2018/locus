@@ -21,6 +21,12 @@
         select[multiple] { min-height: 8rem; }
         button { padding: 0.35rem 0.9rem; }
         .hint { margin: 0.25rem 0 0.75rem; }
+        ol.assembly { margin: 0.35rem 0 1rem; }
+        .assembly-row { margin: 0.25rem 0; }
+        .assembly-row .source { font-weight: bold; margin-right: 0.5rem; }
+        .assembly-row .range { display: inline; margin: 0 0.35rem; }
+        .assembly-row input[type=number] { width: 4.5rem; }
+        .assembly-refusal { color: #a00; }
     </style>
 </head>
 <body>
@@ -97,10 +103,14 @@
         <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="condition" accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="condition">
             <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
         </ol>
         <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="solution" accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="solution">
             <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
         </ol>
@@ -114,6 +124,8 @@
     <form method="post" enctype="multipart/form-data"
           th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
         <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="condition" accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="condition">
             <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
         </ol>
@@ -122,6 +134,8 @@
     <form method="post" enctype="multipart/form-data"
           th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
         <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="solution" accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="solution">
             <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
         </ol>
@@ -131,5 +145,105 @@
 
 <p th:if="${problem}"><a th:href="@{/problems/{id}(id=${problem.id.value})}">К Задаче</a></p>
 <p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
+
+<!--/*
+    Первый JavaScript проекта (ADR-0041): он только грузит исходник и двигает
+    строки, правил в нём нет. Строку рисует сервер фрагментом
+    problem/assembly :: row — тем же, что при перерисовке формы после отказа.
+    Поле выбора исходника без имени: в отправку формы оно не попадает,
+    отправляются только поля строк. Токен CSRF берётся из скрытого поля
+    своей формы — Thymeleaf кладёт его в каждую форму с th:action.
+*/-->
+<script th:inline="javascript">
+(function () {
+    const draftsUrl = /*[[@{/problems/drafts}]]*/ '/problems/drafts';
+
+    function showRefusal(list, text) {
+        clearRefusal(list);
+        const refusal = document.createElement('p');
+        refusal.className = 'assembly-refusal';
+        refusal.textContent = text;
+        list.after(refusal);
+    }
+
+    function clearRefusal(list) {
+        const next = list.nextElementSibling;
+        if (next && next.classList.contains('assembly-refusal')) {
+            next.remove();
+        }
+    }
+
+    function insertHtml(list, html) {
+        const template = document.createElement('template');
+        template.innerHTML = html.trim();
+        const node = template.content.firstElementChild;
+        if (node && node.classList.contains('assembly-refusal')) {
+            showRefusal(list, node.textContent);
+        } else if (node) {
+            clearRefusal(list);
+            list.append(node);
+        }
+    }
+
+    async function upload(input) {
+        const form = input.form;
+        const slot = input.dataset.assemblySource;
+        const list = form.querySelector('ol.assembly[data-slot="' + slot + '"]');
+        for (const file of Array.from(input.files)) {
+            const body = new FormData();
+            body.append('slot', slot);
+            body.append('source', file);
+            const csrf = form.querySelector('input[name="_csrf"]');
+            if (csrf) {
+                body.append('_csrf', csrf.value);
+            }
+            try {
+                const response = await fetch(draftsUrl, {method: 'POST', body: body, credentials: 'same-origin'});
+                if (response.ok || response.status === 422) {
+                    insertHtml(list, await response.text());
+                } else if (response.status === 413) {
+                    showRefusal(list, 'Файл «' + file.name + '» слишком велик для сборки');
+                } else {
+                    showRefusal(list, 'Файл «' + file.name + '» не загрузился (код ' + response.status + ')');
+                }
+            } catch (failure) {
+                showRefusal(list, 'Файл «' + file.name + '» не загрузился: нет связи с сервером');
+            }
+        }
+        input.value = '';
+    }
+
+    document.querySelectorAll('input[data-assembly-source]').forEach(function (input) {
+        input.multiple = true;
+        input.addEventListener('change', function () { upload(input); });
+    });
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('button[data-assembly]');
+        if (!button) {
+            return;
+        }
+        const row = button.closest('li.assembly-row');
+        switch (button.dataset.assembly) {
+            case 'up':
+                if (row.previousElementSibling) {
+                    row.previousElementSibling.before(row);
+                }
+                break;
+            case 'down':
+                if (row.nextElementSibling) {
+                    row.nextElementSibling.after(row);
+                }
+                break;
+            case 'again':
+                row.after(row.cloneNode(true));
+                break;
+            case 'remove':
+                row.remove();
+                break;
+        }
+    });
+})();
+</script>
 </body>
 </html>
