@@ -6,6 +6,7 @@ REPO=/home/vorotovalexey/projects/locus
 SESSION=locus-backlog
 TIMER=locus-backlog.timer
 PROMPT="$REPO/.claude/backlog-batch/task-prompt.md"
+POLICY="$REPO/.claude/backlog-batch/question-policy.md"
 KEY="$HOME/.ssh/locus_backlog"
 SELF="$(readlink -f "$0")"
 
@@ -93,6 +94,7 @@ _session)
     export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes"
     exec claude --dangerously-skip-permissions \
                 --remote-control "$SESSION" \
+                --append-system-prompt-file "$POLICY" \
                 "$(cat "$PROMPT")"
     ;;
 
