@@ -81,6 +81,30 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(refused.body()).contains("JPEG и PNG и файлы PDF");
     }
 
+    /** Показ страницы своего черновика — картинкой, по ней ставится рамка (ADR-0045). */
+    @Test
+    void ownDraftPageIsShownAsAPicture() throws IOException {
+        Browser admin = administrator();
+        String draft = draftOf(upload(admin, "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(3)));
+
+        Browser.Page page = admin.get("/problems/drafts/" + draft + "/pages/2");
+
+        assertThat(page.status()).isEqualTo(200);
+        assertThat(page.contentType()).startsWith("image/jpeg");
+        assertThat(PdfAssembly.isJpeg(admin.getBytes("/problems/drafts/" + draft + "/pages/2"))).isTrue();
+    }
+
+    /** Страница вне черновика — тот же 404, что у несуществующего. */
+    @Test
+    void pageBeyondTheDraftIsNotFound() throws IOException {
+        Browser admin = administrator();
+        String draft = draftOf(upload(admin, "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(3)));
+
+        assertThat(admin.get("/problems/drafts/" + draft + "/pages/4").status()).isEqualTo(404);
+        assertThat(admin.get("/problems/drafts/" + draft + "/pages/0").status()).isEqualTo(404);
+        assertThat(admin.get("/problems/drafts/999999/pages/1").status()).isEqualTo(404);
+    }
+
     /** Сценарий «Задача из трёх картинок» — через форму. */
     @Test
     void problemIsCreatedWithAnAssembledCondition() throws IOException {

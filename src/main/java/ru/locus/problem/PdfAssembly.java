@@ -1,5 +1,6 @@
 package ru.locus.problem;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -80,6 +81,12 @@ public class PdfAssembly {
     /** Качество JPEG растрового куска (design.md). */
     private static final float JPEG_QUALITY = 0.9f;
 
+    /** Длинная сторона показа страницы, пиксели (design.md, «Показ страницы»). */
+    private static final int PREVIEW_LONG_SIDE = 1600;
+
+    /** Предел разрешения показа страницы PDF (design.md, «Показ страницы»). */
+    private static final int PREVIEW_DPI = 150;
+
     private static final COSName PATTERN_TYPE = COSName.getPDFName("PatternType");
 
     /**
@@ -146,6 +153,80 @@ public class PdfAssembly {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * Страница исходника картинкой JPEG — по ней Администратор обводит рамку
+     * (design.md, «Показ страницы»). Видна так же, как в просмотрщике:
+     * страница PDF — с поворотом и по видимой области, картинка — развёрнутой
+     * по сведениям о съёмке; рамка в долях от этого вида и считается.
+     *
+     * <p>Длинная сторона — не больше {@value #PREVIEW_LONG_SIDE} пикселей,
+     * страница PDF — ещё и не больше {@value #PREVIEW_DPI} dpi, мелкая
+     * картинка не увеличивается: ширины хватает рамке, а на телефоне
+     * страница весит сотни килобайт, а не мегабайты.
+     *
+     * @param page номер страницы с единицы; у картинки страница одна
+     * @throws IllegalArgumentException если страницы с таким номером нет
+     *                                  или источник не разбирается
+     */
+    public byte[] preview(Path file, String name, AssemblyDraft.Kind kind, int page) {
+        BufferedImage shown = switch (kind) {
+            case PDF -> pdfPreview(file, name, page);
+            case IMAGE -> imagePreview(file, name, page);
+        };
+        return jpeg(shown);
+    }
+
+    private static BufferedImage pdfPreview(Path file, String name, int page) {
+        try (PDDocument document = open(file, name)) {
+            if (page < 1 || page > document.getNumberOfPages()) {
+                throw new IllegalArgumentException("Источник «" + name + "»: страницы " + page + " в нём нет");
+            }
+            PDRectangle visible = document.getPage(page - 1).getCropBox();
+            float longSide = Math.max(visible.getWidth(), visible.getHeight());
+            float scale = Math.min(PREVIEW_LONG_SIDE / longSide, PREVIEW_DPI / 72f);
+            return new PDFRenderer(document).renderImage(page - 1, scale, ImageType.RGB);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Не удалось показать страницу источника «" + name + "»", e);
+        }
+    }
+
+    private static BufferedImage imagePreview(Path file, String name, int page) {
+        if (page != 1) {
+            throw new IllegalArgumentException("Источник «" + name + "» — картинка, страница у неё одна");
+        }
+        try {
+            BufferedImage upright = Thumbnails.of(file.toFile())
+                    .scale(1)
+                    .useExifOrientation(true)
+                    .asBufferedImage();
+            double scale = Math.min(1, (double) PREVIEW_LONG_SIDE
+                    / Math.max(upright.getWidth(), upright.getHeight()));
+            return scale == 1 ? upright : Thumbnails.of(upright).scale(scale).asBufferedImage();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Картинка «" + name + "» не разбирается");
+        }
+    }
+
+    /** JPEG без прозрачности: прозрачное у PNG ложится на белое, как на листе. */
+    private static byte[] jpeg(BufferedImage image) {
+        BufferedImage opaque = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D drawing = opaque.createGraphics();
+        try {
+            drawing.setColor(Color.WHITE);
+            drawing.fillRect(0, 0, image.getWidth(), image.getHeight());
+            drawing.drawImage(image, 0, 0, null);
+        } finally {
+            drawing.dispose();
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            ImageIO.write(opaque, "jpg", out);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return out.toByteArray();
     }
 
     private static PDDocument open(Path file, String name) {

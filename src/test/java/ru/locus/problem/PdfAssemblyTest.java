@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -521,6 +522,106 @@ class PdfAssemblyTest {
         }
         // Векторный кусок несёт картинку своей страницы, скан — свой растр.
         assertThat(pageImageWidths(result)).hasSize(2).startsWith(width(2));
+    }
+
+    // --- problem-pdf-crop 3.1 Показ страницы --------------------------------
+
+    /** A4 при 150 dpi — 1240 × 1754: выше предела, длинная сторона — 1600. */
+    @Test
+    void previewOfAnA4PageIsLimitedByItsLongSide() throws IOException {
+        Path book = textBook(3);
+
+        BufferedImage shown = shown(assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2));
+
+        assertThat(shown.getHeight()).isEqualTo(1600);
+        assertThat(shown.getWidth()).isEqualTo((int) (PDRectangle.A4.getWidth() * 1600 / PDRectangle.A4.getHeight()));
+    }
+
+    /** Маленькая страница не растягивается до 1600: предел — 150 dpi. */
+    @Test
+    void previewOfASmallPageIsLimitedByResolution() throws IOException {
+        Path book = directory.resolve("маленькая.pdf");
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage(new PDRectangle(144, 72)));
+            document.save(book.toFile());
+        }
+
+        BufferedImage shown = shown(assembly.preview(book, "маленькая.pdf", AssemblyDraft.Kind.PDF, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(300);
+        assertThat(shown.getHeight()).isEqualTo(150);
+    }
+
+    /** Повёрнутая страница показывается повёрнутой: рамка считается от этого вида. */
+    @Test
+    void previewOfARotatedPageIsTurned() throws IOException {
+        Path book = directory.resolve("повёрнутый.pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            page.setRotation(90);
+            document.addPage(page);
+            document.save(book.toFile());
+        }
+
+        BufferedImage shown = shown(assembly.preview(book, "повёрнутый.pdf", AssemblyDraft.Kind.PDF, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(1600);
+        assertThat(shown.getHeight()).isLessThan(shown.getWidth());
+    }
+
+    @Test
+    void previewOfAPageBeyondTheBookIsRefused() throws IOException {
+        Path book = textBook(3);
+
+        assertThatThrownBy(() -> assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 4))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void previewOfALargePictureIsReducedTo1600() throws IOException {
+        Path picture = png("широкая.png", 4000, 1000);
+
+        BufferedImage shown = shown(assembly.preview(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(1600);
+        assertThat(shown.getHeight()).isEqualTo(400);
+    }
+
+    @Test
+    void previewOfASmallPictureIsNotEnlarged() throws IOException {
+        Path picture = png("картинка.png", 300, 200);
+
+        BufferedImage shown = shown(assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(300);
+        assertThat(shown.getHeight()).isEqualTo(200);
+    }
+
+    /** Снимок с ориентацией 6 показывается стоя — как его режет сборка. */
+    @Test
+    void previewOfAPhotoIsTurnedAsItIsSeen() throws IOException {
+        Path photo = directory.resolve("повёрнутый.jpg");
+        try (InputStream in = PdfAssemblyTest.class.getResourceAsStream("/ru/locus/file/rotated.jpg")) {
+            Files.write(photo, in.readAllBytes());
+        }
+
+        BufferedImage shown = shown(assembly.preview(photo, "повёрнутый.jpg", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(400);
+        assertThat(shown.getHeight()).isEqualTo(600);
+    }
+
+    @Test
+    void pictureHasOnlyOnePageToPreview() throws IOException {
+        Path picture = png("картинка.png", 300, 200);
+
+        assertThatThrownBy(() -> assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 2))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static BufferedImage shown(byte[] jpeg) throws IOException {
+        assertThat(PdfAssembly.isJpeg(jpeg)).isTrue();
+        return ImageIO.read(new ByteArrayInputStream(jpeg));
     }
 
     // --- Сборники и разбор результата ---------------------------------------

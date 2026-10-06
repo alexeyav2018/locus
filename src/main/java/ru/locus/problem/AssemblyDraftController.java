@@ -4,10 +4,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.Duration;
 import java.util.Set;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -67,5 +73,26 @@ public class AssemblyDraftController {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * Страница своего черновика картинкой JPEG — по ней скрипт формы рисует
+     * рамку (ADR-0045). Чужой, несуществующий черновик и страница вне его —
+     * один ответ 404.
+     *
+     * Содержимое черновика неизменно, поэтому браузер держит показанную
+     * страницу час; {@code private} не даёт положить её в общий кэш.
+     */
+    @GetMapping(Addresses.PROBLEMS + "/drafts/{id}/pages/{page}")
+    public ResponseEntity<byte[]> page(@PathVariable long id, @PathVariable int page) {
+        if (id <= 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return drafts.preview(new AssemblyDraftId(id), page)
+                .map(content -> ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG)
+                        .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
+                        .body(content))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

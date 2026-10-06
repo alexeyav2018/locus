@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -167,6 +168,23 @@ public class AssemblyDraftService {
             });
         }
         return assembly.assemble(parts);
+    }
+
+    /**
+     * Страница своего черновика картинкой — по ней ставится рамка
+     * (design.md, «Показ страницы»).
+     *
+     * <p>Чужой черновик, несуществующий и страница вне черновика дают одно
+     * и то же пустое: по ответу нельзя узнать, что черновик с таким номером
+     * у кого-то есть. Уборку показ не запускает — это работа внутри уже
+     * открытого инструмента, а не его открытие.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public Optional<byte[]> preview(AssemblyDraftId id, int page) {
+        return drafts.findByIds(currentUser.id(), List.of(id)).stream()
+                .findFirst()
+                .filter(draft -> page >= 1 && page <= draft.pageCount())
+                .map(draft -> assembly.preview(fileOf(draft.fileName()), draft.originalName(), draft.kind(), page));
     }
 
     /**

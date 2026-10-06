@@ -51,15 +51,15 @@
 
 ## 3. Показ страницы черновика
 
-- [ ] 3.1 `PdfAssembly.preview(file, name, kind, page)` — JPEG, длинная
+- [x] 3.1 `PdfAssembly.preview(file, name, kind, page)` — JPEG, длинная
       сторона ≤ 1600 пикселей и ≤ 150 dpi; проверить — модульный тест
       размеров для страницы PDF и картинки
-- [ ] 3.2 `AssemblyDraftService.preview(id, page)` (Администратор, свой
+- [x] 3.2 `AssemblyDraftService.preview(id, page)` (Администратор, свой
       черновик, страница в пределах) и `GET /problems/drafts/{id}/pages/{n}`
       в `AssemblyDraftController` (`image/jpeg`, `Cache-Control: private,
       max-age=3600`, чужой / несуществующий / вне страниц — 404);
       проверить — тест экрана: своя страница отдаётся картинкой
-- [ ] 3.3 Изоляция: `DraftsAreFilteredByOwnerTest` — показ страницы
+- [x] 3.3 Изоляция: `DraftsAreFilteredByOwnerTest` — показ страницы
       чужого черновика неотличим от несуществующего; Учитель получает
       отказ; `OwnerIsRequiredByDraftsTest` не меняется; проверить — тесты
       зелёные
