@@ -97,7 +97,13 @@
         <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <ol class="assembly" data-slot="condition">
+            <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+        </ol>
         <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <ol class="assembly" data-slot="solution">
+            <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+        </ol>
     </fieldset>
 
     <button type="submit" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
@@ -108,11 +114,17 @@
     <form method="post" enctype="multipart/form-data"
           th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
         <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <ol class="assembly" data-slot="condition">
+            <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+        </ol>
         <button type="submit">Заменить условие</button>
     </form>
     <form method="post" enctype="multipart/form-data"
           th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
         <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <ol class="assembly" data-slot="solution">
+            <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+        </ol>
         <button type="submit">Заменить решение</button>
     </form>
 </div>

@@ -11,10 +11,15 @@ import java.util.List;
  * У картинки «с» и «по» — единицы: форма шлёт их, чтобы списки полей
  * не разъехались, и сборка их не читает.
  */
-public record PdfAssemblyOrder(List<Line> lines) {
+public record PdfAssemblyOrder(List<Line> lines) implements ProblemPdf {
 
     public PdfAssemblyOrder {
         lines = List.copyOf(lines);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return lines.isEmpty();
     }
 
     public List<AssemblyDraftId> drafts() {

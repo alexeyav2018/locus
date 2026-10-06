@@ -2,6 +2,7 @@ package ru.locus.problem;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -46,26 +47,33 @@ public class ProblemController {
     private final SolutionMethodService methods;
     private final CharacteristicService characteristics;
     private final CurrentUser currentUser;
+    private final AssemblyDraftService drafts;
 
     public ProblemController(ProblemService problems,
                              TaxonomyService taxonomy,
                              SolutionMethodService methods,
                              CharacteristicService characteristics,
-                             CurrentUser currentUser) {
+                             CurrentUser currentUser,
+                             AssemblyDraftService drafts) {
         this.problems = problems;
         this.taxonomy = taxonomy;
         this.methods = methods;
         this.characteristics = characteristics;
         this.currentUser = currentUser;
+        this.drafts = drafts;
     }
 
     /**
      * Форма заведения. Тема, с которой пришли, выбрана заранее: заводят Задачу
      * с экрана дерева, стоя на Теме, и заставлять выбирать её второй раз —
      * приглашение ошибиться.
+     *
+     * Показ формы — открытие инструмента сборки, и с него начинается уборка
+     * брошенных черновиков (ADR-0041).
      */
     @GetMapping(Addresses.PROBLEMS + "/new")
     public String form(@RequestParam(required = false) Long topic, Model model) {
+        drafts.sweep();
         model.addAttribute("chosenTopic", topic == null ? 0L : topic);
         fillMarkupChoices(topic, model);
         return "problem/form";
@@ -79,15 +87,25 @@ public class ProblemController {
                          @RequestParam(required = false) List<Long> characteristicIds,
                          @RequestParam(required = false) MultipartFile condition,
                          @RequestParam(required = false) MultipartFile solution,
+                         @RequestParam(required = false) List<Long> conditionDraft,
+                         @RequestParam(required = false) List<Integer> conditionFrom,
+                         @RequestParam(required = false) List<Integer> conditionTo,
+                         @RequestParam(required = false) List<Long> solutionDraft,
+                         @RequestParam(required = false) List<Integer> solutionFrom,
+                         @RequestParam(required = false) List<Integer> solutionTo,
                          Model model) {
+        PdfAssemblyOrder conditionOrder = order(conditionDraft, conditionFrom, conditionTo);
+        PdfAssemblyOrder solutionOrder = order(solutionDraft, solutionFrom, solutionTo);
         try {
             ProblemId created = problems.create(caption, part,
                     nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds),
-                    uploaded(condition), uploaded(solution));
+                    slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
             return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
         } catch (NotATopicException | IllegalArgumentException refusal) {
             model.addAttribute("chosenTopic", first(topics));
             fillMarkupChoices(first(topics) == 0 ? null : first(topics), model);
+            model.addAttribute("conditionRows", drafts.rows(conditionOrder));
+            model.addAttribute("solutionRows", drafts.rows(solutionOrder));
             model.addAttribute("error", refusal.getMessage());
             return "problem/form";
         }
@@ -119,6 +137,7 @@ public class ProblemController {
     /** Форма правки — та же, что и заведения, но с заполненной Задачей. */
     @GetMapping(Addresses.PROBLEMS + "/{id}/edit")
     public String edit(@PathVariable long id, Model model) {
+        drafts.sweep();
         Problem problem = problems.problem(new ProblemId(id));
         model.addAttribute("problem", problem);
         model.addAttribute("chosenTopic", problem.topics().isEmpty() ? 0L : problem.topics().get(0).value());
@@ -146,11 +165,17 @@ public class ProblemController {
     @PostMapping(Addresses.PROBLEMS + "/{id}/condition")
     public String replaceCondition(@PathVariable long id,
                                    @RequestParam(required = false) MultipartFile condition,
+                                   @RequestParam(required = false) List<Long> conditionDraft,
+                                   @RequestParam(required = false) List<Integer> conditionFrom,
+                                   @RequestParam(required = false) List<Integer> conditionTo,
                                    Model model) {
+        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo);
         try {
-            problems.replaceCondition(new ProblemId(id), uploaded(condition));
+            problems.replaceCondition(new ProblemId(id), slot(condition, order, "условия"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
-            return refusedEdit(id, refusal, model);
+            String page = refusedEdit(id, refusal, model);
+            model.addAttribute("conditionRows", drafts.rows(order));
+            return page;
         }
         return "redirect:" + Addresses.PROBLEMS + "/" + id;
     }
@@ -158,11 +183,17 @@ public class ProblemController {
     @PostMapping(Addresses.PROBLEMS + "/{id}/solution")
     public String replaceSolution(@PathVariable long id,
                                   @RequestParam(required = false) MultipartFile solution,
+                                  @RequestParam(required = false) List<Long> solutionDraft,
+                                  @RequestParam(required = false) List<Integer> solutionFrom,
+                                  @RequestParam(required = false) List<Integer> solutionTo,
                                   Model model) {
+        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo);
         try {
-            problems.replaceSolution(new ProblemId(id), uploaded(solution));
+            problems.replaceSolution(new ProblemId(id), slot(solution, order, "решения"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
-            return refusedEdit(id, refusal, model);
+            String page = refusedEdit(id, refusal, model);
+            model.addAttribute("solutionRows", drafts.rows(order));
+            return page;
         }
         return "redirect:" + Addresses.PROBLEMS + "/" + id;
     }
@@ -222,6 +253,46 @@ public class ProblemController {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /**
+     * Слот из формы: готовый файл или порядок сборки, но не оба сразу.
+     *
+     * Выбор одного из двух — разбор формы, а не правило Задачи: сервис
+     * получает ровно один вариант, и что он был единственным, решается здесь
+     * (design.md, «Слот принимает „готовый файл или порядок сборки“»).
+     */
+    private static ProblemPdf slot(MultipartFile file, PdfAssemblyOrder order, String what) {
+        UploadedFile ready = uploaded(file);
+        if (ready != null && !order.isEmpty()) {
+            throw new IllegalArgumentException("PDF " + what
+                    + ": приложен готовый файл и задана сборка — выберите один способ");
+        }
+        return ready != null ? ready : order.isEmpty() ? null : order;
+    }
+
+    /**
+     * Порядок сборки из повторяющихся полей строк: «черновик», «с», «по»
+     * идут в строках формы по одному, и i-е значения каждого списка — одна
+     * строка. Незаполненная страница — нуль: такой диапазон отклонит сборка,
+     * назвав источник и число его страниц, а не разбор формы безлико.
+     */
+    private static PdfAssemblyOrder order(List<Long> draftIds, List<Integer> from, List<Integer> to) {
+        if (draftIds == null) {
+            return new PdfAssemblyOrder(List.of());
+        }
+        List<PdfAssemblyOrder.Line> lines = new ArrayList<>();
+        for (int i = 0; i < draftIds.size(); i++) {
+            if (draftIds.get(i) == null) {
+                continue;
+            }
+            lines.add(new PdfAssemblyOrder.Line(new AssemblyDraftId(draftIds.get(i)), page(from, i), page(to, i)));
+        }
+        return new PdfAssemblyOrder(lines);
+    }
+
+    private static int page(List<Integer> pages, int i) {
+        return pages == null || i >= pages.size() || pages.get(i) == null ? 0 : pages.get(i);
     }
 
     private static List<TaxonomyNodeId> nodeIds(List<Long> values) {

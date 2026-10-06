@@ -12,8 +12,9 @@ package ru.locus.problem;
  * только изображение (standards.md, «Файлы»). Решает вызывающий, по типу
  * содержимого, и вызывающий здесь решает не пережимать.
  */
-public record UploadedFile(byte[] content, String contentType) {
+public record UploadedFile(byte[] content, String contentType) implements ProblemPdf {
 
+    @Override
     public boolean isEmpty() {
         return content == null || content.length == 0;
     }

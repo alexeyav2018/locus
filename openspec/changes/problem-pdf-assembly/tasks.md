@@ -68,7 +68,7 @@
 
 ## 3. Задача принимает собранный PDF
 
-- [ ] 3.1 `ProblemPdf` (запечатанный: `UploadedFile` | `PdfAssemblyOrder`);
+- [x] 3.1 `ProblemPdf` (запечатанный: `UploadedFile` | `PdfAssemblyOrder`);
       `ProblemService.create`/`replaceCondition`/`replaceSolution`
       принимают его, собирают после проверок разметки и заморозки, после
       сохранения удаляют черновики обоих слотов; найти все вызовы прежних
@@ -76,13 +76,13 @@
       из собранного условия и готового решения; черновики удалены после
       сохранения; отказ без Метода оставляет черновики; замороженная
       Задача не заменяется сборкой
-- [ ] 3.2 `ProblemController`: разбор `conditionDraft/From/To`
+- [x] 3.2 `ProblemController`: разбор `conditionDraft/From/To`
       и `solutionDraft/From/To`, отказ «готовый и сборка сразу», вызов
       `sweep()` при показе форм; при отказе формы — строки сборки
       из присланных списков; `ProblemControllerIsThinTest` зелёный;
       проверить — экранный тест через `Browser`: заведение с собранным
       условием, отказ при двух способах, отказ формы сохраняет строки
-- [ ] 3.3 `AssemblyDraftController`: `POST /problems/drafts` → фрагмент
+- [x] 3.3 `AssemblyDraftController`: `POST /problems/drafts` → фрагмент
       строки сборки; проверить — тест: ответ содержит имя и число
       страниц; Учителю отказ
 

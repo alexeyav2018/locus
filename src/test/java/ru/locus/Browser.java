@@ -109,14 +109,22 @@ public final class Browser {
      * уходит приём Работы с несколькими снимками в одном поле.
      */
     public Page postMultipart(String action, Map<String, String> fields, List<FilePart> files) {
+        return postMultipart(action, List.copyOf(new LinkedHashMap<>(fields).entrySet()), files);
+    }
+
+    /**
+     * Отправка формы с файлами, в которой поле повторяется, — как строки
+     * сборки PDF Задачи: «черновик», «с», «по» идут по одному в каждой строке.
+     */
+    public Page postMultipart(String action, List<Map.Entry<String, String>> fields, List<FilePart> files) {
         String boundary = "----locus" + java.util.UUID.randomUUID();
         var body = new java.io.ByteArrayOutputStream();
-        Map<String, String> withToken = new LinkedHashMap<>(fields);
-        withToken.put("_csrf", csrfTokenFrom(action));
+        List<Map.Entry<String, String>> withToken = new ArrayList<>(fields);
+        withToken.add(Map.entry("_csrf", csrfTokenFrom(action)));
 
-        withToken.forEach((name, value) -> write(body, "--" + boundary + "\r\n"
-                + "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n"
-                + value + "\r\n"));
+        withToken.forEach(field -> write(body, "--" + boundary + "\r\n"
+                + "Content-Disposition: form-data; name=\"" + field.getKey() + "\"\r\n\r\n"
+                + field.getValue() + "\r\n"));
         for (FilePart file : files) {
             write(body, "--" + boundary + "\r\n"
                     + "Content-Disposition: form-data; name=\"" + file.field() + "\"; filename=\"" + file.filename() + "\"\r\n"

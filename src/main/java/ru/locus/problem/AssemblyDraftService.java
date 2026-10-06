@@ -158,6 +158,27 @@ public class AssemblyDraftService {
     }
 
     /**
+     * Строки сборки для перерисовки формы после отказа: тот же порядок
+     * с именами и числом страниц, чтобы сборник не загружать заново.
+     *
+     * <p>Черновик, которого у вошедшего нет — чужой или убранный по сроку, —
+     * просто не попадает в строки: форма покажет, что осталось, а отказ
+     * о пропавшем исходнике даст сборка при следующей отправке.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public List<AssemblyRow> rows(PdfAssemblyOrder order) {
+        if (order.isEmpty()) {
+            return List.of();
+        }
+        Map<AssemblyDraftId, AssemblyDraft> own = drafts.findByIds(currentUser.id(), order.drafts()).stream()
+                .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
+        return order.lines().stream()
+                .filter(line -> own.containsKey(line.draft()))
+                .map(line -> new AssemblyRow(own.get(line.draft()), line.from(), line.to()))
+                .toList();
+    }
+
+    /**
      * Удаляет черновики вошедшего — после того, как собранный из них PDF
      * лёг в Задачу. Строки удаляются в транзакции вызывающего, файлы —
      * после её фиксации; откат оставляет и то и другое. Чужие черновики
