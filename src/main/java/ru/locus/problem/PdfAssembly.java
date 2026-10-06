@@ -85,7 +85,16 @@ public class PdfAssembly {
             Pruning pruning = new Pruning();
             for (PdfAssemblyPart part : parts) {
                 switch (part) {
-                    case PdfAssemblyPart.Image image -> result.addPage(imagePage(result, image));
+                    case PdfAssemblyPart.Image image -> {
+                        if (image.frame() != null) {
+                            // Обрезка — раздел 2 tasks.md изменения problem-pdf-crop.
+                            throw new IllegalStateException("Обрезка картинки ещё не построена");
+                        }
+                        result.addPage(imagePage(result, image));
+                    }
+                    case PdfAssemblyPart.Piece piece ->
+                            // Обрезка — раздел 2 tasks.md изменения problem-pdf-crop.
+                            throw new IllegalStateException("Обрезка страницы ещё не построена");
                     case PdfAssemblyPart.Pages pages -> {
                         PDDocument source = sources.get(pages.file());
                         if (source == null) {

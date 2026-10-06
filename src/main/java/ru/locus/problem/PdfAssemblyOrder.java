@@ -26,7 +26,17 @@ public record PdfAssemblyOrder(List<Line> lines) implements ProblemPdf {
         return lines.stream().map(Line::draft).distinct().toList();
     }
 
-    /** Строка сборки: черновик и страницы «с … по …», с единицы. */
-    public record Line(AssemblyDraftId draft, int from, int to) {
+    /**
+     * Строка сборки: черновик, страницы «с … по …» с единицы и рамка.
+     * Рамка — {@code null}, если страницы берутся целиком; с рамкой «с»
+     * и «по» обязаны совпадать — это проверяет
+     * {@link AssemblyDraftService#assemble}, называя источник (ADR-0045).
+     */
+    public record Line(AssemblyDraftId draft, int from, int to, CropFrame frame) {
+
+        /** Строка целых страниц. */
+        public Line(AssemblyDraftId draft, int from, int to) {
+            this(draft, from, to, null);
+        }
     }
 }

@@ -162,6 +162,28 @@ class AssemblyDraftServiceTest extends IntegrationTest {
     }
 
     @Test
+    void frameOnSeveralPagesIsRefusedNamingTheSource() throws IOException {
+        AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
+        CropFrame frame = new CropFrame(0.1, 0.1, 0.5, 0.5);
+
+        assertThat(refusal(new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(book.id(), 2, 3, frame)))))
+                .contains("сборник.pdf").contains("на одну страницу");
+    }
+
+    @Test
+    void rowsKeepTheFrameForTheRedrawnForm() throws IOException {
+        AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
+        CropFrame frame = new CropFrame(0.1, 0.2, 0.3, 0.4);
+
+        List<AssemblyRow> rows = service.rows(new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(book.id(), 2, 2, frame),
+                new PdfAssemblyOrder.Line(book.id(), 3, 4))));
+
+        assertThat(rows).extracting(AssemblyRow::frame).containsExactly(frame, null);
+        assertThat(rows).extracting(AssemblyRow::cropValue).containsExactly("0.1000;0.2000;0.3000;0.4000", "");
+    }
+
+    @Test
     void discardRemovesRowAndFileAfterCommit() throws IOException {
         AssemblyDraft draft = service.upload("снимок.png", stream(png()));
 
