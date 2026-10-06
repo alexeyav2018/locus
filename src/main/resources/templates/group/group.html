@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Группа — Locus</title>
     <!--/*
         Страница Группы: имя, состав, переименование и удаление.
@@ -14,39 +14,73 @@
         Удаление Группы свободно всегда: исчезает список, а не карточки
         Учеников (ADR-0035).
     */-->
-    <style>
-        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
-        input[type=text] { padding: 0.35rem; min-width: 16rem; max-width: 100%; }
-        button { padding: 0.35rem 0.9rem; }
-    </style>
 </head>
 <body>
-<h1 th:text="${group.name}">9Б</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/groups')}}">← К списку Групп</a></p>
+<div class="page-head">
+    <h1 th:text="${group.name}">9Б</h1>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Группа с таким именем у вас уже есть</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Группа с таким именем у вас уже есть</p>
 
 <h2>Состав</h2>
-<p th:if="${#lists.isEmpty(students)}">Учеников пока нет — заведите их в списке Учеников,
+<p class="empty" th:if="${#lists.isEmpty(students)}">Учеников пока нет — заведите их в списке Учеников,
     и здесь появятся галочки.</p>
-<form method="post" th:action="@{/groups/{id}/members(id=${group.id.value})}"
-      th:unless="${#lists.isEmpty(students)}">
-    <label th:each="student : ${students}">
-        <input type="checkbox" name="studentIds" th:value="${student.id.value}" th:checked="${memberIds.contains(student.id.value)}">
-        <span th:text="${student.name}">Иванов Пётр</span>
-    </label>
-    <button type="submit">Сохранить состав</button>
-</form>
+<th:block th:unless="${#lists.isEmpty(students)}">
+    <!--/* Состав показан списком; галочки — в блоке «Изменить состав». */-->
+    <p class="empty" th:if="${memberIds.isEmpty()}">В Группе пока никого нет.</p>
+    <ul class="items">
+        <li class="item" th:each="student : ${students}" th:if="${memberIds.contains(student.id.value)}">
+            <a th:href="@{/students/{id}(id=${student.id.value},from=${shell.here})}" th:text="${student.name}">Иванов Пётр</a>
+        </li>
+    </ul>
+    <div class="folds">
+        <details class="more more--primary" name="group-actions" th:attr="open=${shell.opened('/members')} ? 'open'">
+            <summary>Изменить состав</summary>
+            <div class="more-body">
+                <form method="post" th:action="@{/groups/{id}/members(id=${group.id.value})}">
+                    <label th:each="student : ${students}">
+                        <input type="checkbox" name="studentIds" th:value="${student.id.value}" th:checked="${memberIds.contains(student.id.value)}">
+                        <span th:text="${student.name}">Иванов Пётр</span>
+                    </label>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Сохранить состав</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
+</th:block>
 
 <h2>Действия</h2>
-<form method="post" th:action="@{/groups/{id}/name(id=${group.id.value})}">
-    <label>Новое имя <input type="text" name="name" th:value="${group.name}"></label>
-    <button type="submit">Переименовать</button>
-</form>
+<div class="folds">
+    <details class="more" name="group-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
+        <summary>Изменить имя</summary>
+        <div class="more-body">
+            <form class="inline-form" method="post" th:action="@{/groups/{id}/name(id=${group.id.value})}">
+                <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')} ?: ${group.name}"></label>
+                <button type="submit" class="btn-primary">Переименовать</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 
-<form method="post" th:action="@{/groups/{id}/deletion(id=${group.id.value})}">
-    <button type="submit">Удалить Группу</button>
-</form>
-
-<p><a th:href="@{/groups}">К списку Групп</a></p>
+    <details class="more" name="group-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{/groups/{id}/deletion(id=${group.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Группу</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

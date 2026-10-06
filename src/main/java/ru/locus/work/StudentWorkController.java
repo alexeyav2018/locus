@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
 import ru.locus.assignment.AssignmentId;
+import ru.locus.file.FileView;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.student.StudentService;
@@ -95,6 +96,27 @@ public class StudentWorkController {
             return renderAssignment(assignmentId, model);
         }
         return atAssignment(assignmentId);
+    }
+
+    /**
+     * Просмотр файла Работы внутри системы. Работа и её файлы читаются тем же
+     * сервисом, что и экран приёма, — с владельцем из {@code CurrentUser}:
+     * чужая Работа неотличима от несуществующей (404), как и файл, которого
+     * в этой Работе нет.
+     */
+    @GetMapping(Addresses.WORKS + "/{id}/files/{fileId}")
+    public String viewFile(@PathVariable long id, @PathVariable long fileId, Model model) {
+        StudentWork work = works.work(new StudentWorkId(id));
+        List<LinkedFile> linked = works.filesOf(work);
+        for (int i = 0; i < linked.size(); i++) {
+            if (linked.get(i).file().id().value() == fileId) {
+                model.addAttribute("view", FileView.of("Работа: файл " + (i + 1),
+                        linked.get(i).link().toString(), linked.get(i).file().key(),
+                        Addresses.WORKS + "?assignment=" + work.assignment().value()));
+                return "file/viewer";
+            }
+        }
+        throw new StudentWorkNotFoundException(work.id());
     }
 
     @PostMapping(Addresses.WORKS + "/{id}/files")

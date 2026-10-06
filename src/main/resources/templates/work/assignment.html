@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <!--/* Экран рассчитан на телефон: снимки решений учитель загружает
            там же, где их получил, — в мессенджере на телефоне (ADR-0015,
            предпосылка П2). viewport — чтобы страница масштабировалась под
            ширину устройства; ниже — ни таблиц, ни фиксированных ширин. */-->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Приём Работ — Locus</title>
     <!--/*
         Экран приёма по Заданию (С5): Ученик, срок, «не сдано», и по каждой
@@ -36,37 +35,28 @@
 
         «Не сдано» приходит из сервиса вычисленным (инвариант 12).
     */-->
-    <style>
-        body { max-width: 40rem; margin: 0 auto; padding: 0 0.75rem; }
-        form { display: flex; flex-direction: column; align-items: stretch; gap: 0.6rem; margin: 0 0 1.25rem; }
-        form.inline { flex-direction: row; align-items: center; margin: 0; }
-        input, textarea, select, button { font: inherit; max-width: 100%; box-sizing: border-box; }
-        input[type=date], textarea, select { padding: 0.35rem; width: 100%; }
-        .cell { margin: 0.25rem 0; }
-        .cell p { margin: 0 0 0.25rem; }
-        textarea { min-height: 3.5rem; }
-        button { padding: 0.5rem 0.9rem; }
-        .problem { border-top: 1px solid #ccc; padding: 0.75rem 0; }
-        .marks { margin: 0.15rem 0 0; color: #444; }
-        .files { margin: 0.35rem 0; padding-left: 1.25rem; }
-        .files li { margin: 0.25rem 0; }
-        .error { color: #a00; }
-    </style>
 </head>
 <body>
-<h1 th:text="'Работы: ' + ${listed.studentName}">Работы: Иванов Пётр</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/assignments/' + listed.assignment.id.value)}}">← К Заданию</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Работы: ' + ${listed.studentName}">Работы: Иванов Пётр</h1>
+        <p class="lead">Задание: <a th:href="@{/assignments/{id}(id=${listed.assignment.id.value})}"
+                                  th:text="'срок ' + ${#temporals.format(listed.assignment.dueDate, 'dd.MM.yyyy')}">срок 08.09.2026</a>
+            <!--/* «Не сдано» — одним словом в одном th:text, как на странице Задания. */-->
+            <span class="badge badge--bad" th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</span></p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p class="error" th:if="${error}" th:text="${error}">Нужен хотя бы один файл</p>
-
-<p>Задание: <a th:href="@{/assignments/{id}(id=${listed.assignment.id.value})}"
-               th:text="'срок ' + ${#temporals.format(listed.assignment.dueDate, 'dd.MM.yyyy')}">срок 08.09.2026</a></p>
-<!--/* «Не сдано» — одним словом в одном th:text, как на странице Задания. */-->
-<p th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Нужен хотя бы один файл</p>
 
 <div class="problem" th:each="problem : ${problems}"
      th:with="work=${works.get(problem.problem.id)}">
     <h2>
-        <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+        <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
            th:text="'№ ' + ${problem.number}">№ 12</a>
         <span th:if="${problem.problem.hasCaption}"
               th:text="${problem.problem.caption}">Ященко, вариант 12</span>
@@ -75,106 +65,164 @@
     <p class="marks"
        th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')} + '. Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Темы: Алгебра / Уравнения. Методы: Замена переменной</p>
 
-    <!--/* Работа принята: дата, вердикт или «не проверена», примечание,
-           файлы и действия. */-->
+    <!--/* Работа принята: на виду дата, вердикт или «не проверена», примечание
+           и файлы; всё остальное — блоками, по одному на Задачу. */-->
     <div th:if="${work != null}">
-        <p th:text="'получена ' + ${#temporals.format(work.receivedOn, 'dd.MM.yyyy')}">получена 03.09.2026</p>
-        <p th:if="${work.checked}" th:text="'Вердикт: ' + ${work.verdict.title}">Вердикт: верно</p>
-        <p th:unless="${work.checked}" th:text="'не проверена'">не проверена</p>
+        <div class="row" style="margin-bottom:.5rem">
+            <span th:text="'получена ' + ${#temporals.format(work.receivedOn, 'dd.MM.yyyy')}">получена 03.09.2026</span>
+            <span class="badge"
+                  th:classappend="${work.checked} ? (${work.verdict.name() == 'CORRECT'} ? 'badge--ok' : 'badge--bad') : 'badge--warn'"
+                  th:text="${work.checked} ? 'Вердикт: ' + ${work.verdict.title} : 'не проверена'">Вердикт: верно</span>
+        </div>
         <p th:if="${work.hasNote}" th:text="'Примечание: ' + ${work.note}">Примечание: потерян корень</p>
 
         <ul class="files">
             <li th:each="linked, stat : ${files.get(problem.problem.id)}">
-                <a th:href="${linked.link}" target="_blank" rel="noopener"
+                <a th:href="@{/works/{id}/files/{fileId}(id=${work.id.value},fileId=${linked.file.id.value},from=${shell.here})}"
                    th:text="'файл ' + ${stat.count}">файл 1</a>
-                <form class="inline" method="post"
-                      th:action="@{/works/{id}/files/{fileId}/deletion(id=${work.id.value},fileId=${linked.file.id.value})}">
-                    <button type="submit">Удалить файл</button>
-                </form>
             </li>
         </ul>
 
-        <form method="post" enctype="multipart/form-data"
-              th:action="@{/works/{id}/files(id=${work.id.value})}">
-            <label>Добавить файлы
-                <input type="file" name="files" multiple accept="image/*,application/pdf">
-            </label>
-            <button type="submit">Добавить файлы</button>
-        </form>
+        <div class="folds">
+            <!--/* Вердикт и примечание — одной формой: на экране они рядом,
+                   и примечание без вердикта («посмотрю позже») законно. */-->
+            <details class="more" th:name="'work-' + ${problem.problem.id.value}"
+                     th:attr="open=${shell.opened('/works/' + work.id.value + '/verdict')} ? 'open'">
+                <summary>Вердикт</summary>
+                <div class="more-body">
+                    <form method="post" th:action="@{/works/{id}/verdict(id=${work.id.value})}">
+                        <div class="verdicts">
+                        <label th:each="one : ${verdicts}">
+                            <input type="radio" name="verdict" th:value="${one.name()}"
+                                   th:checked="${work.verdict == one}">
+                            <span th:text="${one.title}">верно</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="verdict" value="" th:checked="${work.verdict == null}">
+                            не проверять сейчас
+                        </label>
+                        </div>
+                        <label>Примечание
+                            <textarea name="note" th:text="${work.note}"></textarea>
+                        </label>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Сохранить вердикт</button>
+                            <button type="button" data-close>Отмена</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
 
-        <!--/* Вердикт и примечание — одной формой: на экране они рядом,
-               и примечание без вердикта («посмотрю позже») законно. */-->
-        <form method="post" th:action="@{/works/{id}/verdict(id=${work.id.value})}">
-            <label th:each="one : ${verdicts}">
-                <input type="radio" name="verdict" th:value="${one.name()}"
-                       th:checked="${work.verdict == one}">
-                <span th:text="${one.title}">верно</span>
-            </label>
-            <label>
-                <input type="radio" name="verdict" value="" th:checked="${work.verdict == null}">
-                не проверять сейчас
-            </label>
-            <label>Примечание
-                <textarea name="note" th:text="${work.note}"></textarea>
-            </label>
-            <button type="submit">Сохранить вердикт</button>
-        </form>
+            <!--/* Владение: одна форма на Задачу, по ячейке — скрытые Тема
+                   и Метод и список значений; три параллельных списка
+                   topic/method/status собираются в отметки по индексу.
+                   Текущее значение и справка — в подписи, а не выбраны
+                   в списке: выбранное текущее ничего бы не меняло, но читалось
+                   бы как предзаполнение (ADR-0011). */-->
+            <details class="more" th:name="'work-' + ${problem.problem.id.value}"
+                     th:attr="open=${shell.openedFor(problem.problem.id.value, '/mastery')} ? 'open'">
+                <summary>Владение</summary>
+                <div class="more-body">
+                    <form method="post" th:action="@{/mastery}">
+                        <input type="hidden" name="assignment" th:value="${listed.assignment.id.value}">
+                        <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
+                        <div class="cell" th:each="cell : ${cells.get(problem.problem.id)}">
+                            <p th:text="${cell.topicPath} + ' × ' + ${cell.methodName}">Алгебра / Уравнения × Замена переменной</p>
+                            <p class="marks" th:text="'сейчас: ' + ${cell.status.title} + ' · ' + ${cell.hint}">сейчас: неизвестно · решено 2 из 3</p>
+                            <input type="hidden" name="topic" th:value="${cell.topic.value}">
+                            <input type="hidden" name="method" th:value="${cell.method.value}">
+                            <select name="status">
+                                <option value="" selected>без изменения</option>
+                                <option th:each="one : ${statuses}" th:value="${one.name()}" th:text="${one.title}">владеет</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Сохранить отметки</button>
+                            <button type="button" data-close>Отмена</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
 
-        <!--/* Владение: одна форма на Задачу, по ячейке — скрытые Тема
-               и Метод и список значений; три параллельных списка
-               topic/method/status собираются в отметки по индексу.
-               Текущее значение и справка — в подписи, а не выбраны
-               в списке: выбранное текущее ничего бы не меняло, но читалось
-               бы как предзаполнение (ADR-0011). */-->
-        <h3>Владение</h3>
-        <form method="post" th:action="@{/mastery}">
-            <input type="hidden" name="assignment" th:value="${listed.assignment.id.value}">
-            <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
-            <div class="cell" th:each="cell : ${cells.get(problem.problem.id)}">
-                <p th:text="${cell.topicPath} + ' × ' + ${cell.methodName}">Алгебра / Уравнения × Замена переменной</p>
-                <p class="marks" th:text="'сейчас: ' + ${cell.status.title} + ' · ' + ${cell.hint}">сейчас: неизвестно · решено 2 из 3</p>
-                <input type="hidden" name="topic" th:value="${cell.topic.value}">
-                <input type="hidden" name="method" th:value="${cell.method.value}">
-                <select name="status">
-                    <option value="" selected>без изменения</option>
-                    <option th:each="one : ${statuses}" th:value="${one.name()}" th:text="${one.title}">владеет</option>
-                </select>
-            </div>
-            <button type="submit">Сохранить отметки</button>
-        </form>
+            <details class="more" th:name="'work-' + ${problem.problem.id.value}"
+                     th:attr="open=${shell.openedUnder('/works/' + work.id.value + '/files')} ? 'open'">
+                <summary>Файлы</summary>
+                <div class="more-body">
+                    <ul class="files">
+                        <li th:each="linked, stat : ${files.get(problem.problem.id)}">
+                            <span th:text="'файл ' + ${stat.count}">файл 1</span>
+                            <form class="inline" method="post" data-confirm="Это действие необратимо."
+                                  th:action="@{/works/{id}/files/{fileId}/deletion(id=${work.id.value},fileId=${linked.file.id.value})}">
+                                <button type="submit" class="btn-sm btn-danger">Удалить файл</button>
+                            </form>
+                        </li>
+                    </ul>
+                    <form method="post" enctype="multipart/form-data"
+                          th:action="@{/works/{id}/files(id=${work.id.value})}">
+                        <label>Добавить файлы
+                            <input type="file" name="files" multiple accept="image/*,application/pdf">
+                        </label>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-sm btn-primary">Добавить файлы</button>
+                            <button type="button" data-close>Отмена</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
 
-        <form method="post" th:action="@{/works/{id}/deletion(id=${work.id.value})}">
-            <button type="submit">Удалить Работу</button>
-        </form>
+            <details class="more" th:name="'work-' + ${problem.problem.id.value}"
+                     th:attr="open=${shell.opened('/works/' + work.id.value + '/deletion')} ? 'open'">
+                <summary>Удаление</summary>
+                <div class="more-body">
+                    <form method="post" data-confirm="Это действие необратимо."
+                          th:action="@{/works/{id}/deletion(id=${work.id.value})}">
+                        <button type="submit" class="btn-sm btn-danger">Удалить Работу</button>
+                        <button type="button" data-close>Отмена</button>
+                    </form>
+                </div>
+            </details>
+        </div>
     </div>
 
-    <!--/* Работы нет — форма приёма. Задание и Задача — в адресе формы,
+    <!--/* Работы нет — приём одним блоком. Задание и Задача — в адресе формы,
            а не только в теле: при превышении предела загрузки тело
            не разбирается, и экран приёма надо найти по адресу. */-->
-    <form th:if="${work == null}" method="post" enctype="multipart/form-data"
-          th:action="@{/works(assignment=${listed.assignment.id.value},problem=${problem.problem.id.value})}">
-        <label>Файлы решения
-            <input type="file" name="files" multiple accept="image/*,application/pdf">
-        </label>
-        <label>Дата получения
-            <input type="date" name="receivedOn" th:value="${today}">
-        </label>
-        <label th:each="one : ${verdicts}">
-            <input type="radio" name="verdict" th:value="${one.name()}">
-            <span th:text="${one.title}">верно</span>
-        </label>
-        <label>
-            <input type="radio" name="verdict" value="" checked>
-            не проверять сейчас
-        </label>
-        <label>Примечание
-            <textarea name="note"></textarea>
-        </label>
-        <button type="submit">Принять Работу</button>
-    </form>
+    <details class="more more--primary" th:if="${work == null}"
+             th:attr="open=${shell.openedFor(problem.problem.id.value, '/works')} ? 'open'">
+        <summary>Принять решение</summary>
+        <div class="more-body">
+            <form method="post" enctype="multipart/form-data"
+                  th:action="@{/works(assignment=${listed.assignment.id.value},problem=${problem.problem.id.value})}">
+                <label>Файлы решения
+                    <input type="file" name="files" multiple accept="image/*,application/pdf">
+                </label>
+                <label>Дата получения
+                    <input type="date" name="receivedOn" th:value="${today}">
+                </label>
+                <div class="verdicts">
+                <label th:each="one : ${verdicts}">
+                    <input type="radio" name="verdict" th:value="${one.name()}">
+                    <span th:text="${one.title}">верно</span>
+                </label>
+                <label>
+                    <input type="radio" name="verdict" value="" checked>
+                    не проверять сейчас
+                </label>
+                </div>
+                <label>Примечание
+                    <textarea name="note"></textarea>
+                </label>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Принять Работу</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
 </div>
 
 <p><a th:href="@{/works(student=${listed.assignment.student.value})}">Работы Ученика</a></p>
-<p><a th:href="@{/assignments/{id}(id=${listed.assignment.id.value})}">К Заданию</a></p>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

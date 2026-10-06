@@ -206,7 +206,7 @@ class ProblemSearchScreenTest extends IntegrationTest {
                 .contains("Методы: " + methods.method(method).name())
                 .contains("Характеристики: " + characteristics.characteristic(characteristic).name())
                 .as("из строки открывается сама Задача")
-                .contains("/problems/" + problem.value() + "\"");
+                .contains("/problems/" + problem.value() + "?from=");
     }
 
     /**

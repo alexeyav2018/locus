@@ -43,7 +43,7 @@ import ru.locus.user.Role;
 class WorkScreenTest extends IntegrationTest {
 
     private static final DateTimeFormatter SHOWN = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final Pattern FILE_LINK = Pattern.compile("href=\"[^\"]*/file/[^\"]*signature=[^\"]*\"");
+    private static final Pattern FILE_LINK = Pattern.compile("href=\"/works/\\d+/files/\\d+[^\"]*\"");
 
     @LocalServerPort
     private int port;
@@ -114,7 +114,7 @@ class WorkScreenTest extends IntegrationTest {
                 .contains("файл 1")
                 .contains("файл 2")
                 .doesNotContain("файл 3");
-        assertThat(fileLinks(body)).as("две временные подписанные ссылки").isEqualTo(2);
+        assertThat(fileLinks(body)).as("две ссылки на просмотр файлов Работы").isEqualTo(2);
         assertThat(count(body, "Принять Работу")).as("у второй Задачи по-прежнему форма").isEqualTo(1);
         assertThat(body).contains("Добавить файлы").contains("Удалить Работу");
     }
@@ -205,10 +205,10 @@ class WorkScreenTest extends IntegrationTest {
     @Test
     void assignmentPageAndStudentCardLeadToTheWorkScreens() {
         assertThat(teacher.get("/assignments/" + assignment.value()).body())
-                .contains("href=\"/works?assignment=" + assignment.value() + "\"")
+                .contains("href=\"/works?assignment=" + assignment.value())
                 .contains(">Работы</a>");
         assertThat(teacher.get("/students/" + student.value()).body())
-                .contains("href=\"/works?student=" + student.value() + "\"")
+                .contains("href=\"/works?student=" + student.value())
                 .contains("Работы Ученика");
         assertThat(teacher.get("/works").redirectsTo("/assignments")).as("без параметров — к Заданиям").isTrue();
     }

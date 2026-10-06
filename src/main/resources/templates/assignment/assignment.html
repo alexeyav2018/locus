@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Задание — Locus</title>
     <!--/*
         Страница Задания: Ученик, даты, «не сдано», состав со ссылками
@@ -20,38 +20,47 @@
 
         «Не сдано» приходит из сервиса вычисленным (инвариант 12).
     */-->
-    <style>
-        form { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; margin: 0 0 1.75rem; }
-        input[type=date] { padding: 0.35rem; }
-        button { padding: 0.35rem 0.9rem; }
-        .problems { margin: 0; padding-left: 1.25rem; }
-        .problems li { margin-bottom: 0.5rem; }
-        .problems .marks { margin: 0.15rem 0 0; }
-    </style>
 </head>
 <body>
-<h1 th:text="'Задание для ' + ${listed.studentName}">Задание для Иванов Пётр</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/assignments')}}">← К Заданиям</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Задание для ' + ${listed.studentName}">Задание для Иванов Пётр</h1>
+        <p class="lead">Ученик: <a th:href="@{/students/{id}(id=${listed.assignment.student.value})}"
+                                 th:text="${listed.studentName}">Иванов Пётр</a></p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Срок Задания обязателен</p>
 
-<p>Ученик: <a th:href="@{/students/{id}(id=${listed.assignment.student.value})}"
-              th:text="${listed.studentName}">Иванов Пётр</a></p>
-<p th:text="'Выдано: ' + ${#temporals.format(listed.assignment.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</p>
-<p th:text="'Срок: ' + ${#temporals.format(listed.assignment.dueDate, 'dd.MM.yyyy')}">Срок: 08.09.2026</p>
-<!--/* «Не сдано» — одним словом в одном th:text: человек видит его
-       слитно, и тест ищет его целиком, а не по кускам разметки. */-->
-<p th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</p>
-<p th:if="${listed.assignment.batch != null}">Выдано Группе —
-    <a th:href="@{/assignments/batches/{id}(id=${listed.assignment.batch.value})}">к Раздаче</a></p>
+<div class="card card--personal stack">
+    <div class="row">
+        <span th:text="'Выдано: ' + ${#temporals.format(listed.assignment.issuedOn, 'dd.MM.yyyy')}">Выдано: 01.09.2026</span>
+        <span th:text="'Срок: ' + ${#temporals.format(listed.assignment.dueDate, 'dd.MM.yyyy')}">Срок: 08.09.2026</span>
+        <!--/* «Не сдано» — одним словом в одном th:text: человек видит его
+               слитно, и тест ищет его целиком, а не по кускам разметки. */-->
+        <span class="badge badge--bad" th:if="${listed.notSubmitted}" th:text="'не сдано'">не сдано</span>
+    </div>
+    <p th:if="${listed.assignment.batch != null}">Выдано Группе —
+        <a th:href="@{/assignments/batches/{id}(id=${listed.assignment.batch.value},from=${shell.here})}">к Раздаче</a></p>
+    <!--/* Только адрес: о Работах эта область в коде не знает,
+           экран приёма сам отберёт по Заданию. */-->
+    <div class="row">
+        <a class="btn btn-primary" th:href="@{/works(assignment=${listed.assignment.id.value},from=${shell.here})}">Работы</a>
+    </div>
+</div>
 
 <h2>Задачи</h2>
-<ul class="problems">
-    <li th:each="problem : ${problems}">
-        <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+<ul class="items problems">
+    <li class="item" th:each="problem : ${problems}">
+        <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
            th:text="'№ ' + ${problem.number}">№ 12</a>
-        <span th:if="${problem.problem.hasCaption}"
+        <span class="grow muted" th:if="${problem.problem.hasCaption}"
               th:text="${problem.problem.caption}">Ященко, вариант 12</span>
-        <span th:text="${problem.problem.part.title}">вторая часть</span>
+        <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
         <p class="marks"
            th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
         <p class="marks"
@@ -62,30 +71,41 @@
 </ul>
 
 <h2 th:text="'Теория: ' + ${listed.assignment.theoryScope.title}">Теория: только Темы задач</h2>
-<p th:if="${#lists.isEmpty(theory)}">Материалов к Заданию нет.</p>
-<ul th:unless="${#lists.isEmpty(theory)}">
-    <li th:each="item : ${theory}">
-        <a th:href="@{/theory/{id}(id=${item.material.id.value})}"
+<p class="empty" th:if="${#lists.isEmpty(theory)}">Материалов к Заданию нет.</p>
+<ul class="items" th:unless="${#lists.isEmpty(theory)}">
+    <li class="item" th:each="item : ${theory}">
+        <a class="grow" th:href="@{/theory/{id}(id=${item.material.id.value})}"
            th:text="${item.material.title}">Тригонометрические тождества</a>
-        <span th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
-        <span th:text="'узел: ' + ${item.source}">узел: Тригонометрия</span>
+        <span class="badge" th:text="${item.material.hasFile} ? 'файл' : 'ссылка'">файл</span>
+        <span class="badge badge--info" th:text="'узел: ' + ${item.source}">узел: Тригонометрия</span>
     </li>
 </ul>
 
 <h2>Действия</h2>
-<form method="post" th:action="@{/assignments/{id}/due-date(id=${listed.assignment.id.value})}">
-    <label>Новый срок <input type="date" name="dueDate" th:value="${listed.assignment.dueDate}"></label>
-    <button type="submit">Перенести срок</button>
-</form>
+<div class="folds">
+    <details class="more" name="assignment-actions" th:attr="open=${shell.opened('/due-date')} ? 'open'">
+        <summary>Срок</summary>
+        <div class="more-body">
+            <form class="inline-form" method="post" th:action="@{/assignments/{id}/due-date(id=${listed.assignment.id.value})}">
+                <label>Новый срок <input type="date" name="dueDate" th:value="${listed.assignment.dueDate}"></label>
+                <button type="submit" class="btn-primary">Перенести срок</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
 
-<!--/* Только адрес: о Работах эта область в коде не знает,
-       экран приёма сам отберёт по Заданию. */-->
-<p><a th:href="@{/works(assignment=${listed.assignment.id.value})}">Работы</a></p>
-
-<form method="post" th:action="@{/assignments/{id}/deletion(id=${listed.assignment.id.value})}">
-    <button type="submit">Удалить Задание</button>
-</form>
-
-<p><a th:href="@{/assignments}">К Заданиям</a></p>
+    <details class="more" name="assignment-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{/assignments/{id}/deletion(id=${listed.assignment.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Задание</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

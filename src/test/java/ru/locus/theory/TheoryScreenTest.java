@@ -153,7 +153,7 @@ class TheoryScreenTest extends IntegrationTest {
                 .as("узел назван путём от корня")
                 .contains("Узел рубрикатора")
                 .as("файл открывается через выдачу подписанной ссылки")
-                .contains("/theory/" + material.value() + "/file")
+                .contains("/theory/" + material.value() + "/view")
                 .contains("Править материал");
     }
 

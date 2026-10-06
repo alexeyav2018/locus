@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Поиск Задач — Locus</title>
     <!--/*
         Форма идёт методом GET: условия уходят в адрес, и найденное получает
@@ -21,27 +21,22 @@
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет
         решение разработчику и в выдачу попадать не должен.
     */-->
-    <style>
-        form { max-width: 52rem; }
-        fieldset { margin: 0 0 1.5rem; padding: 0.75rem 1rem 1rem; }
-        legend { padding: 0 0.35rem; }
-        label { display: block; margin: 0.35rem 0; }
-        select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
-        select[multiple] { min-height: 7rem; }
-        button { padding: 0.35rem 0.9rem; }
-        .hint { margin: 0.25rem 0 0.5rem; }
-        .modes label { display: inline-block; margin-right: 1.25rem; }
-        .results { margin: 0; padding-left: 1.25rem; }
-        .results li { margin-bottom: 0.5rem; }
-        .results .marks { margin: 0.15rem 0 0; }
-    </style>
 </head>
 <body>
-<h1>Поиск Задач</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page">
+<div class="page-head">
+    <div>
+        <h1>Поиск Задач</h1>
+        <p class="lead">Условия сохраняются в адресе страницы: результат можно сохранить в закладки и вернуться к нему.</p>
+    </div>
+    <span class="scope scope--shared">Общая библиотека</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Узла не существует</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Узла не существует</p>
 
-<form method="get" th:action="@{/problems}">
+<div class="split">
+<form class="filters card sticky" method="get" th:action="@{/problems}">
     <fieldset>
         <legend>Где искать</legend>
         <!--/* Узлы все, а не только Темы: Раздел здесь не носитель Задач,
@@ -105,19 +100,20 @@
         </label>
     </fieldset>
 
-    <button type="submit">Искать</button>
+    <button type="submit" class="btn-primary">Искать</button>
+    <a class="btn btn-sm" th:href="@{/problems}">Сбросить</a>
 </form>
 
-<div th:if="${found != null}">
-    <h2>Найденное</h2>
+<div class="found" th:if="${found != null}">
+    <h2 style="margin-top:0">Найденное</h2>
 
     <!--/* Пустой результат называется словами, а не пустотой под заголовком:
            «все сразу» на двух Методах законно возвращает пусто, и учитель
            должен видеть, что поиск состоялся, а не сломался. */-->
-    <p th:if="${#lists.isEmpty(found)}">По этим условиям Задач нет.</p>
+    <p class="empty" th:if="${#lists.isEmpty(found)}">По этим условиям Задач нет.</p>
 
     <div th:unless="${#lists.isEmpty(found)}">
-        <p th:text="'Найдено Задач: ' + ${foundCount}">Найдено Задач: 3</p>
+        <p class="muted" th:text="'Найдено Задач: ' + ${foundCount}">Найдено Задач: 3</p>
         <ul class="results">
             <li th:each="problem : ${found}">
                 <!--/* Отметка для выдачи принадлежит форме «issue» ниже
@@ -127,11 +123,11 @@
                 <input type="checkbox" name="problem" form="issue" th:if="${teacher}"
                        th:value="${problem.problem.id.value}"
                        th:id="'problem-' + ${problem.problem.id.value}">
-                <a th:href="@{/problems/{id}(id=${problem.problem.id.value})}"
+                <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
-                <span th:if="${problem.problem.hasCaption}"
+                <span class="muted" th:if="${problem.problem.hasCaption}"
                       th:text="${problem.problem.caption}">Ященко, вариант 12</span>
-                <span th:text="${problem.problem.part.title}">вторая часть</span>
+                <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
                 <!--/* Каждая строка разметки — одним th:text, а не текстом
                        вперемешку с тегами: разорванный тегами текст видно
                        человеку слитно, а тесту — по кускам, и проверять его
@@ -148,12 +144,14 @@
                (design.md, «Экраны»). Показывается только Учителю: у прочих
                Учеников нет, и выдавать некому. */-->
         <form method="get" th:action="@{/assignments/new}" id="issue" th:if="${teacher}">
-            <button type="submit">Выдать отмеченные</button>
+            <input type="hidden" name="from" th:value="${shell.here}">
+            <button type="submit" class="btn-primary">Выдать отмеченные</button>
+            <span class="muted small">Отметьте Задачи галочками — выдача пойдёт на следующем шаге.</span>
         </form>
     </div>
 </div>
-
-<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
-<p><a th:href="@{/}">На главную</a></p>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>
