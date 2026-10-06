@@ -91,13 +91,17 @@ public class ProblemController {
                          @RequestParam(required = false) List<Long> conditionDraft,
                          @RequestParam(required = false) List<Integer> conditionFrom,
                          @RequestParam(required = false) List<Integer> conditionTo,
+                         @RequestParam(required = false) List<String> conditionCrop,
                          @RequestParam(required = false) List<Long> solutionDraft,
                          @RequestParam(required = false) List<Integer> solutionFrom,
                          @RequestParam(required = false) List<Integer> solutionTo,
+                         @RequestParam(required = false) List<String> solutionCrop,
                          Model model) {
-        PdfAssemblyOrder conditionOrder = order(conditionDraft, conditionFrom, conditionTo);
-        PdfAssemblyOrder solutionOrder = order(solutionDraft, solutionFrom, solutionTo);
+        PdfAssemblyOrder conditionOrder = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
+        PdfAssemblyOrder solutionOrder = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
         try {
+            requireFrames(conditionCrop);
+            requireFrames(solutionCrop);
             ProblemId created = problems.create(caption, part,
                     nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds),
                     slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
@@ -189,9 +193,11 @@ public class ProblemController {
                                    @RequestParam(required = false) List<Long> conditionDraft,
                                    @RequestParam(required = false) List<Integer> conditionFrom,
                                    @RequestParam(required = false) List<Integer> conditionTo,
+                                   @RequestParam(required = false) List<String> conditionCrop,
                                    Model model) {
-        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo);
+        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
         try {
+            requireFrames(conditionCrop);
             problems.replaceCondition(new ProblemId(id), slot(condition, order, "условия"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -207,9 +213,11 @@ public class ProblemController {
                                   @RequestParam(required = false) List<Long> solutionDraft,
                                   @RequestParam(required = false) List<Integer> solutionFrom,
                                   @RequestParam(required = false) List<Integer> solutionTo,
+                                  @RequestParam(required = false) List<String> solutionCrop,
                                   Model model) {
-        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo);
+        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
         try {
+            requireFrames(solutionCrop);
             problems.replaceSolution(new ProblemId(id), slot(solution, order, "решения"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -293,12 +301,18 @@ public class ProblemController {
     }
 
     /**
-     * Порядок сборки из повторяющихся полей строк: «черновик», «с», «по»
-     * идут в строках формы по одному, и i-е значения каждого списка — одна
-     * строка. Незаполненная страница — нуль: такой диапазон отклонит сборка,
-     * назвав источник и число его страниц, а не разбор формы безлико.
+     * Порядок сборки из повторяющихся полей строк: «черновик», «с», «по»,
+     * «рамка» идут в строках формы по одному, и i-е значения каждого списка —
+     * одна строка. Незаполненная страница — нуль: такой диапазон отклонит
+     * сборка, назвав источник и число его страниц, а не разбор формы безлико.
+     *
+     * <p>Рамка здесь разбирается снисходительно: испорченная считается
+     * отсутствующей, чтобы порядок можно было перерисовать в форме после
+     * отказа. Сам отказ испорченной рамке даёт {@link #requireFrames} внутри
+     * обработки — иначе вместо формы с текстом была бы страница ошибки.
      */
-    private static PdfAssemblyOrder order(List<Long> draftIds, List<Integer> from, List<Integer> to) {
+    private static PdfAssemblyOrder order(List<Long> draftIds, List<Integer> from, List<Integer> to,
+                                          List<String> crops) {
         if (draftIds == null) {
             return new PdfAssemblyOrder(List.of());
         }
@@ -307,9 +321,28 @@ public class ProblemController {
             if (draftIds.get(i) == null) {
                 continue;
             }
-            lines.add(new PdfAssemblyOrder.Line(new AssemblyDraftId(draftIds.get(i)), page(from, i), page(to, i)));
+            lines.add(new PdfAssemblyOrder.Line(new AssemblyDraftId(draftIds.get(i)), page(from, i), page(to, i),
+                    frameOrNull(crops, i)));
         }
         return new PdfAssemblyOrder(lines);
+    }
+
+    private static CropFrame frameOrNull(List<String> crops, int i) {
+        if (crops == null || i >= crops.size()) {
+            return null;
+        }
+        try {
+            return CropFrame.parse(crops.get(i));
+        } catch (IllegalArgumentException broken) {
+            return null;
+        }
+    }
+
+    /** Отказ формы, если хоть одна присланная рамка испорчена или неверна. */
+    private static void requireFrames(List<String> crops) {
+        if (crops != null) {
+            crops.forEach(CropFrame::parse);
+        }
     }
 
     private static int page(List<Integer> pages, int i) {

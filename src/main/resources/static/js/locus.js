@@ -174,11 +174,205 @@
                 }
                 break;
             case 'again':
-                row.after(row.cloneNode(true));
+                row.after(copyOf(row));
                 break;
             case 'remove':
                 row.remove();
                 break;
+        }
+    });
+
+    // 6. Рамка у строки сборки (ADR-0045): показать страницу черновика и обвести
+    //    на ней кусок мышью или пальцем. Скрипт только пишет доли «л;в;ш;в»
+    //    в скрытое поле строки; что рамка в пределах страницы и стоит на одной
+    //    странице, проверяет сервер. Без скрипта поле пустое — целые страницы.
+    var MOST_PAGES_TO_SPLIT = 10;
+
+    function field(row, suffix) {
+        return row.querySelector('input[name$="' + suffix + '"]');
+    }
+
+    function pageOf(row) {
+        return field(row, 'From').value;
+    }
+
+    function stageOf(row) {
+        return row.querySelector('.crop-stage');
+    }
+
+    function note(row, text) {
+        var old = row.querySelector('.crop-note');
+        if (old) {
+            old.remove();
+        }
+        if (text) {
+            var hint = document.createElement('p');
+            hint.className = 'hint crop-note';
+            hint.textContent = text;
+            stageOf(row).before(hint);
+        }
+    }
+
+    function drawFrame(row) {
+        var stage = stageOf(row);
+        var frame = stage.querySelector('.crop-frame');
+        var parts = field(row, 'Crop').value.split(';').map(Number);
+        var whole = parts.length !== 4 || parts.some(isNaN);
+        frame.hidden = whole;
+        stage.querySelector('.crop-whole').hidden = !whole;
+        if (!whole) {
+            frame.style.left = parts[0] * 100 + '%';
+            frame.style.top = parts[1] * 100 + '%';
+            frame.style.width = parts[2] * 100 + '%';
+            frame.style.height = parts[3] * 100 + '%';
+        }
+    }
+
+    function showPage(row) {
+        var image = stageOf(row).querySelector('img');
+        if (image) {
+            image.src = row.dataset.previewUrl + pageOf(row);
+        }
+    }
+
+    function openStage(row) {
+        var stage = stageOf(row);
+        if (!stage.firstChild) {
+            stage.innerHTML = '<div class="crop-canvas"><img alt="страница не показывается" draggable="false">'
+                + '<div class="crop-frame" hidden></div></div>'
+                + '<p class="hint crop-whole">Рамки нет — берётся вся страница.</p>';
+            listenForFrame(row, stage.querySelector('.crop-canvas'));
+        }
+        stage.hidden = false;
+        showPage(row);
+        drawFrame(row);
+    }
+
+    function listenForFrame(row, canvas) {
+        var start = null;
+
+        function share(event) {
+            var box = canvas.getBoundingClientRect();
+            return {
+                x: Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)),
+                y: Math.min(1, Math.max(0, (event.clientY - box.top) / box.height))
+            };
+        }
+
+        function stretch(event) {
+            var end = share(event);
+            var frame = [Math.min(start.x, end.x), Math.min(start.y, end.y),
+                Math.abs(end.x - start.x), Math.abs(end.y - start.y)];
+            if (frame[2] > 0.005 && frame[3] > 0.005) {
+                field(row, 'Crop').value = frame.map(function (value) {
+                    return value.toFixed(4);
+                }).join(';');
+                drawFrame(row);
+            }
+        }
+
+        canvas.addEventListener('pointerdown', function (event) {
+            if (event.button !== 0) {
+                return;
+            }
+            event.preventDefault();
+            canvas.setPointerCapture(event.pointerId);
+            start = share(event);
+        });
+        canvas.addEventListener('pointermove', function (event) {
+            if (start) {
+                stretch(event);
+            }
+        });
+        ['pointerup', 'pointercancel'].forEach(function (type) {
+            canvas.addEventListener(type, function (event) {
+                if (start && type === 'pointerup') {
+                    stretch(event);
+                }
+                start = null;
+            });
+        });
+    }
+
+    // Копия строки — без рамки и без открытой сцены: второй кусок той же
+    // страницы обводится заново.
+    function copyOf(row) {
+        var copy = row.cloneNode(true);
+        field(copy, 'Crop').value = '';
+        var stage = stageOf(copy);
+        stage.innerHTML = '';
+        stage.hidden = true;
+        var hint = copy.querySelector('.crop-note');
+        if (hint) {
+            hint.remove();
+        }
+        return copy;
+    }
+
+    // «Обвести» на диапазоне разбивает его на постраничные строки: рамка стоит
+    // на одной странице, а молча выбросить остальные страницы диапазона нельзя.
+    function crop(row) {
+        var from = parseInt(field(row, 'From').value, 10);
+        var to = parseInt(field(row, 'To').value, 10);
+        if (isNaN(from) || isNaN(to) || from >= to) {
+            if (!isNaN(from)) {
+                field(row, 'To').value = from;
+            }
+            note(row, '');
+            openStage(row);
+            return;
+        }
+        if (to - from + 1 > MOST_PAGES_TO_SPLIT) {
+            note(row, 'Обвести можно не больше ' + MOST_PAGES_TO_SPLIT
+                + ' страниц за раз: сузьте диапазон «с … по …».');
+            return;
+        }
+        var last = row;
+        for (var page = from; page <= to; page++) {
+            var single = copyOf(row);
+            field(single, 'From').value = page;
+            field(single, 'To').value = page;
+            last.after(single);
+            last = single;
+            openStage(single);
+        }
+        row.remove();
+    }
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest && event.target.closest('button[data-assembly]');
+        if (!button) {
+            return;
+        }
+        var row = button.closest('li.assembly-row');
+        if (button.dataset.assembly === 'crop') {
+            crop(row);
+        } else if (button.dataset.assembly === 'whole') {
+            field(row, 'Crop').value = '';
+            if (!stageOf(row).hidden) {
+                drawFrame(row);
+            }
+        }
+    });
+
+    // Правка «с» или «по» при открытой сцене: рамка от другой страницы
+    // бессмысленна — второе поле выравнивается, картинка меняется, рамка снимается.
+    document.addEventListener('change', function (event) {
+        var input = event.target;
+        var row = input.closest && input.closest('li.assembly-row');
+        if (!row || !/(From|To)$/.test(input.name) || stageOf(row).hidden) {
+            return;
+        }
+        field(row, /From$/.test(input.name) ? 'To' : 'From').value = input.value;
+        field(row, 'Crop').value = '';
+        showPage(row);
+        drawFrame(row);
+    });
+
+    // Форма, перерисованная после отказа, показывает поставленные рамки.
+    document.querySelectorAll('li.assembly-row').forEach(function (row) {
+        if (field(row, 'Crop') && field(row, 'Crop').value) {
+            openStage(row);
         }
     });
 

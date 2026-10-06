@@ -117,7 +117,7 @@
 | `silent-failure-principle` | Д | — | — | S | нет | не затрагивает | ✅ |
 | `backlog-skill-arcs` | Л | `backlog-stage-column` | — | L | нет | не затрагивает | ждёт условия |
 | `problem-pdf-assembly` | Т | `problem-catalog`, `file-storage` | — | M | нет | общее | ✅ |
-| `problem-pdf-crop` | Т | `problem-pdf-assembly` | — | L | нет | общее | |
+| `problem-pdf-crop` | Т | `problem-pdf-assembly` | — | L | нет | общее | ✅ |
 | `heic-images` | Т | `file-storage` | — | S | нет | не затрагивает | ждёт условия |
 | `strategy-edition-2` | Д | — | — | M | нет | не затрагивает | |
 | `versioning` | — | — | — | S | нет | не затрагивает | ✅ |

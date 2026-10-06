@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -131,8 +132,12 @@ public class AssemblyDraftService {
      * при сборке не удаляются — это делает {@link #discard} после того, как
      * Задача сохранена.
      *
-     * @throws IllegalArgumentException если порядок пуст, черновика нет
-     *                                  или диапазон выходит за его страницы
+     * <p>Строка с рамкой становится куском одной страницы (ADR-0045); рамка
+     * на диапазоне из нескольких страниц отклоняется, называя источник.
+     *
+     * @throws IllegalArgumentException если порядок пуст, черновика нет,
+     *                                  диапазон выходит за его страницы
+     *                                  или рамка стоит на нескольких страницах
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public byte[] assemble(PdfAssemblyOrder order) {
@@ -149,12 +154,37 @@ public class AssemblyDraftService {
                         "Исходника для сборки больше нет — вероятно, истёк его срок: загрузите его заново");
             }
             Path file = fileOf(draft.fileName());
+            CropFrame frame = line.frame();
+            if (frame != null && line.from() != line.to()) {
+                throw new IllegalArgumentException("Источник «" + draft.originalName()
+                        + "»: рамка ставится на одну страницу, а указаны страницы с " + line.from()
+                        + " по " + line.to());
+            }
             parts.add(switch (draft.kind()) {
-                case IMAGE -> new PdfAssemblyPart.Image(file, draft.originalName());
-                case PDF -> new PdfAssemblyPart.Pages(file, draft.originalName(), line.from(), line.to());
+                case IMAGE -> new PdfAssemblyPart.Image(file, draft.originalName(), frame);
+                case PDF -> frame == null
+                        ? new PdfAssemblyPart.Pages(file, draft.originalName(), line.from(), line.to())
+                        : new PdfAssemblyPart.Piece(file, draft.originalName(), line.from(), frame);
             });
         }
         return assembly.assemble(parts);
+    }
+
+    /**
+     * Страница своего черновика картинкой — по ней ставится рамка
+     * (design.md, «Показ страницы»).
+     *
+     * <p>Чужой черновик, несуществующий и страница вне черновика дают одно
+     * и то же пустое: по ответу нельзя узнать, что черновик с таким номером
+     * у кого-то есть. Уборку показ не запускает — это работа внутри уже
+     * открытого инструмента, а не его открытие.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public Optional<byte[]> preview(AssemblyDraftId id, int page) {
+        return drafts.findByIds(currentUser.id(), List.of(id)).stream()
+                .findFirst()
+                .filter(draft -> page >= 1 && page <= draft.pageCount())
+                .map(draft -> assembly.preview(fileOf(draft.fileName()), draft.originalName(), draft.kind(), page));
     }
 
     /**
@@ -174,7 +204,7 @@ public class AssemblyDraftService {
                 .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
         return order.lines().stream()
                 .filter(line -> own.containsKey(line.draft()))
-                .map(line -> new AssemblyRow(own.get(line.draft()), line.from(), line.to()))
+                .map(line -> new AssemblyRow(own.get(line.draft()), line.from(), line.to(), line.frame()))
                 .toList();
     }
 

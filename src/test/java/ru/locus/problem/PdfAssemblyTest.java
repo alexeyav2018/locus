@@ -2,8 +2,10 @@ package ru.locus.problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +35,9 @@ import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageFitDestination;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
+import org.apache.pdfbox.util.Matrix;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -51,6 +56,9 @@ import org.junit.jupiter.api.io.TempDir;
  * страницы.
  */
 class PdfAssemblyTest {
+
+    /** Один шрифт на все надписи сборника: в ресурсах страницы он один под одним именем. */
+    private static final PDType1Font HELVETICA = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
 
     private final PdfAssembly assembly = new PdfAssembly();
 
@@ -317,6 +325,305 @@ class PdfAssemblyTest {
         assertThat(pageImageWidths(result)).containsExactly(width(5), width(6), width(100), width(18));
     }
 
+    // --- problem-pdf-crop 2.1 Векторный кусок -------------------------------
+
+    /**
+     * Кусок векторной страницы остаётся векторным: текст извлекается,
+     * страница размером с рамку, ресурсы других страниц не попали.
+     */
+    @Test
+    void vectorPieceKeepsItsTextAndTakesTheSizeOfTheFrame() throws IOException {
+        Path book = textBook(5);
+        CropFrame frame = new CropFrame(0.1, 0.4, 0.8, 0.2);
+
+        byte[] result = assembly.assemble(List.of(new PdfAssemblyPart.Piece(book, "сборник.pdf", 3, frame)));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            PDPage page = document.getPage(0);
+            PDRectangle expected = frame.on(PDRectangle.A4, 0);
+            assertThat(page.getMediaBox().getWidth()).isCloseTo(expected.getWidth(), within(0.01f));
+            assertThat(page.getMediaBox().getHeight()).isCloseTo(expected.getHeight(), within(0.01f));
+            assertThat(page.getCropBox().getLowerLeftY()).isCloseTo(expected.getLowerLeftY(), within(0.01f));
+            assertThat(visibleText(page)).contains("Problem 3").doesNotContain("Header 3");
+        }
+        assertThat(imageWidths(result)).containsExactly(width(3));
+        assertThat(baseFonts(result)).containsExactly("Helvetica");
+    }
+
+    @Test
+    void pieceBeyondTheLastPageNamesTheSourceAndItsPageCount() throws IOException {
+        Path book = textBook(2);
+
+        assertThatThrownBy(() -> assembly.assemble(List.of(
+                new PdfAssemblyPart.Piece(book, "сборник.pdf", 3, new CropFrame(0, 0, 1, 1)))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("сборник.pdf")
+                .hasMessageContaining("2 стр.");
+    }
+
+    // --- problem-pdf-crop 2.2 Скан ------------------------------------------
+
+    /** Скан даёт страницу с одной картинкой размером с кусок в 300 dpi и без текста. */
+    @Test
+    void scanPieceIsOneImageOfTheFrameSize() throws IOException {
+        Path scan = scan("скан.pdf");
+        CropFrame frame = new CropFrame(0.25, 0.5, 0.5, 0.25);
+
+        byte[] result = assembly.assemble(List.of(new PdfAssemblyPart.Piece(scan, "скан.pdf", 1, frame)));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            PDPage page = document.getPage(0);
+            // A4 в 300 dpi — 2480 × 3508 пикселей; кусок — половина ширины, четверть высоты.
+            List<Integer> widths = pageImageWidths(result);
+            assertThat(widths).hasSize(1);
+            assertThat(widths.get(0)).isCloseTo(1240, within(2));
+            assertThat(page.getMediaBox().getWidth()).isCloseTo(PDRectangle.A4.getWidth() / 2, within(1f));
+            assertThat(page.getMediaBox().getHeight()).isCloseTo(PDRectangle.A4.getHeight() / 4, within(1f));
+            assertThat(new PDFTextStripper().getText(document)).isBlank();
+        }
+    }
+
+    @Test
+    void pageDrawingOnlyOneImageIsAScan() throws IOException {
+        Path scan = scan("скан.pdf");
+        try (PDDocument document = Loader.loadPDF(scan.toFile())) {
+            assertThat(PdfAssembly.isScan(document.getPage(0))).isTrue();
+        }
+    }
+
+    @Test
+    void vectorPageWithAnImageAndTextIsNotAScan() throws IOException {
+        Path book = textBook(1);
+        try (PDDocument document = Loader.loadPDF(book.toFile())) {
+            assertThat(PdfAssembly.isScan(document.getPage(0))).isFalse();
+        }
+    }
+
+    @Test
+    void pageDrawingAFormIsNotAScan() throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDFormXObject form = new PDFormXObject(document);
+            form.setBBox(PDRectangle.A4);
+            PDPage page = new PDPage(PDRectangle.A4);
+            page.setResources(new PDResources());
+            document.addPage(page);
+            COSName name = page.getResources().add(form);
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                content.appendRawCommands("/" + name.getName() + " Do\n");
+            }
+            assertThat(PdfAssembly.isScan(page)).isFalse();
+        }
+    }
+
+    // --- problem-pdf-crop 2.3 Кусок картинки --------------------------------
+
+    @Test
+    void pieceOfAPictureIsItsOwnPixels() throws IOException {
+        Path picture = png("картинка.png", 400, 300);
+
+        byte[] result = assembly.assemble(List.of(
+                new PdfAssemblyPart.Image(picture, "картинка.png", new CropFrame(0.25, 0.5, 0.5, 0.5))));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(size(document.getPage(0))).containsExactly(200f, 150f);
+        }
+        assertThat(pageImageWidths(result)).containsExactly(200);
+    }
+
+    /**
+     * Снимок с ориентацией 6: пиксели лежат 600 × 400, видит Администратор
+     * 400 × 600. Левая половина видимого — 200 × 600.
+     */
+    @Test
+    void photoTakenWithARotatedCameraIsCutAsItIsSeen() throws IOException {
+        Path photo = directory.resolve("повёрнутый.jpg");
+        try (InputStream in = PdfAssemblyTest.class.getResourceAsStream("/ru/locus/file/rotated.jpg")) {
+            Files.write(photo, in.readAllBytes());
+        }
+
+        byte[] result = assembly.assemble(List.of(
+                new PdfAssemblyPart.Image(photo, "повёрнутый.jpg", new CropFrame(0, 0, 0.5, 1))));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(size(document.getPage(0))).containsExactly(200f, 600f);
+        }
+        assertThat(pageImageWidths(result)).containsExactly(200);
+    }
+
+    // --- problem-pdf-crop 2.4 Сквозные случаи -------------------------------
+
+    /**
+     * Признак готовности: две страницы сборника с задачей посреди каждой
+     * дают PDF из двух обрезанных страниц — без остальных страниц и их
+     * ресурсов.
+     */
+    @Test
+    void twoPagesOfABookWithAProblemInTheMiddleMakeTwoCutPages() throws IOException {
+        Path book = textBook(30);
+        CropFrame middle = new CropFrame(0.05, 0.4, 0.9, 0.2);
+
+        byte[] result = assembly.assemble(List.of(
+                new PdfAssemblyPart.Piece(book, "сборник.pdf", 12, middle),
+                new PdfAssemblyPart.Piece(book, "сборник.pdf", 13, middle)));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(document.getNumberOfPages()).isEqualTo(2);
+            assertThat(visibleText(document.getPage(0))).contains("Problem 12").doesNotContain("Header 12");
+            assertThat(visibleText(document.getPage(1))).contains("Problem 13").doesNotContain("Header 13");
+        }
+        assertThat(pageImageWidths(result)).containsExactly(width(12), width(13));
+        assertThat(imageWidths(result)).containsExactlyInAnyOrder(width(12), width(13));
+    }
+
+    /**
+     * Повёрнутая страница: рамка поставлена на показанной (повёрнутой)
+     * картинке, и в видимой области куска — тот угол, что обведён.
+     */
+    @Test
+    void pieceOfARotatedPageShowsTheFramedCorner() throws IOException {
+        Path book = directory.resolve("повёрнутый.pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            page.setRotation(90);
+            document.addPage(page);
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                text(content, "Inside", 100, 600);
+                text(content, "Outside", 400, 200);
+            }
+            document.save(book.toFile());
+        }
+        // Показанная страница — 842 × 595: «Inside» видно вверху справа.
+        CropFrame frame = new CropFrame(0.65, 0.1, 0.2, 0.2);
+
+        byte[] result = assembly.assemble(List.of(new PdfAssemblyPart.Piece(book, "повёрнутый.pdf", 1, frame)));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            PDPage page = document.getPage(0);
+            assertThat(page.getRotation()).isEqualTo(90);
+            assertThat(visibleText(page)).contains("Inside").doesNotContain("Outside");
+        }
+    }
+
+    @Test
+    void vectorAndScanPiecesInOneResult() throws IOException {
+        Path book = textBook(3);
+        Path scan = scan("скан.pdf");
+        CropFrame frame = new CropFrame(0.1, 0.4, 0.8, 0.2);
+
+        byte[] result = assembly.assemble(List.of(
+                new PdfAssemblyPart.Piece(book, "сборник.pdf", 2, frame),
+                new PdfAssemblyPart.Piece(scan, "скан.pdf", 1, frame)));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(document.getNumberOfPages()).isEqualTo(2);
+            assertThat(visibleText(document.getPage(0))).contains("Problem 2");
+            assertThat(visibleText(document.getPage(1))).isBlank();
+        }
+        // Векторный кусок несёт картинку своей страницы, скан — свой растр.
+        assertThat(pageImageWidths(result)).hasSize(2).startsWith(width(2));
+    }
+
+    // --- problem-pdf-crop 3.1 Показ страницы --------------------------------
+
+    /** A4 при 150 dpi — 1240 × 1754: выше предела, длинная сторона — 1600. */
+    @Test
+    void previewOfAnA4PageIsLimitedByItsLongSide() throws IOException {
+        Path book = textBook(3);
+
+        BufferedImage shown = shown(assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2));
+
+        assertThat(shown.getHeight()).isEqualTo(1600);
+        assertThat(shown.getWidth()).isEqualTo((int) (PDRectangle.A4.getWidth() * 1600 / PDRectangle.A4.getHeight()));
+    }
+
+    /** Маленькая страница не растягивается до 1600: предел — 150 dpi. */
+    @Test
+    void previewOfASmallPageIsLimitedByResolution() throws IOException {
+        Path book = directory.resolve("маленькая.pdf");
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage(new PDRectangle(144, 72)));
+            document.save(book.toFile());
+        }
+
+        BufferedImage shown = shown(assembly.preview(book, "маленькая.pdf", AssemblyDraft.Kind.PDF, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(300);
+        assertThat(shown.getHeight()).isEqualTo(150);
+    }
+
+    /** Повёрнутая страница показывается повёрнутой: рамка считается от этого вида. */
+    @Test
+    void previewOfARotatedPageIsTurned() throws IOException {
+        Path book = directory.resolve("повёрнутый.pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            page.setRotation(90);
+            document.addPage(page);
+            document.save(book.toFile());
+        }
+
+        BufferedImage shown = shown(assembly.preview(book, "повёрнутый.pdf", AssemblyDraft.Kind.PDF, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(1600);
+        assertThat(shown.getHeight()).isLessThan(shown.getWidth());
+    }
+
+    @Test
+    void previewOfAPageBeyondTheBookIsRefused() throws IOException {
+        Path book = textBook(3);
+
+        assertThatThrownBy(() -> assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 4))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void previewOfALargePictureIsReducedTo1600() throws IOException {
+        Path picture = png("широкая.png", 4000, 1000);
+
+        BufferedImage shown = shown(assembly.preview(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(1600);
+        assertThat(shown.getHeight()).isEqualTo(400);
+    }
+
+    @Test
+    void previewOfASmallPictureIsNotEnlarged() throws IOException {
+        Path picture = png("картинка.png", 300, 200);
+
+        BufferedImage shown = shown(assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(300);
+        assertThat(shown.getHeight()).isEqualTo(200);
+    }
+
+    /** Снимок с ориентацией 6 показывается стоя — как его режет сборка. */
+    @Test
+    void previewOfAPhotoIsTurnedAsItIsSeen() throws IOException {
+        Path photo = directory.resolve("повёрнутый.jpg");
+        try (InputStream in = PdfAssemblyTest.class.getResourceAsStream("/ru/locus/file/rotated.jpg")) {
+            Files.write(photo, in.readAllBytes());
+        }
+
+        BufferedImage shown = shown(assembly.preview(photo, "повёрнутый.jpg", AssemblyDraft.Kind.IMAGE, 1));
+
+        assertThat(shown.getWidth()).isEqualTo(400);
+        assertThat(shown.getHeight()).isEqualTo(600);
+    }
+
+    @Test
+    void pictureHasOnlyOnePageToPreview() throws IOException {
+        Path picture = png("картинка.png", 300, 200);
+
+        assertThatThrownBy(() -> assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 2))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static BufferedImage shown(byte[] jpeg) throws IOException {
+        assertThat(PdfAssembly.isJpeg(jpeg)).isTrue();
+        return ImageIO.read(new ByteArrayInputStream(jpeg));
+    }
+
     // --- Сборники и разбор результата ---------------------------------------
 
     /** Ширина картинки страницы {@code number}: по ней узнаётся, какая страница взята. */
@@ -341,6 +648,81 @@ class PdfAssemblyTest {
             document.save(book.toFile());
         }
         return book;
+    }
+
+    /**
+     * Сборник с текстом: заголовок вверху страницы, задача посредине,
+     * картинка внизу; ресурсы общие на все страницы.
+     */
+    private Path textBook(int pages) throws IOException {
+        Path book = directory.resolve("текст-" + pages + ".pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDResources shared = new PDResources();
+            for (int number = 1; number <= pages; number++) {
+                PDPage page = new PDPage(PDRectangle.A4);
+                page.setResources(shared);
+                document.addPage(page);
+                PDImageXObject image = LosslessFactory.createFromImage(document, noise(width(number), 60, number));
+                try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                    text(content, "Header " + number, 72, 800);
+                    text(content, "Problem " + number, 72, 421);
+                    content.drawImage(image, 72, 72);
+                }
+            }
+            document.save(book.toFile());
+        }
+        return book;
+    }
+
+    private static void text(PDPageContentStream content, String text, float x, float y) throws IOException {
+        content.beginText();
+        content.setFont(HELVETICA, 12);
+        content.newLineAtOffset(x, y);
+        content.showText(text);
+        content.endText();
+    }
+
+    /** Скан: страница A4, которая только рисует одну картинку во весь лист. */
+    private Path scan(String name) throws IOException {
+        Path file = directory.resolve(name);
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            PDImageXObject image = LosslessFactory.createFromImage(document, noise(248, 351, 5));
+            try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+                content.drawImage(image, 0, 0, PDRectangle.A4.getWidth(), PDRectangle.A4.getHeight());
+            }
+            document.save(file.toFile());
+        }
+        return file;
+    }
+
+    /**
+     * Текст, начало которого лежит в видимой области страницы: содержимое
+     * за рамкой остаётся в потоке (ADR-0045), поэтому «в куске» — значит
+     * «видно», а не «записано».
+     */
+    private static String visibleText(PDPage page) throws IOException {
+        PDRectangle visible = page.getCropBox();
+        StringBuilder text = new StringBuilder();
+        PDFTextStripper stripper = new PDFTextStripper() {
+            @Override
+            protected void processTextPosition(TextPosition position) {
+                // Начало глифа PDFBox отдаёт от левого нижнего угла видимой
+                // области, без поворота страницы.
+                Matrix matrix = position.getTextMatrix();
+                float x = matrix.getTranslateX();
+                float y = matrix.getTranslateY();
+                if (x >= 0 && y >= 0 && x <= visible.getWidth() && y <= visible.getHeight()) {
+                    text.append(position.getUnicode());
+                }
+            }
+        };
+        try (PDDocument single = new PDDocument()) {
+            single.addPage(page);
+            stripper.getText(single);
+        }
+        return text.toString();
     }
 
     private static void drawImage(PDDocument document, PDPage page, BufferedImage picture) throws IOException {

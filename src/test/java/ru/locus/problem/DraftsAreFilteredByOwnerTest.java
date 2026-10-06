@@ -11,6 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
@@ -21,7 +22,7 @@ import ru.locus.user.Role;
  * второго Администратора его нет: собрать из него нельзя, удалить —
  * тоже, а отказ тот же, что на несуществующий.
  *
- * Сценарий «Чужой черновик» спеки. Здесь — через сервис, от имени двух
+ * Сценарии «Чужой черновик» и «Показ страницы чужого черновика» спеки. Здесь — через сервис, от имени двух
  * вошедших; адрес загрузки черновика появится с формой.
  */
 class DraftsAreFilteredByOwnerTest extends IntegrationTest {
@@ -70,6 +71,25 @@ class DraftsAreFilteredByOwnerTest extends IntegrationTest {
 
         assertThat(drafts.findByIds(alice.id(), List.of(alicesDraft.id()))).hasSize(1);
         assertThat(Path.of(properties.directory().toString(), alicesDraft.fileName())).exists();
+    }
+
+    /** Сценарий «Показ страницы чужого черновика»: ответ тот же, что у несуществующего. */
+    @Test
+    void anotherAdministratorCannotSeeItsPages() {
+        assertThat(service.preview(alicesDraft.id(), 1)).isEmpty();
+        assertThat(service.preview(new AssemblyDraftId(alicesDraft.id().value() + 1_000_000), 1)).isEmpty();
+
+        LoggedIn.as(alice);
+        assertThat(service.preview(alicesDraft.id(), 1)).isPresent();
+    }
+
+    /** Сценарий «Учитель запрашивает показ». */
+    @Test
+    void teacherIsRefusedThePages() {
+        LoggedIn.as(accounts.settled(Role.TEACHER));
+
+        assertThatThrownBy(() -> service.preview(alicesDraft.id(), 1))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
