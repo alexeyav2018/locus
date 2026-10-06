@@ -6,7 +6,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Двухуровневый предел загрузки (ADR-0041): контейнер пропускает до
+ * Двухуровневый предел загрузки (ADR-0044): контейнер пропускает до
  * предела инструмента сборки, общий предел проверяет
  * {@link UploadLimitInterceptor} на всех обработчиках сразу.
  */

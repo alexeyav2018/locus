@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * Настройки черновиков сборки (ADR-0041).
+ * Настройки черновиков сборки (ADR-0044).
  *
  * @param directory рабочая папка, куда ложатся загруженные исходники;
  *                  при старте очищается целиком — делить её ни с чем нельзя

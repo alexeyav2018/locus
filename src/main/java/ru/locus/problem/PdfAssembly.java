@@ -41,7 +41,7 @@ import org.apache.pdfbox.util.Matrix;
 import org.springframework.stereotype.Component;
 
 /**
- * Сборка PDF Задачи из картинок и целых страниц PDF (ADR-0041).
+ * Сборка PDF Задачи из картинок и целых страниц PDF (ADR-0044).
  *
  * <p>Чистая функция над файлами: ни базы, ни хранилища, ни прав. Поэтому
  * самое хрупкое — что попадает в результат со страниц сборника — проверяется
@@ -154,7 +154,7 @@ public class PdfAssembly {
      * поэтому унаследованный размер не теряется. {@code /Annots},
      * {@code /Parent}, {@code /B}, {@code /StructParents} не переносятся:
      * они указывают на соседние страницы и дерево документа, и запись
-     * результата утянула бы их за собой (ADR-0041, «Последствия»).
+     * результата утянула бы их за собой (ADR-0044, «Последствия»).
      */
     private static PDPage transplanted(PDPage source, Pruning pruning) throws IOException {
         COSDictionary page = new COSDictionary();

@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Сборка PDF Задачи (ADR-0041): требования «PDF слота Задачи собирается
+ * Сборка PDF Задачи (ADR-0044): требования «PDF слота Задачи собирается
  * из картинок и страниц PDF» и «Результат содержит только взятые страницы».
  *
  * Модульный тест без Spring: {@link PdfAssembly} — чистая функция над

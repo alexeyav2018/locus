@@ -275,7 +275,7 @@ class TaxonomyScreenTest extends IntegrationTest {
      * Задача 4.2: ни одной строки JavaScript. Свёртка ветвей — штатный
      * {@code details}, выбор узла — обычная ссылка, операции — обычные формы
      * с перезагрузкой страницы (ADR-0020). Проверяются шаблоны рубрикатора:
-     * форма Задачи несёт скрипт сборки PDF сознательно (ADR-0041).
+     * форма Задачи несёт скрипт сборки PDF сознательно (ADR-0044).
      */
     @Test
     void noTemplateCarriesAScript() throws IOException {

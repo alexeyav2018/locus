@@ -12,7 +12,7 @@ import org.springframework.web.util.WebUtils;
 
 /**
  * Держит общий предел загрузки на всех обработчиках, кроме отмеченных
- * {@link LargeUpload} (ADR-0041).
+ * {@link LargeUpload} (ADR-0044).
  *
  * Превышение сообщается тем же {@link MaxUploadSizeExceededException},
  * каким его сообщал бы контейнер. Перехватчик работает после выбора

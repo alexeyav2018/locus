@@ -14,14 +14,14 @@ import ru.locus.IntegrationTest;
 import ru.locus.user.UserId;
 
 /**
- * Черновик сборки принадлежит загрузившему (ADR-0041): репозиторий знает,
+ * Черновик сборки принадлежит загрузившему (ADR-0044): репозиторий знает,
  * чей черновик, — и не может не знать.
  *
  * По образцу {@link ru.locus.assignment.OwnerIsRequiredByAssignmentsTest}:
  * у каждого публичного метода {@link AssemblyDraftRepository} среди
  * параметров есть {@link UserId}, кроме названных поимённо с причиной.
  * Исключения здесь не класса ADR-0036 — не вопросы библиотеки, а уборки
- * брошенного, которые ADR-0041 оговаривает отдельно: обе только удаляют
+ * брошенного, которые ADR-0044 оговаривает отдельно: обе только удаляют
  * и наружу отдают одни имена файлов. Метод, отдающий черновики без
  * владельца, в этот список попасть не может.
  */
@@ -32,9 +32,9 @@ class OwnerIsRequiredByDraftsTest extends IntegrationTest {
     private static final Map<String, String> WITHOUT_OWNER = Map.of(
             "AssemblyDraftRepository.deleteCreatedBefore",
             "уборка брошенных по сроку при открытии инструмента — черновики всех Пользователей, наружу только "
-                    + "имена файлов для удаления с диска (ADR-0041)",
+                    + "имена файлов для удаления с диска (ADR-0044)",
             "AssemblyDraftRepository.deleteAll",
-            "уборка всех черновиков при старте приложения, наружу только имена файлов (ADR-0041)");
+            "уборка всех черновиков при старте приложения, наружу только имена файлов (ADR-0044)");
 
     @Autowired
     private JdbcClient database;
@@ -53,7 +53,7 @@ class OwnerIsRequiredByDraftsTest extends IntegrationTest {
             }
             assertThat(method.getParameterTypes())
                     .as("метод %s обязан принимать владельца (ADR-0027) либо быть назван в списке уборок "
-                            + "с причиной (ADR-0041)", name)
+                            + "с причиной (ADR-0044)", name)
                     .contains(UserId.class);
         }
     }

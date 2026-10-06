@@ -1,6 +1,6 @@
 # Tasks
 
-Документы `openspec/context/`, которые изменение затрагивает: ADR-0041
+Документы `openspec/context/`, которые изменение затрагивает: ADR-0044
 (новая, заведена в propose), `glossary.md`, `antipatterns.md`,
 `architecture.md`, `domain-model.md` (сверить), `CLAUDE.md` (при архивации).
 `standards.md` и `strategy.md` — не затрагивают, если по ходу не устоится
@@ -47,7 +47,7 @@
       `deleteCreatedBefore(Instant)` и `deleteAll()` без владельца,
       возвращают только имена файлов); проверить — `AssemblyDraftRepositoryTest`
 - [x] 2.3 `OwnerIsRequiredByDraftsTest` (две уборки поимённо, ссылка
-      на ADR-0041) и `DraftsAreFilteredByOwnerTest` (чужой черновик
+      на ADR-0044) и `DraftsAreFilteredByOwnerTest` (чужой черновик
       не находится и не удаляется); проверить — оба зелёные
 - [x] 2.4 Настройки `locus.problem.draft.directory` и
       `locus.problem.draft.ttl` (24h) в `application.yaml`, тестовая папка
@@ -108,9 +108,9 @@
 ## 6. Документы и приёмка
 
 - [x] 6.1 `glossary.md` — термин «Черновик сборки» (`AssemblyDraft`);
-      `antipatterns.md` — уточнение «разбор PDF» по ADR-0041;
+      `antipatterns.md` — уточнение «разбор PDF» по ADR-0044;
       `architecture.md` — рабочая папка черновиков и двухуровневый предел;
-      `domain-model.md` — сверить; проверить — ссылки на ADR-0041 ведут
+      `domain-model.md` — сверить; проверить — ссылки на ADR-0044 ведут
       на файл
 - [x] 6.2 Приёмка: `mvn clean package` зелёный; признак готовности
       карточки пройден тестами разделов 1–4 (три картинки; 47–49 из 300;
@@ -119,5 +119,5 @@
 
 ## Workflow follow-up
 
-- `/opsx:archive problem-pdf-assembly`: ADR-0041 → «Принято»,
+- `/opsx:archive problem-pdf-assembly`: ADR-0044 → «Принято»,
   `build_index.py`, строка бэклога ✅, сводка в `CLAUDE.md`.

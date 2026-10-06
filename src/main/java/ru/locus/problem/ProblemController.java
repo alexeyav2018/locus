@@ -69,7 +69,7 @@ public class ProblemController {
      * приглашение ошибиться.
      *
      * Показ формы — открытие инструмента сборки, и с него начинается уборка
-     * брошенных черновиков (ADR-0041).
+     * брошенных черновиков (ADR-0044).
      */
     @GetMapping(Addresses.PROBLEMS + "/new")
     public String form(@RequestParam(required = false) Long topic, Model model) {
