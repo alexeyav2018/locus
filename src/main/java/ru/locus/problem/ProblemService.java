@@ -1,6 +1,7 @@
 package ru.locus.problem;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.file.FileKey;
 import ru.locus.file.FileStorage;
+import ru.locus.file.FileType;
 import ru.locus.taxonomy.TaxonomyNode;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyPath;
@@ -49,6 +51,7 @@ public class ProblemService {
     private final SolutionMethodService methods;
     private final CharacteristicService characteristics;
     private final FileStorage storage;
+    private final AssemblyDraftService drafts;
 
     /**
      * Реализации вопроса «использована ли Задача». Сегодня одна — Задания;
@@ -61,12 +64,14 @@ public class ProblemService {
                           SolutionMethodService methods,
                           CharacteristicService characteristics,
                           FileStorage storage,
+                          AssemblyDraftService drafts,
                           List<ProblemUsage> usages) {
         this.problems = problems;
         this.taxonomy = taxonomy;
         this.methods = methods;
         this.characteristics = characteristics;
         this.storage = storage;
+        this.drafts = drafts;
         this.usages = usages;
     }
 
@@ -249,7 +254,13 @@ public class ProblemService {
      * (design.md, «Порядок укладки файлов»).
      *
      * <p>Проверки идут до укладки: отказ не должен оставлять в хранилище
-     * ничего.
+     * ничего. Сборка — тоже после проверок: собирать PDF, чтобы тут же
+     * отказать из-за разметки, незачем.
+     *
+     * <p>Каждый слот — готовый PDF или порядок сборки ({@link ProblemPdf}).
+     * Черновики сборки удаляются, только когда Задача сохранена: отказ
+     * оставляет их, и форма показывает тот же порядок, не требуя загружать
+     * сборник заново (ADR-0044).
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
@@ -258,19 +269,23 @@ public class ProblemService {
                             List<TaxonomyNodeId> topics,
                             List<SolutionMethodId> methodIds,
                             List<CharacteristicId> characteristicIds,
-                            UploadedFile condition,
-                            UploadedFile solution) {
+                            ProblemPdf condition,
+                            ProblemPdf solution) {
         Problem.requireMarkup(part, topics, methodIds);
         requireExistingMarkup(topics, methodIds, characteristicIds);
         requireFile(condition, "условия");
         requireFile(solution, "решения");
+        UploadedFile conditionFile = resolved(condition);
+        UploadedFile solutionFile = resolved(solution);
 
-        FileKey conditionKey = storage.put(condition.content(), condition.contentType());
+        FileKey conditionKey = storage.put(conditionFile.content(), conditionFile.contentType());
         FileKey solutionKey = null;
         try {
-            solutionKey = storage.put(solution.content(), solution.contentType());
-            return problems.create(caption, part, conditionKey, solutionKey,
+            solutionKey = storage.put(solutionFile.content(), solutionFile.contentType());
+            ProblemId created = problems.create(caption, part, conditionKey, solutionKey,
                     topics, methodIds, characteristicIds);
+            discardDrafts(condition, solution);
+            return created;
         } catch (RuntimeException failure) {
             discard(conditionKey);
             discard(solutionKey);
@@ -303,17 +318,22 @@ public class ProblemService {
         problems.replaceMarkup(problem.id(), topics, methodIds, characteristicIds);
     }
 
-    /** Заменяет PDF условия. */
+    /**
+     * Заменяет PDF условия — готовым или собранным. Заморозка проверяется
+     * до сборки: замороженная Задача не заменяется ни тем, ни другим.
+     */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
-    public void replaceCondition(ProblemId id, UploadedFile condition) {
+    public void replaceCondition(ProblemId id, ProblemPdf condition) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
         requireFile(condition, "условия");
+        UploadedFile file = resolved(condition);
 
-        FileKey replacement = storage.put(condition.content(), condition.contentType());
+        FileKey replacement = storage.put(file.content(), file.contentType());
         problems.changeConditionFile(problem.id(), replacement);
         storage.delete(problem.conditionFile());
+        discardDrafts(condition);
     }
 
     /**
@@ -325,14 +345,16 @@ public class ProblemService {
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
-    public void replaceSolution(ProblemId id, UploadedFile solution) {
+    public void replaceSolution(ProblemId id, ProblemPdf solution) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
         requireFile(solution, "решения");
+        UploadedFile file = resolved(solution);
 
-        FileKey replacement = storage.put(solution.content(), solution.contentType());
+        FileKey replacement = storage.put(file.content(), file.contentType());
         problems.changeSolutionFile(problem.id(), replacement);
         storage.delete(problem.solutionFile());
+        discardDrafts(solution);
     }
 
     /**
@@ -498,9 +520,35 @@ public class ProblemService {
      * Оба PDF обязательны, и отказ называет недостающий: «файл не приложен»
      * без уточнения заставляет Администратора гадать, какой из двух.
      */
-    private static void requireFile(UploadedFile file, String what) {
+    private static void requireFile(ProblemPdf file, String what) {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Не приложен PDF " + what);
+        }
+    }
+
+    /** Слот к готовому файлу: порядок сборки собирается из своих черновиков. */
+    private UploadedFile resolved(ProblemPdf file) {
+        return switch (file) {
+            case UploadedFile uploaded -> uploaded;
+            case PdfAssemblyOrder order -> new UploadedFile(drafts.assemble(order), FileType.PDF);
+        };
+    }
+
+    /**
+     * Черновики, из которых собраны слоты, — после того как Задача сохранена.
+     * Строки уходят в этой же транзакции, файлы — после её фиксации, так что
+     * откат оставляет черновики целыми. Один сборник на оба слота удаляется
+     * один раз.
+     */
+    private void discardDrafts(ProblemPdf... slots) {
+        List<AssemblyDraftId> used = new ArrayList<>();
+        for (ProblemPdf slot : slots) {
+            if (slot instanceof PdfAssemblyOrder order) {
+                order.drafts().stream().filter(id -> !used.contains(id)).forEach(used::add);
+            }
+        }
+        if (!used.isEmpty()) {
+            drafts.discard(used);
         }
     }
 

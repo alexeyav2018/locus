@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения, экран Владения, выбытие Ученика, версия системы
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения, экран Владения, выбытие Ученика, версия системы, сборка PDF Задачи
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -169,12 +169,29 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 `1.0.0`, с выкладкой на стенд она не связана; `MAJOR` растёт при крупных
 изменениях (новый интерфейс, большая возможность).
 
+Затем `problem-pdf-assembly` — работа за пределами редакции 1
+стратегии: каждый из двух PDF Задачи Администратор прикладывает готовым
+либо **собирает** из картинок (JPEG, PNG) и диапазонов целых страниц
+загруженных PDF — при заведении и при замене файла
+([ADR-0044](openspec/context/adr/0044-sborka-pdf-zadachi.md)). Сборка —
+чистая функция `PdfAssembly` на PDFBox 3: страница переносится целиком,
+без интерпретации содержимого, с ресурсами только взятых страниц; картинка —
+страница своего размера, без пережатия. Исходник живёт **Черновиком сборки**
+(`AssemblyDraft`) — строка в базе и файл в рабочей папке мимо
+`FileStorage`, принадлежит загрузившему; репозиторий с `UserId` всюду,
+кроме двух уборок класса ADR-0036 (`OwnerIsRequiredByDraftsTest`).
+Брошенные черновики убираются попутно — при открытии инструмента по сроку
+и все при старте, без фоновых процессов. Предел загрузки двухуровневый:
+контейнер пропускает размер сборника, общий предел держит
+`UploadLimitInterceptor` везде, кроме обработчиков с `@LargeUpload`.
+
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока четырнадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока пятнадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
 `library-search`, `theory-materials`, `students-groups`, `assignments`,
-`submission-review`, `mastery-marks`, `mastery-views` и `interface-navigation`.
+`submission-review`, `mastery-marks`, `mastery-views`, `interface-navigation`
+и `problem-pdf-assembly`.
 
 ### Первый вход
 
@@ -271,6 +288,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Вторичное — по кнопке на той же странице, возврат — параметром `from`, файлы — на странице просмотра ([ADR-0042](openspec/context/adr/0042-vtorichnoe-po-knopke-i-vozvrat.md)).
 - Выбытие Ученика — флаг на карточке, переключаемый свободно, без каскада на Группы; Раздача пропускает выбывших членов ([ADR-0040](openspec/context/adr/0040-vybytie-uchenika-flag.md)).
 - Версия системы — чистая `X.Y.Z` в `pom.xml`, уровень решает изменение, тег `vX.Y.Z` на коммит архивации и в `origin`, версия в подвале страниц ([ADR-0043](openspec/context/adr/0043-versionirovanie-sistemy.md)).
+- PDF Задачи собирается из картинок и целых страниц PDF без интерпретации содержимого; исходник — временный черновик загрузившего ([ADR-0044](openspec/context/adr/0044-sborka-pdf-zadachi.md)).
 
 ## Процесс: OpenSpec
 

@@ -16,8 +16,17 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * тест, который молча не выполнился, хуже отсутствующего — он создаёт
  * видимость проверки. Нет Docker — сборка падает.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = IntegrationTest.DRAFTS)
 public abstract class IntegrationTest {
+
+    /**
+     * Своя папка черновиков сборки: при старте она очищается целиком,
+     * и папка по умолчанию — та же, что у {@code mvn spring-boot:run}, —
+     * теряла бы черновики запущенного рядом приложения.
+     */
+    public static final String DRAFTS = "locus.problem.draft.directory=target/test-assembly-drafts";
 
     @ServiceConnection
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresImage.fromComposeFile());

@@ -9,6 +9,12 @@
         ${problem}; файлы при правке заменяются отдельными формами, потому что
         заменяют обычно один из двух, а не оба сразу.
 
+        У каждого слота — поле исходника для сборки PDF (ADR-0044). Поле без
+        имени: в отправку формы оно не попадает, отправляются только поля
+        строк сборки. Грузит исходник и двигает строки общий static/js/locus.js
+        (ADR-0041), адрес загрузки он берёт из data-assembly-url; строку
+        рисует сервер фрагментом problem/assembly :: row.
+
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
         разработчику и в выдачу попадать не должен.
     */-->
@@ -97,7 +103,19 @@
         <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
+        <ol class="assembly" data-slot="condition">
+            <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+        </ol>
         <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+        <label class="assembly-source">или собрать из картинок и страниц PDF
+            <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
+        <ol class="assembly" data-slot="solution">
+            <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+        </ol>
     </fieldset>
 
     <div class="form-actions">
@@ -116,6 +134,12 @@
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
                     <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+                    <label class="assembly-source">или собрать из картинок и страниц PDF
+                        <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <ol class="assembly" data-slot="condition">
+                        <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+                    </ol>
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">Заменить условие</button>
                         <button type="button" data-close>Отмена</button>
@@ -129,6 +153,12 @@
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
                     <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+                    <label class="assembly-source">или собрать из картинок и страниц PDF
+                        <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <ol class="assembly" data-slot="solution">
+                        <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+                    </ol>
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">Заменить решение</button>
                         <button type="button" data-close>Отмена</button>

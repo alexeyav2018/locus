@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    Строка сборки PDF слота Задачи (ADR-0044). Одна разметка на два случая:
+    ответ на загрузку исходника (AssemblyDraftController) и перерисовка
+    формы после отказа (ProblemController) — разъехаться им не дадут.
+
+    Поля «черновик», «с», «по» повторяются в каждой строке, и порядок строк
+    в документе — порядок страниц результата. У картинки «с» и «по» —
+    скрытые единицы: без них списки полей разъехались бы по строкам.
+    Кнопки двигают и убирают строку общим locus.js; правил в нём нет.
+*/-->
+<li th:fragment="row(slot, row)" class="assembly-row">
+    <input type="hidden" th:name="${slot} + 'Draft'" th:value="${row.draft.id.value}">
+    <span class="source" th:text="${row.draft.originalName}">сборник.pdf</span>
+    <th:block th:if="${row.image}">
+        <span class="pages">картинка</span>
+        <input type="hidden" th:name="${slot} + 'From'" value="1">
+        <input type="hidden" th:name="${slot} + 'To'" value="1">
+    </th:block>
+    <th:block th:unless="${row.image}">
+        <span class="pages" th:text="'страниц: ' + ${row.draft.pageCount}">страниц: 300</span>
+        <label class="range">с <input type="number" min="1" th:max="${row.draft.pageCount}"
+                                     th:name="${slot} + 'From'" th:value="${row.from}"></label>
+        <label class="range">по <input type="number" min="1" th:max="${row.draft.pageCount}"
+                                      th:name="${slot} + 'To'" th:value="${row.to}"></label>
+        <button type="button" data-assembly="again">ещё диапазон</button>
+    </th:block>
+    <button type="button" data-assembly="up">выше</button>
+    <button type="button" data-assembly="down">ниже</button>
+    <button type="button" data-assembly="remove">убрать</button>
+</li>
+
+<!--/* Отказ загрузки: текст, который скрипт показывает у слота. */-->
+<p th:fragment="refusal(message)" class="assembly-refusal" th:text="${message}">Файл не подходит для сборки</p>
+</body>
+</html>

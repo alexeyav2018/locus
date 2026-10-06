@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
+import ru.locus.ShellAdvice;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.file.FileView;
 import ru.locus.problem.ProblemId;
@@ -53,13 +54,16 @@ public class StudentWorkController {
     private final StudentWorkService works;
     private final StudentService students;
     private final AssignmentScreen screen;
+    private final ShellAdvice shell;
 
     public StudentWorkController(StudentWorkService works,
                                  StudentService students,
-                                 AssignmentScreen screen) {
+                                 AssignmentScreen screen,
+                                 ShellAdvice shell) {
         this.works = works;
         this.students = students;
         this.screen = screen;
+        this.shell = shell;
     }
 
     /**
@@ -170,9 +174,15 @@ public class StudentWorkController {
      * дошло до обработчика. Экран приёма показывает это текстом, как отказ
      * сервиса; Задание берётся из адреса, потому что тело не разобрано.
      * Работа, к которой добавляли файлы, — из пути.
+     *
+     * Модель обработчика исключения чистая: {@code @ModelAttribute} из
+     * {@link ShellAdvice} к ней не применяются, а экран рисуется в каркасе.
+     * Поэтому шапка и подвал кладутся здесь явно.
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public String tooLarge(HttpServletRequest request, Model model) {
+        model.addAttribute("shell", shell.shell(request));
+        model.addAttribute("build", shell.build());
         model.addAttribute("error", "Файлы слишком велики: до 20 МБ на файл и до 100 МБ за один раз");
         AssignmentId assignmentId = assignmentFrom(request);
         if (assignmentId == null) {

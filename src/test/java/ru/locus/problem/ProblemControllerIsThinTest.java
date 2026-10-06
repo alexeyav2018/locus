@@ -23,21 +23,24 @@ import ru.locus.taxonomy.TaxonomyRepository;
  * напрямую, обошёл бы и проверку состава Задачи, и уборку при неудаче —
  * и остался бы в хранилище сиротой (standards.md, «Файлы»).
  *
- * Смотрятся оба контроллера области: у поиска соблазн сходить в репозиторий
+ * Смотрятся все контроллеры области: у поиска соблазн сходить в репозиторий
  * прямо больше прочих — отбор он и так собирает из параметров запроса,
- * и мимо сервиса ушёл бы вместе с ним обход поддерева.
+ * и мимо сервиса ушёл бы вместе с ним обход поддерева. У загрузки
+ * черновиков сборки мимо сервиса ушёл бы владелец черновика (ADR-0044).
  */
 class ProblemControllerIsThinTest {
 
     private static final List<Class<?>> CONTROLLERS = List.of(
             ProblemController.class,
-            ProblemSearchController.class);
+            ProblemSearchController.class,
+            AssemblyDraftController.class);
 
     private static final List<Class<?>> FORBIDDEN = List.of(
             ProblemRepository.class,
             TaxonomyRepository.class,
             SolutionMethodRepository.class,
             CharacteristicRepository.class,
+            AssemblyDraftRepository.class,
             FileStorage.class);
 
     @Test

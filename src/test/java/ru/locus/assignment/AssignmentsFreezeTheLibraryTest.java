@@ -4,8 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +20,10 @@ import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
 import ru.locus.file.FileType;
+import ru.locus.problem.AssemblyDraft;
+import ru.locus.problem.AssemblyDraftService;
 import ru.locus.problem.ExamPart;
+import ru.locus.problem.PdfAssemblyOrder;
 import ru.locus.problem.Problem;
 import ru.locus.problem.ProblemId;
 import ru.locus.problem.ProblemInUseException;
@@ -52,6 +60,9 @@ class AssignmentsFreezeTheLibraryTest extends IntegrationTest {
 
     @Autowired
     private StudentService students;
+
+    @Autowired
+    private AssemblyDraftService drafts;
 
     @Autowired
     private TestAccounts accounts;
@@ -98,6 +109,25 @@ class AssignmentsFreezeTheLibraryTest extends IntegrationTest {
                 .hasMessageContaining("вошла в Задания (2)");
 
         assertThat(problems.problem(problem).caption()).as("ничего не изменилось").isEqualTo(current.caption());
+    }
+
+    /**
+     * Сценарий «Замена файла сборкой у замороженной Задачи»: отказ тот же,
+     * что и готовому PDF, а черновик остаётся — из него ещё можно собрать.
+     */
+    @Test
+    void issuedProblemIsNotReplacedByAnAssembledPdfEither() throws IOException {
+        issue();
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(40, 30, BufferedImage.TYPE_INT_RGB), "png", png);
+        AssemblyDraft photo = drafts.upload("снимок.png", new ByteArrayInputStream(png.toByteArray()));
+        PdfAssemblyOrder order = new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(photo.id(), 1, 1)));
+
+        assertThatThrownBy(() -> problems.replaceSolution(problem, order))
+                .isInstanceOf(ProblemInUseException.class)
+                .hasMessageContaining("вошла в Задания (1)");
+
+        assertThatCode(() -> drafts.assemble(order)).as("черновик на месте").doesNotThrowAnyException();
     }
 
     /** Сценарий «Ученик с Заданием не удаляется»: в отказе названо число Заданий. */

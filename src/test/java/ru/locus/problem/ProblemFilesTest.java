@@ -61,6 +61,9 @@ class ProblemFilesTest extends IntegrationTest {
     private FileStorage storage;
 
     @Autowired
+    private AssemblyDraftService drafts;
+
+    @Autowired
     private TestLibrary library;
 
     @Autowired
@@ -108,7 +111,7 @@ class ProblemFilesTest extends IntegrationTest {
     void failedSavingLeavesNothingInTheStorage() {
         List<FileKey> stored = new ArrayList<>();
         ProblemService watched = new ProblemService(repository, taxonomy, methods, characteristics,
-                new WatchedStorage(storage, stored), List.of());
+                new WatchedStorage(storage, stored), drafts, List.of());
 
         assertThatThrownBy(() -> watched.create(TOO_LONG_CAPTION, ExamPart.FIRST,
                 List.of(library.topic()), List.of(library.method()), List.of(),
