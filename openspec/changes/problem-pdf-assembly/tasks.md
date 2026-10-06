@@ -38,30 +38,30 @@
 
 ## 2. Черновик сборки: схема, репозиторий, сервис
 
-- [ ] 2.1 Миграция `0011-problem-pdf-assembly.yaml`: таблица
+- [x] 2.1 Миграция `0011-problem-pdf-assembly.yaml`: таблица
       `assembly_draft` (id, `owner_user_id` → `user_`, `original_name`,
       `kind`, `content_type`, `page_count`, `file_name`, `created_at`);
       проверить — `MigrationsOnStartupTest`
-- [ ] 2.2 `AssemblyDraftId`, `AssemblyDraft`, `AssemblyDraftRepository`
+- [x] 2.2 `AssemblyDraftId`, `AssemblyDraft`, `AssemblyDraftRepository`
       (`create`, `findByIds`, `deleteByIds` с `UserId`; уборки
       `deleteCreatedBefore(Instant)` и `deleteAll()` без владельца,
       возвращают только имена файлов); проверить — `AssemblyDraftRepositoryTest`
-- [ ] 2.3 `OwnerIsRequiredByDraftsTest` (две уборки поимённо, ссылка
+- [x] 2.3 `OwnerIsRequiredByDraftsTest` (две уборки поимённо, ссылка
       на ADR-0041) и `DraftsAreFilteredByOwnerTest` (чужой черновик
       не находится и не удаляется); проверить — оба зелёные
-- [ ] 2.4 Настройки `locus.problem.draft.directory` и
+- [x] 2.4 Настройки `locus.problem.draft.directory` и
       `locus.problem.draft.ttl` (24h) в `application.yaml`, тестовая папка
       — временная; `AssemblyDraftService.upload` (только Администратор;
       запись потоком на диск; распознавание JPEG/PNG/PDF; счёт страниц;
       отказ неподходящему и закрытому паролем PDF); проверить — тест
       загрузки PDF, картинки, текстового файла, PDF с паролем, загрузки
       Учителем
-- [ ] 2.5 `AssemblyDraftService.assemble(PdfAssemblyOrder)` — черновики
+- [x] 2.5 `AssemblyDraftService.assemble(PdfAssemblyOrder)` — черновики
       только свои, чужой и отсутствующий отклоняются одинаково;
       `discard` (строки в транзакции, файлы после фиксации); проверить —
       тест: сборка из своего черновика; чужой → отказ; откат транзакции
       оставляет файл
-- [ ] 2.6 Уборка: `sweep()` от бина `Clock` (все владельцы, старше срока)
+- [x] 2.6 Уборка: `sweep()` от бина `Clock` (все владельцы, старше срока)
       и очистка всего при старте (`ApplicationRunner`, включая файлы
       без строки); проверить — тест на `TestClock`: старый черновик
       исчезает, свежий остаётся; тест очистки при старте

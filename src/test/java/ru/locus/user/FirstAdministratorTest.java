@@ -22,7 +22,7 @@ import ru.locus.PostgresImage;
  * о базе, где нет ничего, а общую базу остальные тесты населяют своими
  * учётными записями — и «ровно одна» перестало бы что-либо значить.
  */
-@SpringBootTest
+@SpringBootTest(properties = ru.locus.IntegrationTest.DRAFTS)
 class FirstAdministratorTest {
 
     @ServiceConnection

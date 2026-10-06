@@ -1,0 +1,85 @@
+# Черновик сборки PDF Задачи (ADR-0041, элемент бэклога problem-pdf-assembly).
+#
+# Исходник, загруженный Администратором для сборки, — картинка или сборник
+# PDF. Живёт до сборки: после сохранения Задачи удаляется, брошенный —
+# убирается по сроку при открытии инструмента и целиком при старте.
+#
+# Владелец — колонка user_id, как во всех таблицах личного контура, а не
+# owner_user_id из первого наброска задач: OwnerIsRequiredBy*Test по всем
+# областям проверяет именно user_id, и второе имя той же колонки разъехалось
+# бы с проверками. Черновик не часть библиотеки: чужой не видится и не
+# используется ни одним запросом; без владельца — только две уборки (ADR-0041).
+#
+# Содержимое — файл в рабочей папке (locus.problem.draft.directory), не
+# в хранилище файлов: хранилищу пришлось бы добавить чтение по ключу
+# (ADR-0021). file_name — случайный UUID, а не идентификатор строки:
+# по той же причине, что и ключ хранилища (FileKey).
+databaseChangeLog:
+  - changeSet:
+      id: 0011-assembly-draft
+      author: locus
+      comment: Черновик сборки PDF Задачи — временный исходник загрузившего
+      changes:
+        - createTable:
+            tableName: assembly_draft
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assembly_draft
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Имя, под которым загрузил Администратор: его называет строка
+              # сборки и отказ при неверном диапазоне.
+              - column:
+                  name: original_name
+                  type: VARCHAR(500)
+                  constraints:
+                    nullable: false
+              # IMAGE или PDF — имена AssemblyDraft.Kind.
+              - column:
+                  name: kind
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content_type
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: page_count
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uq_assembly_draft_file_name
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: assembly_draft
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_assembly_draft_user
+        # Уборка по сроку идёт по всем владельцам сразу.
+        - createIndex:
+            tableName: assembly_draft
+            indexName: ix_assembly_draft_created_at
+            columns:
+              - column:
+                  name: created_at

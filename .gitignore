@@ -12,3 +12,6 @@ target/
 
 # Файлы, положенные в локальное хранилище при разработке (locus.file.local.directory)
 .locus-files/
+
+# Черновики сборки PDF Задачи (locus.problem.draft.directory)
+.locus-drafts/
