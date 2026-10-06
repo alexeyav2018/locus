@@ -1,57 +1,81 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title>Учётные записи — Locus</title>
 </head>
 <body>
-<h1>Учётные записи</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+    <div class="page-head">
+        <div>
+            <h1>Учётные записи</h1>
+            <p class="lead">Кто может войти в систему и с какими ролями.</p>
+        </div>
+    </div>
 
-<p th:if="${error}" th:text="${error}">Имя входа занято</p>
+    <p class="alert" role="alert" th:if="${error}" th:text="${error}">Имя входа занято</p>
 
-<table>
-    <thead>
-    <tr>
-        <th>Имя входа</th>
-        <th>Роли</th>
-        <th>Пароль</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="user : ${users}">
-        <td th:text="${user.login}">admin</td>
-        <td>
-            <form method="post" th:each="role : ${roles}"
-                  th:action="@{/users/{id}/roles(id=${user.id.value})}">
-                <input type="hidden" name="role" th:value="${role}">
-                <input type="hidden" name="assign" th:value="${!user.hasRole(role)}">
-                <button type="submit"
-                        th:text="${user.hasRole(role) ? 'Снять ' + role : 'Назначить ' + role}">Назначить</button>
+    <div class="table-wrap">
+        <table>
+            <thead>
+            <tr>
+                <th>Имя входа</th>
+                <th>Роли</th>
+                <th>Пароль</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td><strong th:text="${user.login}">admin</strong></td>
+                <td>
+                    <div class="row">
+                        <form class="inline" method="post" th:each="role : ${roles}"
+                              th:action="@{/users/{id}/roles(id=${user.id.value})}">
+                            <input type="hidden" name="role" th:value="${role}">
+                            <input type="hidden" name="assign" th:value="${!user.hasRole(role)}">
+                            <button type="submit" class="btn-sm"
+                                    th:classappend="${user.hasRole(role)} ? 'btn-danger'"
+                                    th:text="${user.hasRole(role) ? 'Снять ' + role : 'Назначить ' + role}">Назначить</button>
+                        </form>
+                    </div>
+                </td>
+                <td>
+                    <details class="more" th:attr="open=${shell.opened('/users/' + user.id.value + '/password')} ? 'open'">
+                        <summary>Новый пароль</summary>
+                        <div class="more-body">
+                            <form class="inline-form" method="post" th:action="@{/users/{id}/password(id=${user.id.value})}">
+                                <input type="password" name="newPassword" aria-label="Новый пароль" autocomplete="new-password">
+                                <button type="submit" class="btn-sm btn-primary">Сбросить пароль</button>
+                                <button type="button" class="btn-sm" data-close>Отмена</button>
+                            </form>
+                        </div>
+                    </details>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <details class="more more--primary" th:attr="open=${shell.opened('/users')} ? 'open'">
+        <summary>Завести учётную запись</summary>
+        <div class="more-body">
+            <form method="post" th:action="@{/users}">
+                <label for="login">Имя входа
+                    <input type="text" id="login" name="login" autocomplete="off" autocapitalize="none" th:value="${shell.echo('login', '/users')}">
+                </label>
+                <label for="initialPassword">Начальный пароль
+                    <input type="password" id="initialPassword" name="initialPassword" autocomplete="new-password">
+                </label>
+                <p class="hint">Пользователь сменит его при первом входе.</p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Завести</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
             </form>
-        </td>
-        <td>
-            <form method="post" th:action="@{/users/{id}/password(id=${user.id.value})}">
-                <input type="password" name="newPassword">
-                <button type="submit">Сбросить пароль</button>
-            </form>
-        </td>
-    </tr>
-    </tbody>
-</table>
-
-<h2>Завести учётную запись</h2>
-<form method="post" th:action="@{/users}">
-    <p>
-        <label for="login">Имя входа</label>
-        <input type="text" id="login" name="login">
-    </p>
-    <p>
-        <label for="initialPassword">Начальный пароль</label>
-        <input type="password" id="initialPassword" name="initialPassword">
-    </p>
-    <button type="submit">Завести</button>
-</form>
-
-<p><a th:href="@{/}">На главную</a></p>
+        </div>
+    </details>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

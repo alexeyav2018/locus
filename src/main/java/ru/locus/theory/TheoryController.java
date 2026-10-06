@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
+import ru.locus.file.FileView;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyService;
 import ru.locus.user.CurrentUser;
@@ -81,6 +82,21 @@ public class TheoryController {
         model.addAttribute("nodePath", taxonomy.path(material.node()).path());
         model.addAttribute("administrator", currentUser.account().hasRole(Role.ADMINISTRATOR));
         return "theory/material";
+    }
+
+    /**
+     * Просмотр приложенного файла внутри системы. У материала-ссылки файла
+     * нет — он открывается по своему внешнему адресу и здесь не просматривается.
+     */
+    @GetMapping(Addresses.THEORY + "/{id}/view")
+    public String view(@PathVariable long id, Model model) {
+        TheoryMaterial material = theory.material(new TheoryMaterialId(id));
+        if (!material.hasFile()) {
+            return "redirect:" + Addresses.THEORY + "/" + id;
+        }
+        model.addAttribute("view", FileView.of(material.title(), theory.fileLink(material.id()).toString(),
+                material.file(), Addresses.THEORY + "/" + id));
+        return "file/viewer";
     }
 
     /** Форма правки — та же, что и заведения, но с заполненным материалом. */

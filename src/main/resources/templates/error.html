@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!--/*
+    Страница ошибки (ADR-0042). Boot находит её по имени «error»; статус
+    приходит в модели. Сообщение исключения и трассировка не выводятся —
+    ни здесь, ни настройкой (`server.error.include-*` остаются «never»).
+    Шапка есть у вошедшего; у посетителя без входа shell пуст, шапки нет.
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Ошибка — Locus</title>
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--narrow">
+    <div class="error-page">
+        <p class="code" th:text="${status}" aria-hidden="true">404</p>
+        <h1 th:if="${status == 404}">Страница не найдена</h1>
+        <h1 th:if="${status == 403}">Нет доступа</h1>
+        <h1 th:if="${status != 404 and status != 403}">Что-то пошло не так</h1>
+        <p class="lead" th:if="${status == 404}">Такой страницы нет или она больше не существует.</p>
+        <p class="lead" th:if="${status == 403}">Этот раздел вам недоступен.</p>
+        <p class="lead" th:if="${status != 404 and status != 403}">Ошибка на нашей стороне. Попробуйте ещё раз или вернитесь на главную.</p>
+        <div class="row">
+            <a class="btn" th:if="${shell != null}" th:href="@{${shell.backOr('/')}}">Назад</a>
+            <a class="btn btn-primary" th:if="${shell != null}" th:href="@{/}">На главную</a>
+            <a class="btn btn-primary" th:if="${shell == null}" th:href="@{/login}">Ко входу</a>
+        </div>
+    </div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

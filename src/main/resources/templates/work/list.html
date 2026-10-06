@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <!--/* Как и экран приёма — под телефон (ADR-0015). */-->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Работы Ученика — Locus</title>
     <!--/*
         Работы одного Ученика, новые первыми: дата получения, вердикт или
@@ -14,26 +13,31 @@
         Без таблицы: на узком экране строка из четырёх колонок не помещается,
         а список читается сверху вниз.
     */-->
-    <style>
-        body { max-width: 40rem; margin: 0 auto; padding: 0 0.75rem; }
-        .works { margin: 0; padding-left: 1.25rem; }
-        .works li { margin: 0.5rem 0; }
-    </style>
 </head>
 <body>
-<h1 th:text="'Работы: ' + ${student.name}">Работы: Иванов Пётр</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--narrow">
+<p class="back"><a th:href="@{${shell.backOr('/students/' + student.id.value)}}">← К Ученику</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Работы: ' + ${student.name}">Работы: Иванов Пётр</h1>
+        <p class="lead">Новые первыми.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
 
-<p th:if="${#lists.isEmpty(works)}">Работ от Ученика пока не принято.</p>
-<ul class="works" th:unless="${#lists.isEmpty(works)}">
-    <li th:each="work : ${works}">
-        <span th:text="${#temporals.format(work.receivedOn, 'dd.MM.yyyy')}">03.09.2026</span>
-        — <span th:text="'Задача № ' + ${work.problem.value}">Задача № 12</span>
-        — <span th:if="${work.checked}" th:text="${work.verdict.title}">верно</span>
-        <span th:unless="${work.checked}" th:text="'не проверена'">не проверена</span>
-        — <a th:href="@{/works(assignment=${work.assignment.value})}">к Заданию</a>
+<p class="empty" th:if="${#lists.isEmpty(works)}">Работ от Ученика пока не принято.</p>
+<ul class="items works" th:unless="${#lists.isEmpty(works)}">
+    <li class="item" th:each="work : ${works}">
+        <span class="muted" th:text="${#temporals.format(work.receivedOn, 'dd.MM.yyyy')}">03.09.2026</span>
+        <span class="grow item-title" th:text="'Задача № ' + ${work.problem.value}">Задача № 12</span>
+        <span class="badge badge--ok" th:if="${work.checked and work.verdict.name() == 'CORRECT'}" th:text="${work.verdict.title}">верно</span>
+        <span class="badge badge--bad" th:if="${work.checked and work.verdict.name() != 'CORRECT'}" th:text="${work.verdict.title}">неверно</span>
+        <span class="badge badge--warn" th:unless="${work.checked}" th:text="'не проверена'">не проверена</span>
+        <a class="btn btn-sm" th:href="@{/works(assignment=${work.assignment.value},from=${shell.here})}">к Заданию</a>
     </li>
 </ul>
-
-<p><a th:href="@{/students/{id}(id=${student.id.value})}">К Ученику</a></p>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

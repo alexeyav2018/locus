@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
+    <th:block th:replace="~{fragments/shell :: head}"/>
     <title th:text="${problem} ? 'Правка Задачи — Locus' : 'Новая Задача — Locus'">Новая Задача — Locus</title>
     <!--/*
         Одна страница на заведение и правку: поля те же, и разъехались бы они
@@ -9,35 +9,32 @@
         ${problem}; файлы при правке заменяются отдельными формами, потому что
         заменяют обычно один из двух, а не оба сразу.
 
+        У каждого слота — поле исходника для сборки PDF (ADR-0044). Поле без
+        имени: в отправку формы оно не попадает, отправляются только поля
+        строк сборки. Грузит исходник и двигает строки общий static/js/locus.js
+        (ADR-0041), адрес загрузки он берёт из data-assembly-url; строку
+        рисует сервер фрагментом problem/assembly :: row.
+
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
         разработчику и в выдачу попадать не должен.
     */-->
-    <style>
-        form { max-width: 46rem; }
-        fieldset { margin: 0 0 1.75rem; padding: 0.75rem 1rem 1rem; }
-        legend { padding: 0 0.35rem; }
-        label { display: block; margin: 0.35rem 0; }
-        input[type=text], select { display: block; margin-top: 0.35rem; padding: 0.35rem; min-width: 22rem; }
-        select[multiple] { min-height: 8rem; }
-        button { padding: 0.35rem 0.9rem; }
-        .hint { margin: 0.25rem 0 0.75rem; }
-        ol.assembly { margin: 0.35rem 0 1rem; }
-        .assembly-row { margin: 0.25rem 0; }
-        .assembly-row .source { font-weight: bold; margin-right: 0.5rem; }
-        .assembly-row .range { display: inline; margin: 0 0.35rem; }
-        .assembly-row input[type=number] { width: 4.5rem; }
-        .assembly-refusal { color: #a00; }
-    </style>
 </head>
 <body>
-<h1 th:if="${problem}" th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
-<h1 th:unless="${problem}">Новая Задача</h1>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back" th:if="${problem}"><a th:href="@{${shell.backOr('/problems/' + problem.id.value)}}">← К Задаче</a></p>
+<p class="back" th:unless="${problem}"><a th:href="@{${shell.backOr('/taxonomy')}}">← К рубрикатору</a></p>
+<div class="page-head">
+    <h1 th:if="${problem}" th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+    <h1 th:unless="${problem}">Новая Задача</h1>
+    <span class="scope scope--shared">Общая библиотека</span>
+</div>
 
-<p th:if="${error}" th:text="${error}">Задаче нужен хотя бы один Метод</p>
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Задаче нужен хотя бы один Метод</p>
 
 <form method="post"
       enctype="multipart/form-data"
-      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value})} : @{/problems}">
+      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
 
     <label>Подпись
         <input type="text" name="caption" th:value="${problem} ? ${problem.caption} : ''">
@@ -87,16 +84,19 @@
         </select>
     </fieldset>
 
-    <fieldset>
-        <legend>Характеристики</legend>
-        <p class="hint">Необязательны.</p>
-        <select name="characteristicIds" multiple size="6">
-            <option th:each="characteristic : ${characteristics}"
-                    th:value="${characteristic.id.value}"
-                    th:text="${characteristic.name}"
-                    th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
-        </select>
-    </fieldset>
+    <!--/* Необязательное — под кнопкой; у Задачи с уже выбранными
+           Характеристиками блок раскрыт, чтобы выбор был виден. */-->
+    <details class="more" th:attr="open=${problem != null and not #lists.isEmpty(problem.characteristics)} ? 'open'">
+        <summary>Характеристики (необязательно)</summary>
+        <div class="more-body">
+            <select name="characteristicIds" multiple size="6">
+                <option th:each="characteristic : ${characteristics}"
+                        th:value="${characteristic.id.value}"
+                        th:text="${characteristic.name}"
+                        th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
+            </select>
+        </div>
+    </details>
 
     <fieldset th:unless="${problem}">
         <legend>Файлы</legend>
@@ -104,146 +104,71 @@
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
         <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="condition" accept="application/pdf,image/jpeg,image/png"></label>
+            <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="condition">
             <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
         </ol>
         <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
         <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="solution" accept="application/pdf,image/jpeg,image/png"></label>
+            <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="solution">
             <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
         </ol>
     </fieldset>
 
-    <button type="submit" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+    <div class="form-actions">
+        <button type="submit" class="btn-primary" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+        <a class="btn" th:if="${problem}" th:href="@{${shell.backOr('/problems/' + problem.id.value)}}">Отмена</a>
+        <a class="btn" th:unless="${problem}" th:href="@{${shell.backOr('/taxonomy')}}">Отмена</a>
+    </div>
 </form>
 
 <div th:if="${problem}">
     <h2>Замена файлов</h2>
-    <form method="post" enctype="multipart/form-data"
-          th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
-        <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
-        <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="condition" accept="application/pdf,image/jpeg,image/png"></label>
-        <ol class="assembly" data-slot="condition">
-            <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
-        </ol>
-        <button type="submit">Заменить условие</button>
-    </form>
-    <form method="post" enctype="multipart/form-data"
-          th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
-        <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
-        <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="solution" accept="application/pdf,image/jpeg,image/png"></label>
-        <ol class="assembly" data-slot="solution">
-            <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
-        </ol>
-        <button type="submit">Заменить решение</button>
-    </form>
+    <div class="folds">
+        <details class="more" name="replace-file" th:attr="open=${shell.opened('/condition')} ? 'open'">
+            <summary>Другой PDF условия</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
+                    <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
+                    <label class="assembly-source">или собрать из картинок и страниц PDF
+                        <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <ol class="assembly" data-slot="condition">
+                        <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+                    </ol>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить условие</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+        <details class="more" name="replace-file" th:attr="open=${shell.opened('/solution')} ? 'open'">
+            <summary>Другой PDF решения</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
+                    <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
+                    <label class="assembly-source">или собрать из картинок и страниц PDF
+                        <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <ol class="assembly" data-slot="solution">
+                        <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+                    </ol>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить решение</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
 </div>
-
-<p th:if="${problem}"><a th:href="@{/problems/{id}(id=${problem.id.value})}">К Задаче</a></p>
-<p><a th:href="@{/taxonomy}">К рубрикатору</a></p>
-
-<!--/*
-    Первый JavaScript проекта (ADR-0044): он только грузит исходник и двигает
-    строки, правил в нём нет. Строку рисует сервер фрагментом
-    problem/assembly :: row — тем же, что при перерисовке формы после отказа.
-    Поле выбора исходника без имени: в отправку формы оно не попадает,
-    отправляются только поля строк. Токен CSRF берётся из скрытого поля
-    своей формы — Thymeleaf кладёт его в каждую форму с th:action.
-*/-->
-<script th:inline="javascript">
-(function () {
-    const draftsUrl = /*[[@{/problems/drafts}]]*/ '/problems/drafts';
-
-    function showRefusal(list, text) {
-        clearRefusal(list);
-        const refusal = document.createElement('p');
-        refusal.className = 'assembly-refusal';
-        refusal.textContent = text;
-        list.after(refusal);
-    }
-
-    function clearRefusal(list) {
-        const next = list.nextElementSibling;
-        if (next && next.classList.contains('assembly-refusal')) {
-            next.remove();
-        }
-    }
-
-    function insertHtml(list, html) {
-        const template = document.createElement('template');
-        template.innerHTML = html.trim();
-        const node = template.content.firstElementChild;
-        if (node && node.classList.contains('assembly-refusal')) {
-            showRefusal(list, node.textContent);
-        } else if (node) {
-            clearRefusal(list);
-            list.append(node);
-        }
-    }
-
-    async function upload(input) {
-        const form = input.form;
-        const slot = input.dataset.assemblySource;
-        const list = form.querySelector('ol.assembly[data-slot="' + slot + '"]');
-        for (const file of Array.from(input.files)) {
-            const body = new FormData();
-            body.append('slot', slot);
-            body.append('source', file);
-            const csrf = form.querySelector('input[name="_csrf"]');
-            if (csrf) {
-                body.append('_csrf', csrf.value);
-            }
-            try {
-                const response = await fetch(draftsUrl, {method: 'POST', body: body, credentials: 'same-origin'});
-                if (response.ok || response.status === 422) {
-                    insertHtml(list, await response.text());
-                } else if (response.status === 413) {
-                    showRefusal(list, 'Файл «' + file.name + '» слишком велик для сборки');
-                } else {
-                    showRefusal(list, 'Файл «' + file.name + '» не загрузился (код ' + response.status + ')');
-                }
-            } catch (failure) {
-                showRefusal(list, 'Файл «' + file.name + '» не загрузился: нет связи с сервером');
-            }
-        }
-        input.value = '';
-    }
-
-    document.querySelectorAll('input[data-assembly-source]').forEach(function (input) {
-        input.multiple = true;
-        input.addEventListener('change', function () { upload(input); });
-    });
-
-    document.addEventListener('click', function (event) {
-        const button = event.target.closest('button[data-assembly]');
-        if (!button) {
-            return;
-        }
-        const row = button.closest('li.assembly-row');
-        switch (button.dataset.assembly) {
-            case 'up':
-                if (row.previousElementSibling) {
-                    row.previousElementSibling.before(row);
-                }
-                break;
-            case 'down':
-                if (row.nextElementSibling) {
-                    row.nextElementSibling.after(row);
-                }
-                break;
-            case 'again':
-                row.after(row.cloneNode(true));
-                break;
-            case 'remove':
-                row.remove();
-                break;
-        }
-    });
-})();
-</script>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
 </body>
 </html>

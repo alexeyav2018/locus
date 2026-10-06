@@ -272,19 +272,27 @@ class TaxonomyScreenTest extends IntegrationTest {
     }
 
     /**
-     * Задача 4.2: ни одной строки JavaScript. Свёртка ветвей — штатный
-     * {@code details}, выбор узла — обычная ссылка, операции — обычные формы
-     * с перезагрузкой страницы (ADR-0020). Проверяются шаблоны рубрикатора:
-     * форма Задачи несёт скрипт сборки PDF сознательно (ADR-0044).
+     * Задача 4.2, пересмотренная ADR-0041: в шаблонах нет ни одной строки
+     * JavaScript. Свёртка ветвей — штатный {@code details}, выбор узла —
+     * обычная ссылка, операции — обычные формы с перезагрузкой страницы
+     * (ADR-0020). Единственное, что допущено, — подключение общего файла
+     * {@code /js/locus.js} из каркаса {@code fragments/shell.html}: точечные
+     * улучшения без него не нужны, страница работает и без них.
      */
     @Test
     void noTemplateCarriesAScript() throws IOException {
-        try (Stream<Path> templates = Files.walk(Path.of("src/main/resources/templates/taxonomy"))) {
-            assertThat(templates.filter(Files::isRegularFile))
+        Path shell = Path.of("src/main/resources/templates/fragments/shell.html");
+        try (Stream<Path> templates = Files.walk(Path.of("src/main/resources/templates"))) {
+            assertThat(templates.filter(Files::isRegularFile).filter(template -> !template.equals(shell)))
                     .allSatisfy(template -> assertThat(Files.readString(template, StandardCharsets.UTF_8))
                             .as("шаблон %s не должен содержать скриптов", template)
-                            .doesNotContain("script"));
+                            .doesNotContain("script")
+                            .doesNotContainPattern("\\son[a-z]+\\s*="));
         }
+        assertThat(Files.readString(shell, StandardCharsets.UTF_8))
+                .as("каркас подключает только общий файл, без встроенного кода")
+                .doesNotContain("<script>")
+                .contains("th:src=\"@{/js/locus.js}\"");
     }
 
     private static int count(String body, String fragment) {

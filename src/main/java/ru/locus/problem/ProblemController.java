@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
+import ru.locus.file.FileView;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
 import ru.locus.dictionary.SolutionMethodId;
@@ -132,6 +133,26 @@ public class ProblemController {
         model.addAttribute("solutionLink", problems.solutionLink(problem.id()).toString());
         model.addAttribute("administrator", currentUser.account().hasRole(Role.ADMINISTRATOR));
         return "problem/problem";
+    }
+
+    /** Просмотр PDF условия внутри системы: страница с кнопкой «Назад» вместо чужой вкладки. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/condition")
+    public String viewCondition(@PathVariable long id, Model model) {
+        Problem problem = problems.problem(new ProblemId(id));
+        model.addAttribute("view", FileView.of("Условие — Задача № " + problem.number(),
+                problems.conditionLink(problem.id()).toString(), problem.conditionFile(),
+                Addresses.PROBLEMS + "/" + id));
+        return "file/viewer";
+    }
+
+    /** Просмотр PDF решения внутри системы. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/solution")
+    public String viewSolution(@PathVariable long id, Model model) {
+        Problem problem = problems.problem(new ProblemId(id));
+        model.addAttribute("view", FileView.of("Решение — Задача № " + problem.number(),
+                problems.solutionLink(problem.id()).toString(), problem.solutionFile(),
+                Addresses.PROBLEMS + "/" + id));
+        return "file/viewer";
     }
 
     /** Форма правки — та же, что и заведения, но с заполненной Задачей. */

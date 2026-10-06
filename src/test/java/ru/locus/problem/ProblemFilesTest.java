@@ -198,17 +198,26 @@ class ProblemFilesTest extends IntegrationTest {
         assertThat(browser.get(link).status()).as("действующая ссылка работает").isEqualTo(200);
     }
 
-    /** Сценарий «Просмотр Задачи»: обе ссылки на странице временные и подписанные. */
+    /**
+     * Сценарий «Просмотр Задачи»: страница ведёт к просмотру файлов, а ссылка
+     * на сам файл — на странице просмотра, временная и подписанная (ADR-0042).
+     */
     @Test
-    void bothLinksOnThePageAreSignedAndTemporary() {
+    void bothFileLinksAreSignedAndTemporaryOnTheViewerPages() {
         ProblemId id = library.problem(library.topic());
+        Browser teacher = loggedIn(Role.TEACHER);
 
-        String page = loggedIn(Role.TEACHER).get("/problems/" + id.value()).body();
-
-        assertThat(page)
-                .as("ссылка несёт срок и подпись, а не постоянный адрес")
-                .contains("expires=")
-                .contains("signature=");
+        assertThat(teacher.get("/problems/" + id.value()).body())
+                .contains("/problems/" + id.value() + "/condition")
+                .contains("/problems/" + id.value() + "/solution")
+                .as("постоянного адреса файла на странице Задачи нет")
+                .doesNotContain("signature=");
+        for (String view : new String[] {"/condition", "/solution"}) {
+            assertThat(teacher.get("/problems/" + id.value() + view).body())
+                    .as("ссылка несёт срок и подпись, а не постоянный адрес")
+                    .contains("expires=")
+                    .contains("signature=");
+        }
     }
 
     private ProblemId created(byte[] condition, byte[] solution) {
