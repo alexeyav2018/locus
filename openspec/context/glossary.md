@@ -121,7 +121,7 @@
 расходятся: `rubricator-tree` и `rubricator-restructure` при `Taxonomy`,
 `submission-review` при `StudentWork`. Идентификаторы не переименовываются —
 на них ссылаются в тексте, и они не переиспользуются
-(`openspec/backlog.md:50`). Прочие (`problem-catalog`, `mastery-marks`,
+(`openspec/backlog.md:80`). Прочие (`problem-catalog`, `mastery-marks`,
 `mastery-views`, `mastery-history`, `students-groups`, `theory-materials`,
 `assignments`, `topic-merge`, `method-edit-impact`, `teacher-proposes`)
 с именами словаря совпадают.
