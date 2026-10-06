@@ -274,11 +274,12 @@ class TaxonomyScreenTest extends IntegrationTest {
     /**
      * Задача 4.2: ни одной строки JavaScript. Свёртка ветвей — штатный
      * {@code details}, выбор узла — обычная ссылка, операции — обычные формы
-     * с перезагрузкой страницы (ADR-0020).
+     * с перезагрузкой страницы (ADR-0020). Проверяются шаблоны рубрикатора:
+     * форма Задачи несёт скрипт сборки PDF сознательно (ADR-0041).
      */
     @Test
     void noTemplateCarriesAScript() throws IOException {
-        try (Stream<Path> templates = Files.walk(Path.of("src/main/resources/templates"))) {
+        try (Stream<Path> templates = Files.walk(Path.of("src/main/resources/templates/taxonomy"))) {
             assertThat(templates.filter(Files::isRegularFile))
                     .allSatisfy(template -> assertThat(Files.readString(template, StandardCharsets.UTF_8))
                             .as("шаблон %s не должен содержать скриптов", template)
