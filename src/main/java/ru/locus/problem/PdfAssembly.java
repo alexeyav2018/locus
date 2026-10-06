@@ -1,5 +1,7 @@
 package ru.locus.problem;
 
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +21,7 @@ import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.util.exif.ExifUtils;
 import net.coobird.thumbnailator.util.exif.Orientation;
 import org.apache.pdfbox.Loader;
@@ -37,11 +40,14 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.util.Matrix;
 import org.springframework.stereotype.Component;
 
 /**
- * Сборка PDF Задачи из картинок и целых страниц PDF (ADR-0044).
+ * Сборка PDF Задачи из картинок, целых страниц PDF и кусков страниц
+ * в рамке (ADR-0044, ADR-0045).
  *
  * <p>Чистая функция над файлами: ни базы, ни хранилища, ни прав. Поэтому
  * самое хрупкое — что попадает в результат со страниц сборника — проверяется
@@ -50,7 +56,9 @@ import org.springframework.stereotype.Component;
  * <p>Содержимое источников <b>не интерпретируется</b>: страница переносится
  * целиком, с тем, что нарисовано в её потоке содержимого, а поток читается
  * только затем, чтобы узнать, какие ресурсы он называет по имени. Текста
- * и формул система по-прежнему не знает (ADR-0008).
+ * и формул система по-прежнему не знает (ADR-0008). Кусок скана
+ * отрисовывается в растр, но и тогда разбирается лишь устройство страницы
+ * — одна картинка, ни текста, ни форм, — а не нарисованное (ADR-0045).
  *
  * <p>Обычный перенос страницы ({@code importPage}, {@code Splitter}) здесь
  * не годится: он копирует словарь страницы как есть, а при записи PDFBox
@@ -65,6 +73,12 @@ public class PdfAssembly {
 
     /** Пункт PDF на пиксель картинки: страница размером с картинку (design.md). */
     private static final float POINTS_PER_PIXEL = 1f;
+
+    /** Разрешение растра скана — разрешение сканирования (design.md). */
+    private static final int SCAN_DPI = 300;
+
+    /** Качество JPEG растрового куска (design.md). */
+    private static final float JPEG_QUALITY = 0.9f;
 
     private static final COSName PATTERN_TYPE = COSName.getPDFName("PatternType");
 
@@ -85,22 +99,19 @@ public class PdfAssembly {
             Pruning pruning = new Pruning();
             for (PdfAssemblyPart part : parts) {
                 switch (part) {
-                    case PdfAssemblyPart.Image image -> {
-                        if (image.frame() != null) {
-                            // Обрезка — раздел 2 tasks.md изменения problem-pdf-crop.
-                            throw new IllegalStateException("Обрезка картинки ещё не построена");
-                        }
-                        result.addPage(imagePage(result, image));
+                    case PdfAssemblyPart.Image image -> result.addPage(image.frame() == null
+                            ? imagePage(result, image)
+                            : imagePiece(result, image));
+                    case PdfAssemblyPart.Piece piece -> {
+                        PDDocument source = source(sources, piece.file(), piece.name());
+                        requirePage(source, piece);
+                        PDPage page = source.getPage(piece.page() - 1);
+                        result.addPage(isScan(page)
+                                ? scanPiece(result, source, piece)
+                                : vectorPiece(page, piece.frame(), pruning));
                     }
-                    case PdfAssemblyPart.Piece piece ->
-                            // Обрезка — раздел 2 tasks.md изменения problem-pdf-crop.
-                            throw new IllegalStateException("Обрезка страницы ещё не построена");
                     case PdfAssemblyPart.Pages pages -> {
-                        PDDocument source = sources.get(pages.file());
-                        if (source == null) {
-                            source = open(pages.file(), pages.name());
-                            sources.put(pages.file(), source);
-                        }
+                        PDDocument source = source(sources, pages.file(), pages.name());
                         requireRange(source, pages);
                         for (int number = pages.from(); number <= pages.to(); number++) {
                             result.addPage(transplanted(source.getPage(number - 1), pruning));
@@ -147,6 +158,24 @@ public class PdfAssembly {
         }
     }
 
+    /** Источник открывается один раз на сборку, сколько бы кусков из него ни бралось. */
+    private static PDDocument source(Map<Path, PDDocument> sources, Path file, String name) {
+        PDDocument source = sources.get(file);
+        if (source == null) {
+            source = open(file, name);
+            sources.put(file, source);
+        }
+        return source;
+    }
+
+    private static void requirePage(PDDocument source, PdfAssemblyPart.Piece piece) {
+        int count = source.getNumberOfPages();
+        if (piece.page() > count) {
+            throw new IllegalArgumentException("Источник «" + piece.name() + "»: указана страница "
+                    + piece.page() + ", а в нём " + count + " стр.");
+        }
+    }
+
     private static void requireRange(PDDocument source, PdfAssemblyPart.Pages pages) {
         int count = source.getNumberOfPages();
         if (pages.to() > count) {
@@ -185,6 +214,144 @@ public class PdfAssembly {
             page.setItem(COSName.RESOURCES, pruning.pruned(resources.getCOSObject(), used));
         }
         return transplanted;
+    }
+
+    /**
+     * Кусок векторной страницы — та же перенесённая страница, у которой
+     * видимая область сужена до рамки (ADR-0045).
+     *
+     * <p>Ставятся оба ящика: по {@code MediaBox} печатают, по {@code CropBox}
+     * показывают, и при расхождении печать вытащила бы скрытое на лист.
+     * Содержимое за рамкой остаётся в потоке — принятый риск ADR-0045;
+     * ресурсы вычищаются по потоку, как у целой страницы, и ресурсов других
+     * страниц сборника кусок не несёт.
+     */
+    private static PDPage vectorPiece(PDPage source, CropFrame frame, Pruning pruning) throws IOException {
+        PDPage piece = transplanted(source, pruning);
+        PDRectangle box = frame.on(source.getCropBox(), source.getRotation());
+        piece.setMediaBox(box);
+        piece.setCropBox(box);
+        return piece;
+    }
+
+    /**
+     * Скан — страница, которая только рисует одну картинку: ровно один вывод
+     * картинки ({@code Do} по имени картинки в ресурсах страницы или
+     * встроенная {@code BI}), ни одной формы и ни одного вывода текста.
+     *
+     * <p>Разбирается устройство потока — какие операторы в нём есть, —
+     * а не смысл нарисованного (ADR-0045, «Причины»). Скан с невидимым
+     * распознанным текстом сканом не считается и режется векторно: видно
+     * то же самое.
+     */
+    static boolean isScan(PDPage page) throws IOException {
+        PDResources resources = page.getResources();
+        int images = 0;
+        COSName operand = null;
+        for (Object token : tokens(new PDFStreamParser(page))) {
+            if (token instanceof COSName name) {
+                operand = name;
+                continue;
+            }
+            if (token instanceof Operator operator) {
+                switch (operator.getName()) {
+                    case "Tj", "TJ", "'", "\"" -> {
+                        return false;
+                    }
+                    case "BI" -> images++;
+                    case "Do" -> {
+                        if (operand == null || resources == null || !resources.isImageXObject(operand)) {
+                            return false;
+                        }
+                        images++;
+                    }
+                    default -> {
+                        // Прочие операторы — размещение, цвет, контуры — скана не отменяют.
+                    }
+                }
+                operand = null;
+            } else {
+                operand = null;
+            }
+        }
+        return images == 1;
+    }
+
+    /**
+     * Кусок скана — растром: страница отрисовывается в {@value #SCAN_DPI} dpi,
+     * из отрисовки вырезается рамка (design.md, «Растровый кусок скана»).
+     *
+     * <p>Отрисовщик сам учитывает поворот и видимую область, поэтому доли
+     * рамки прямо переводятся в пиксели. Размер страницы — пиксели × 72 /
+     * {@value #SCAN_DPI}: физический размер куска совпадает с оригиналом.
+     */
+    private static PDPage scanPiece(PDDocument result, PDDocument source, PdfAssemblyPart.Piece piece)
+            throws IOException {
+        BufferedImage rendered = new PDFRenderer(source)
+                .renderImageWithDPI(piece.page() - 1, SCAN_DPI, ImageType.RGB);
+        BufferedImage cut = cut(rendered, piece.frame());
+        PDImageXObject image = JPEGFactory.createFromImage(result, cut, JPEG_QUALITY);
+        return framedImagePage(result, image, cut.getWidth() * 72f / SCAN_DPI, cut.getHeight() * 72f / SCAN_DPI);
+    }
+
+    /**
+     * Кусок картинки — её собственные пиксели, развёрнутые по сведениям
+     * о съёмке так, как их видел Администратор, когда обводил рамку.
+     * JPEG кладётся заново JPEG, PNG — без потерь; 1 пиксель = 1 пункт,
+     * как у целой картинки.
+     */
+    private static PDPage imagePiece(PDDocument result, PdfAssemblyPart.Image part) throws IOException {
+        byte[] content = Files.readAllBytes(part.file());
+        boolean jpeg = isJpeg(content);
+        if (!jpeg && !isPng(content)) {
+            throw new IllegalArgumentException("Источник «" + part.name() + "» — не картинка JPEG или PNG");
+        }
+        BufferedImage upright;
+        try {
+            upright = Thumbnails.of(new ByteArrayInputStream(content))
+                    .scale(1)
+                    .useExifOrientation(true)
+                    .asBufferedImage();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается");
+        }
+        BufferedImage cut = cut(upright, part.frame());
+        PDImageXObject image = jpeg
+                ? JPEGFactory.createFromImage(result, cut, JPEG_QUALITY)
+                : LosslessFactory.createFromImage(result, cut);
+        return framedImagePage(result, image, cut.getWidth() * POINTS_PER_PIXEL, cut.getHeight() * POINTS_PER_PIXEL);
+    }
+
+    /**
+     * Прямоугольник рамки в пикселях картинки — копией, а не видом на общий
+     * растр: кодировщику нужна картинка ровно куска.
+     */
+    static BufferedImage cut(BufferedImage image, CropFrame frame) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int x = Math.min((int) Math.round(frame.left() * width), width - 1);
+        int y = Math.min((int) Math.round(frame.top() * height), height - 1);
+        int w = Math.max(1, Math.min((int) Math.round(frame.width() * width), width - x));
+        int h = Math.max(1, Math.min((int) Math.round(frame.height() * height), height - y));
+        BufferedImage cut = new BufferedImage(w, h, image.getColorModel().hasAlpha()
+                ? BufferedImage.TYPE_INT_ARGB
+                : BufferedImage.TYPE_INT_RGB);
+        Graphics2D drawing = cut.createGraphics();
+        try {
+            drawing.drawImage(image, -x, -y, null);
+        } finally {
+            drawing.dispose();
+        }
+        return cut;
+    }
+
+    private static PDPage framedImagePage(PDDocument result, PDImageXObject image, float width, float height)
+            throws IOException {
+        PDPage page = new PDPage(new PDRectangle(width, height));
+        try (PDPageContentStream drawing = new PDPageContentStream(result, page)) {
+            drawing.drawImage(image, 0, 0, width, height);
+        }
+        return page;
     }
 
     /**
