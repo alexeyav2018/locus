@@ -509,6 +509,19 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .assembly-row .range { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0; }
 .assembly-row input[type=number] { width: 5rem; }
 .assembly-refusal { color: var(--bad); margin: 0.25rem 0 0.75rem; }
+/* Рамка у строки сборки (ADR-0045): кнопки — только при работающем скрипте,
+   сцена — страница черновика во всю ширину строки, рамка тянется и пальцем. */
+.assembly-row .crop-control { display: none; }
+.js .assembly-row .crop-control { display: inline-flex; }
+.crop-note { flex-basis: 100%; margin: 0; }
+.crop-stage { flex-basis: 100%; }
+.crop-stage[hidden], .crop-frame[hidden], .crop-whole[hidden] { display: none; }
+.crop-canvas { position: relative; display: inline-block; max-width: 100%; touch-action: none;
+    cursor: crosshair; user-select: none; -webkit-user-select: none; outline: 1px solid var(--border-strong); }
+.crop-canvas img { display: block; max-width: 100%; max-height: 80vh; pointer-events: none; }
+.crop-frame { position: absolute; box-sizing: border-box; border: 2px solid var(--shared);
+    background: color-mix(in srgb, var(--shared) 12%, transparent); pointer-events: none; }
+.crop-whole { margin: 0.25rem 0 0; }
 
 /* Просмотр файла и страница ошибки */
 .viewer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin: 0 0 1rem; text-align: center; }

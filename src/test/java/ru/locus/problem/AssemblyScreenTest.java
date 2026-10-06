@@ -160,6 +160,35 @@ class AssemblyScreenTest extends IntegrationTest {
                 .contains("name=\"conditionTo\" value=\"4\"");
     }
 
+    /** Строка несёт пустое поле рамки и адрес страниц черновика для скрипта (ADR-0045). */
+    @Test
+    void rowCarriesAnEmptyFrameAndThePreviewAddress() throws IOException {
+        Browser.Page row = upload(administrator(), "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(3));
+        String draft = draftOf(row);
+
+        assertThat(row.body()).contains("name=\"conditionCrop\" value=\"\"")
+                .contains("data-preview-url=\"/problems/drafts/" + draft + "/pages/\"")
+                .contains("data-assembly=\"crop\"");
+    }
+
+    /** Отказ формы возвращает рамку в поле: скрипт нарисует её заново. */
+    @Test
+    void refusedFormKeepsTheFrame() throws IOException {
+        Browser admin = administrator();
+        List<Map.Entry<String, String>> fields = new ArrayList<>(List.of(
+                Map.entry("part", "FIRST"), Map.entry("topics", String.valueOf(library.topic().value()))));
+        String draft = draftOf(upload(admin, "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(5)));
+        fields.add(Map.entry("conditionDraft", draft));
+        fields.add(Map.entry("conditionFrom", "2"));
+        fields.add(Map.entry("conditionTo", "2"));
+        fields.add(Map.entry("conditionCrop", "0.1;0.2;0.5;0.3"));
+
+        Browser.Page refused = admin.postMultipart("/problems", fields, List.of(solution()));
+
+        assertThat(refused.body()).contains("хотя бы один Метод")
+                .contains("name=\"conditionCrop\" value=\"0.1000;0.2000;0.5000;0.3000\"");
+    }
+
     private Browser.Page upload(Browser browser, String slot, String name, byte[] content) {
         return browser.postMultipart("/problems/drafts", Map.of("slot", slot),
                 List.of(new Browser.FilePart("source", name, "application/octet-stream", content)));
