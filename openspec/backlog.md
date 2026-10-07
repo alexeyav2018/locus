@@ -120,7 +120,7 @@
 | `problem-pdf-assembly` | Т | `problem-catalog`, `file-storage` | — | M | нет | общее | ✅ |
 | `problem-pdf-crop` | Т | `problem-pdf-assembly` | — | L | нет | общее | ✅ |
 | `heic-images` | Т | `file-storage` | — | S | нет | не затрагивает | ждёт условия |
-| `strategy-edition-2` | Д | — | — | M | нет | не затрагивает | |
+| `strategy-edition-2` | Д | — | — | M | нет | не затрагивает | ✅ |
 | `versioning` | — | — | — | S | нет | не затрагивает | ✅ |
 | `deployment-decisions-cleanup` | Д | `versioning` | — | S | нет | не затрагивает | |
 
@@ -1004,6 +1004,9 @@ JavaScript внутри серверных страниц»;
 ---
 
 ### `strategy-edition-2` · Д · M · не ломает
+
+> ✅ Выполнено 07.10.2026. Change:
+> [2026-10-07-strategy-edition-2](changes/archive/2026-10-07-strategy-edition-2/).
 
 **Зачем.** Горизонт редакции 1 стратегии достигнут: закрыт `mastery-views`,
 сквозной проход замкнут. По правилу самой стратегии редакция исчерпана
