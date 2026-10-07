@@ -12,9 +12,9 @@
 
 ## 2. Бэклог и маршрутизация
 
-- [ ] 2.1 `openspec/backlog.md`: снять статус «отложено» у строки `schedule`, в карточке `schedule` — пометка о возврате по ADR-0046 и о сверке П6 до начала; проверить, что `schedule` — единственная строка, ставшая доступной
-- [ ] 2.2 `CLAUDE.md`: таблица сценариев (расписание — горизонт редакции 2, ADR-0046), фраза про `problem-pdf-assembly` «за пределами редакции 1» — дополнить, что работа вписана вехой 1 редакции 2; сводка ключевых решений — строка ADR-0046; проверить `grep -n "редакци" CLAUDE.md`
-- [ ] 2.3 `python3 openspec/context/adr/build_index.py --check` и `npx -y @fission-ai/openspec@latest validate strategy-edition-2` зелёные
+- [x] 2.1 `openspec/backlog.md`: снять статус «отложено» у строки `schedule`, в карточке `schedule` — пометка о возврате по ADR-0046 и о сверке П6 до начала; проверить, что `schedule` — единственная строка, ставшая доступной
+- [x] 2.2 `CLAUDE.md`: таблица сценариев (расписание — горизонт редакции 2, ADR-0046), фраза про `problem-pdf-assembly` «за пределами редакции 1» — дополнить, что работа вписана вехой 1 редакции 2; сводка ключевых решений — строка ADR-0046; проверить `grep -n "редакци" CLAUDE.md`
+- [x] 2.3 `python3 openspec/context/adr/build_index.py --check` и `npx -y @fission-ai/openspec@latest validate strategy-edition-2` зелёные
 
 ## Workflow follow-up
 
