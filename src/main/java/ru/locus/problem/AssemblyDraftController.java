@@ -67,6 +67,7 @@ public class AssemblyDraftController {
             model.addAttribute("row", AssemblyRow.whole(draft));
             return "problem/assembly :: row(slot=${slot}, row=${row})";
         } catch (IllegalArgumentException refusal) {
+            AssemblyRefusals.report(refusal);
             response.setStatus(HttpStatus.UNPROCESSABLE_ENTITY.value());
             model.addAttribute("message", refusal.getMessage());
             return "problem/assembly :: refusal(message=${message})";

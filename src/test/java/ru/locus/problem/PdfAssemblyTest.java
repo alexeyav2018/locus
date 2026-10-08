@@ -113,7 +113,8 @@ class PdfAssemblyTest {
 
         assertThatThrownBy(() -> assembly.pageCount(text, "заметки.txt"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("заметки.txt");
+                .hasMessageContaining("заметки.txt")
+                .cause().isInstanceOf(IOException.class);
     }
 
     @Test
@@ -323,7 +324,10 @@ class PdfAssemblyTest {
         }
     }
 
-    /** Испорченный JPEG не вкладывается: отказ не держится на чтении сведений о съёмке. */
+    /**
+     * Испорченный JPEG не вкладывается: отказ не держится на чтении сведений
+     * о съёмке и несёт исходную причину — для журнала, не для экрана.
+     */
     @Test
     void brokenJpegIsRefused() throws IOException {
         byte[] broken = jpeg(noise(400, 300, 13));
@@ -335,7 +339,8 @@ class PdfAssemblyTest {
 
         assertThatThrownBy(() -> assembly.assemble(List.of(new PdfAssemblyPart.Image(photo, "битый.jpg"))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("битый.jpg");
+                .hasMessageContaining("битый.jpg")
+                .cause().isInstanceOf(IOException.class);
     }
 
 

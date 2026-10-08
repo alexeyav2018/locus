@@ -2,7 +2,12 @@ package ru.locus.problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +16,9 @@ import java.util.regex.Pattern;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import ru.locus.Browser;
@@ -48,9 +55,19 @@ class AssemblyScreenTest extends IntegrationTest {
     @Autowired
     private TestLibrary library;
 
+    private final ListAppender<ILoggingEvent> journal = new ListAppender<>();
+
+    @BeforeEach
+    void listenToTheJournal() {
+        journal.start();
+        ((Logger) LoggerFactory.getLogger(AssemblyRefusals.class)).addAppender(journal);
+    }
+
     @AfterEach
     void logOut() {
         LoggedIn.nobody();
+        ((Logger) LoggerFactory.getLogger(AssemblyRefusals.class)).detachAppender(journal);
+        journal.stop();
     }
 
     /** Сценарий «Загрузка сборника»: строка называет исходник и число страниц. */
@@ -79,6 +96,53 @@ class AssemblyScreenTest extends IntegrationTest {
 
         assertThat(refused.status()).isEqualTo(422);
         assertThat(refused.body()).contains("JPEG и PNG и файлы PDF");
+    }
+
+    /**
+     * Неразбираемый PDF: на экране прежний отказ, а в журнале — строка WARN
+     * с именем файла и исходной причиной, чтобы разобрать обращение без файла.
+     */
+    @Test
+    void unreadablePdfLeavesItsCauseInTheJournal() {
+        byte[] broken = "%PDF-1.7 обрыв".getBytes(StandardCharsets.UTF_8);
+
+        Browser.Page refused = upload(administrator(), "condition", "битый.pdf", broken);
+
+        assertThat(refused.status()).isEqualTo(422);
+        assertThat(refused.body()).contains("Файл «битый.pdf» не разбирается как PDF");
+        assertThat(journal.list).singleElement().satisfies(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("битый.pdf");
+            assertThat(event.getThrowableProxy()).as("исходная причина").isNotNull();
+        });
+    }
+
+    /** Неразбираемая картинка вскрывается при сборке формой — причина и тогда в журнале. */
+    @Test
+    void unreadableJpegLeavesItsCauseInTheJournalWhenAssembled() throws IOException {
+        Browser admin = administrator();
+        List<Map.Entry<String, String>> fields = markup(library.topic(), library.method());
+        byte[] broken = {(byte) 0xFF, (byte) 0xD8, 'o', 'b', 'r', 'y', 'v'};
+        fields.addAll(rowFields(upload(admin, "condition", "битый.jpg", broken)));
+
+        Browser.Page refused = admin.postMultipart("/problems", fields, List.of(solution()));
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("Картинка «битый.jpg» не разбирается");
+        assertThat(journal.list).singleElement().satisfies(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.WARN);
+            assertThat(event.getFormattedMessage()).contains("битый.jpg");
+            assertThat(event.getThrowableProxy()).as("исходная причина").isNotNull();
+        });
+    }
+
+    /** Неподходящий файл — ответ на ввод, а не сбой: в журнал он не пишется. */
+    @Test
+    void unsuitableSourceDoesNotReachTheJournal() {
+        Browser.Page refused = upload(administrator(), "solution", "заметки.txt", "текст".getBytes());
+
+        assertThat(refused.status()).isEqualTo(422);
+        assertThat(journal.list).isEmpty();
     }
 
     /** Показ страницы своего черновика — картинкой, по ней ставится рамка (ADR-0045). */
@@ -158,6 +222,7 @@ class AssemblyScreenTest extends IntegrationTest {
                 .contains("name=\"conditionDraft\" value=\"" + draft + "\"")
                 .contains("name=\"conditionFrom\" value=\"2\"")
                 .contains("name=\"conditionTo\" value=\"4\"");
+        assertThat(journal.list).as("ошибка заполнения — не сбой").isEmpty();
     }
 
     /** Строка несёт пустое поле рамки и адрес страниц черновика для скрипта (ADR-0045). */
