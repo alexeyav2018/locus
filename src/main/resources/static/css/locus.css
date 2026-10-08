@@ -402,6 +402,11 @@ td input[type=password] { min-width: 10rem; }
 
 /* ---------- 5. Экраны ---------- */
 
+/* Расписание: дни столбцом, сегодняшний — с полосой личного и тенью. */
+.day h2 { font-size: 1.05rem; }
+.day--today { box-shadow: 0 0 0 2px var(--personal); }
+.meeting-time { font-variant-numeric: tabular-nums; font-weight: 650; min-width: 6.5rem; }
+
 /* Главная */
 .hero { margin-bottom: 1.25rem; }
 .tiles { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); margin-bottom: 1.25rem; }

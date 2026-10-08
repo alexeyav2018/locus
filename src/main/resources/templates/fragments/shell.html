@@ -53,6 +53,8 @@
                        th:attr="aria-current=${shell.section == 'groups'} ? 'page'">Группы</a>
                     <a class="navlink" th:href="@{/assignments}" th:classappend="${shell.section == 'assignments'} ? 'is-active'"
                        th:attr="aria-current=${shell.section == 'assignments'} ? 'page'">Задания</a>
+                    <a class="navlink" th:href="@{/schedule}" th:classappend="${shell.section == 'schedule'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'schedule'} ? 'page'">Расписание</a>
                 </div>
                 <div class="navgroup navgroup--admin" th:if="${shell.administrator}">
                     <span class="navgroup-label">Админ</span>

@@ -222,6 +222,9 @@ public class ShellAdvice {
         if (path.startsWith(Addresses.ASSIGNMENTS)) {
             return "assignments";
         }
+        if (path.startsWith(Addresses.SCHEDULE)) {
+            return "schedule";
+        }
         if (path.startsWith(Addresses.USERS)) {
             return "users";
         }

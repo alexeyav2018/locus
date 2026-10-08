@@ -13,6 +13,26 @@
             <span th:if="${teacher}">Здесь — то, что требует внимания, и быстрые переходы.</span></p>
     </div>
 
+    <!--/* Встречи сегодняшнего дня (ADR-0047) — вычислены сервисом от часов
+           приложения и уже отобраны по владельцу. */-->
+    <section class="card card--personal stack" th:if="${teacher}" style="margin-bottom:1.25rem" aria-labelledby="today">
+        <div class="card-title">
+            <h2 id="today">Сегодня</h2>
+            <span class="scope scope--personal">Мой кабинет</span>
+        </div>
+        <p class="empty" th:if="${#lists.isEmpty(todaysMeetings)}">Сегодня Встреч нет.</p>
+        <ul class="items" th:unless="${#lists.isEmpty(todaysMeetings)}">
+            <li class="item meeting" th:each="meeting : ${todaysMeetings}">
+                <span class="meeting-time"
+                      th:text="${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">17:00–18:00</span>
+                <a class="grow" th:href="@{/schedule/lessons/{id}(id=${meeting.lesson.value},from=${shell.here})}"
+                   th:text="${meeting.addresseeName}">Иванов Пётр</a>
+                <span class="badge" th:if="${meeting.withdrawn}">выбыл</span>
+            </li>
+        </ul>
+        <a th:href="@{/schedule}">Расписание недели →</a>
+    </section>
+
     <!--/* Для Учителя главная начинается с дела, а не с перечня разделов:
            что просрочено и кому. Данные личные — сервисы уже отфильтровали
            их по владельцу (ADR-0027); у Администратора без роли Учителя
@@ -72,6 +92,9 @@
             <a class="tile tile--personal" th:href="@{/assignments}">
                 <span class="tile-title">Задания</span>
                 <span class="tile-text">Что выдано, сроки, «не сдано»</span></a>
+            <a class="tile tile--personal" th:href="@{/schedule}">
+                <span class="tile-title">Расписание</span>
+                <span class="tile-text">Занятия недели с Учениками и Группами</span></a>
         </div>
     </th:block>
 
