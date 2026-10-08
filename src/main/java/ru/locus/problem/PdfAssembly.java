@@ -573,14 +573,22 @@ public class PdfAssembly {
      * <p>Ориентация по сведениям о съёмке соблюдается матрицей размещения:
      * перекодировать JPEG ради поворота значило бы потерять в качестве.
      * У PNG сведений о съёмке обычно нет, и они не читаются.
+     *
+     * <p>Разбираемость JPEG решает заголовок кадра, который читает
+     * {@link JPEGFactory}, а не сведения о съёмке: их отсутствие или
+     * нечитаемость — ещё не повод отклонять картинку.
      */
     private static PDPage imagePage(PDDocument result, PdfAssemblyPart.Image part) throws IOException {
         byte[] content = Files.readAllBytes(part.file());
         PDImageXObject image;
         Orientation orientation = Orientation.TOP_LEFT;
         if (isJpeg(content)) {
-            image = JPEGFactory.createFromByteArray(result, content);
-            orientation = orientationOf(content, part.name());
+            try {
+                image = JPEGFactory.createFromByteArray(result, content);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается");
+            }
+            orientation = orientationOf(content);
         } else if (isPng(content)) {
             var decoded = ImageIO.read(new ByteArrayInputStream(content));
             if (decoded == null) {
@@ -623,7 +631,17 @@ public class PdfAssembly {
         };
     }
 
-    private static Orientation orientationOf(byte[] jpeg, String name) {
+    /**
+     * Ориентация по сведениям о съёмке; нечитаемые сведения — «как хранится».
+     *
+     * <p>Встроенный чтец JPEG в Java не строит метаданные по JFIF с каналами,
+     * пронумерованными от нуля (так пишет камера Android-планшета), и отвечает
+     * «Inconsistent metadata read from stream». Сведений о съёмке в таком
+     * файле нет, а показ страницы и обрезка рамкой (через Thumbnailator)
+     * считают его неповёрнутым — сборка ведёт себя так же, и результат
+     * совпадает с тем, что Администратор видел.
+     */
+    private static Orientation orientationOf(byte[] jpeg) {
         Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("jpeg");
         if (!readers.hasNext()) {
             return Orientation.TOP_LEFT;
@@ -634,7 +652,7 @@ public class PdfAssembly {
             Orientation orientation = ExifUtils.getExifOrientation(reader, 0);
             return orientation == null ? Orientation.TOP_LEFT : orientation;
         } catch (IOException e) {
-            throw new IllegalArgumentException("Картинка «" + name + "» не разбирается");
+            return Orientation.TOP_LEFT;
         } finally {
             reader.dispose();
         }

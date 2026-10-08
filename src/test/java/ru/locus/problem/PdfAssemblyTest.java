@@ -300,6 +300,45 @@ class PdfAssemblyTest {
         }
     }
 
+    /**
+     * Снимок с Android-планшета: JFIF с каналами, пронумерованными от нуля.
+     * Встроенный чтец Java не строит по нему метаданные, сведений о съёмке
+     * в нём нет — картинка ложится как хранится и вкладывается байт в байт.
+     */
+    @Test
+    void jpegWithChannelsNumberedFromZeroIsTakenWhole() throws IOException {
+        Path photo = directory.resolve("планшет.jpeg");
+        Files.write(photo, channelsNumberedFromZero(jpeg(noise(400, 300, 11))));
+
+        byte[] result = assembly.assemble(List.of(new PdfAssemblyPart.Image(photo, "планшет.jpeg")));
+
+        try (PDDocument document = Loader.loadPDF(result)) {
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            assertThat(size(document.getPage(0))).containsExactly(400f, 300f);
+            List<COSStream> embedded = images(document);
+            assertThat(embedded).hasSize(1);
+            try (InputStream raw = embedded.get(0).createRawInputStream()) {
+                assertThat(raw.readAllBytes()).isEqualTo(Files.readAllBytes(photo));
+            }
+        }
+    }
+
+    /** Испорченный JPEG не вкладывается: отказ не держится на чтении сведений о съёмке. */
+    @Test
+    void brokenJpegIsRefused() throws IOException {
+        byte[] broken = jpeg(noise(400, 300, 13));
+        Random random = new Random(17);
+        for (int at = 4; at < broken.length; at++) {
+            broken[at] = (byte) random.nextInt(256);
+        }
+        Path photo = Files.write(directory.resolve("битый.jpg"), broken);
+
+        assertThatThrownBy(() -> assembly.assemble(List.of(new PdfAssemblyPart.Image(photo, "битый.jpg"))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("битый.jpg");
+    }
+
+
     @Test
     void neitherJpegNorPngIsRefused() throws IOException {
         Path gif = directory.resolve("анимация.gif");
@@ -730,6 +769,39 @@ class PdfAssemblyTest {
         try (PDPageContentStream content = new PDPageContentStream(document, page)) {
             content.drawImage(image, 72, 72);
         }
+    }
+
+    private static byte[] jpeg(BufferedImage image) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", out);
+        return out.toByteArray();
+    }
+
+    /**
+     * Перенумеровывает каналы JPEG с 1, 2, 3 на 0, 1, 2 — в заголовке кадра
+     * (SOF) и в заголовках проходов (SOS), — как пишет камера Android-планшета.
+     */
+    private static byte[] channelsNumberedFromZero(byte[] jpeg) {
+        byte[] result = jpeg.clone();
+        int at = 2;
+        while (at + 4 <= result.length && (result[at] & 0xFF) == 0xFF) {
+            int marker = result[at + 1] & 0xFF;
+            int length = ((result[at + 2] & 0xFF) << 8) | (result[at + 3] & 0xFF);
+            if (marker == 0xC0 || marker == 0xC2) {
+                int channels = result[at + 9] & 0xFF;
+                for (int i = 0; i < channels; i++) {
+                    result[at + 10 + 3 * i]--;
+                }
+            } else if (marker == 0xDA) {
+                int channels = result[at + 4] & 0xFF;
+                for (int i = 0; i < channels; i++) {
+                    result[at + 5 + 2 * i]--;
+                }
+                return result;
+            }
+            at += 2 + length;
+        }
+        throw new IllegalStateException("В JPEG не найден заголовок прохода");
     }
 
     private static BufferedImage noise(int width, int height, long seed) {
