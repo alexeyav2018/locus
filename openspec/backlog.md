@@ -123,7 +123,7 @@
 | `problem-form-keeps-input` | Л | `problem-catalog` | — | S | нет | общее | ✅ |
 | `assembly-jpeg-metadata` | Б | `problem-pdf-assembly` | — | S | нет | общее | ✅ |
 | `assembly-refusal-cause` | Т | `problem-pdf-assembly` | — | S | нет | не затрагивает | ✅ |
-| `problem-single-file-field` | Т | `problem-pdf-crop` | — | M | нет | общее | |
+| `problem-single-file-field` | Т | `problem-pdf-crop` | — | M | нет | общее | ✅ |
 | `problem-caption-removal` | — | `problem-catalog` | — | S | **да** | общее | |
 | `heic-images` | Т | `file-storage` | — | S | нет | не затрагивает | ждёт условия |
 | `strategy-edition-2` | Д | — | — | M | нет | не затрагивает | ✅ |
