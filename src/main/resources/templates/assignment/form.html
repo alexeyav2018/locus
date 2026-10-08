@@ -14,7 +14,7 @@
         без Задач, оба адресата, пустая Группа — возвращает эту же форму
         с сообщением и введённым.
 
-        Задачи показаны так, как в поиске: номер, подпись, разметка именами
+        Задачи показаны так, как в поиске: номер, разметка именами
         (FoundProblem) — Учитель видит, что именно выдаёт. Задание хранит
         ссылки, а не копии: выданная Задача заморожена (ADR-0030), и здесь
         она такова, какова в библиотеке.
@@ -44,10 +44,8 @@
         <ul class="items problems" th:unless="${#lists.isEmpty(problems)}">
             <li class="item" th:each="problem : ${problems}">
                 <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
-                <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
+                <a class="grow" th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
-                <span class="grow muted" th:if="${problem.problem.hasCaption}"
-                      th:text="${problem.problem.caption}">Ященко, вариант 12</span>
                 <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
                 <p class="marks"
                    th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>

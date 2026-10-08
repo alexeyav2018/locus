@@ -178,14 +178,11 @@ class ProblemSearchScreenTest extends IntegrationTest {
     }
 
     /**
-     * Сценарий «Строка результата»: номер, подпись, Часть и вся разметка —
+     * Сценарий «Строка результата»: номер, Часть и вся разметка —
      * именами, а Темы полными путями.
-     *
-     * Подпись даётся через сервис: {@link TestLibrary} заводит Задачи без
-     * подписи, а различать Задачу с подписью и без неё экран обязан.
      */
     @Test
-    void resultRowShowsNumberCaptionPartAndMarkupByName() {
+    void resultRowShowsNumberPartAndMarkupByName() {
         TaxonomyNodeId section = library.topic();
         TaxonomyNodeId topic = library.topic(section);
         SolutionMethodId method = library.method();
@@ -199,7 +196,6 @@ class ProblemSearchScreenTest extends IntegrationTest {
 
         assertThat(page)
                 .contains("№ " + problem.value())
-                .contains("Ященко, вариант 12")
                 .contains("вторая часть")
                 .as("Тема названа полным путём: одинаковые имена под разными родителями законны")
                 .contains("Темы: " + taxonomy.node(section).name() + " / " + taxonomy.node(topic).name())

@@ -125,8 +125,6 @@
                        th:id="'problem-' + ${problem.problem.id.value}">
                 <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
-                <span class="muted" th:if="${problem.problem.hasCaption}"
-                      th:text="${problem.problem.caption}">Ященко, вариант 12</span>
                 <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
                 <!--/* Каждая строка разметки — одним th:text, а не текстом
                        вперемешку с тегами: разорванный тегами текст видно

@@ -10,10 +10,10 @@
 
 ## 2. Шаблоны и экранные тесты
 
-- [ ] 2.1 `problem/form.html`: поля Подписи нет
-- [ ] 2.2 `problem/problem.html`, `problem/search.html`, `taxonomy/tree.html`, `assignment/form.html`, `assignment/assignment.html`, `work/assignment.html`: показ подписи убран, номер на месте
-- [ ] 2.3 Экранные тесты (`ProblemScreenTest`, `ProblemSearchScreenTest`, `RestructureScreenTest`, `ProblemAccessTest` и прочие с подписью): ожидания без подписи; тест «на форме заведения и правки нет поля `caption`»
-- [ ] 2.4 `mvn clean package` зелёный
+- [x] 2.1 `problem/form.html`: поля Подписи нет
+- [x] 2.2 `problem/problem.html`, `problem/search.html`, `taxonomy/tree.html`, `assignment/form.html`, `assignment/assignment.html`, `work/assignment.html`: показ подписи убран, номер на месте
+- [x] 2.3 Экранные тесты (`ProblemScreenTest`, `ProblemSearchScreenTest`, `RestructureScreenTest`, `ProblemAccessTest` и прочие с подписью): ожидания без подписи; тест «на форме заведения и правки нет поля `caption`»
+- [x] 2.4 `mvn clean package` зелёный
 
 ## 3. Документы и версия
 

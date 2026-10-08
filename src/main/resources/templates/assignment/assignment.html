@@ -56,10 +56,8 @@
 <h2>Задачи</h2>
 <ul class="items problems">
     <li class="item" th:each="problem : ${problems}">
-        <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
+        <a class="grow" th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
            th:text="'№ ' + ${problem.number}">№ 12</a>
-        <span class="grow muted" th:if="${problem.problem.hasCaption}"
-              th:text="${problem.problem.caption}">Ященко, вариант 12</span>
         <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
         <p class="marks"
            th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>

@@ -58,8 +58,6 @@
     <h2>
         <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
            th:text="'№ ' + ${problem.number}">№ 12</a>
-        <span th:if="${problem.problem.hasCaption}"
-              th:text="${problem.problem.caption}">Ященко, вариант 12</span>
     </h2>
     <!--/* Темы и Методы одной фразой: на телефоне каждая строка дорога. */-->
     <p class="marks"

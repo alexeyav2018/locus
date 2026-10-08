@@ -63,7 +63,7 @@ class ProblemScreenTest extends IntegrationTest {
 
     /** Сценарий «Список Задач Темы». */
     @Test
-    void chosenTopicShowsItsProblemsWithNumberCaptionAndMarks() {
+    void chosenTopicShowsItsProblemsWithNumberAndMarks() {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
         ProblemId problem = problems.create(ExamPart.SECOND,
@@ -76,7 +76,6 @@ class ProblemScreenTest extends IntegrationTest {
         assertThat(page)
                 .contains("Задачи Темы")
                 .contains("№ " + problem.value())
-                .contains("Ященко, вариант 12")
                 .contains("вторая часть")
                 .as("действие заведения предлагается прямо здесь")
                 .contains("Завести Задачу");
@@ -113,7 +112,7 @@ class ProblemScreenTest extends IntegrationTest {
 
     /** Сценарий «Просмотр Задачи». */
     @Test
-    void problemPageShowsMarkupNumberCaptionAndBothLinks() {
+    void problemPageShowsMarkupNumberAndBothLinks() {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
         String topicName = nodes.findById(topic).orElseThrow().name();
@@ -127,7 +126,6 @@ class ProblemScreenTest extends IntegrationTest {
 
         assertThat(page)
                 .contains("Задача № " + problem.value())
-                .contains("Ященко, вариант 12")
                 .contains("вторая часть")
                 .contains(topicName)
                 .contains(methodName)
@@ -135,16 +133,29 @@ class ProblemScreenTest extends IntegrationTest {
                 .contains("PDF решения");
     }
 
-    /** Сценарий «Задача без подписи»: в списке она различима номером. */
+    /**
+     * Подписи у Задачи нет (ADR-0050): ни на форме заведения, ни на форме
+     * правки нет поля для неё, страница Задачи о ней не говорит, а в списке
+     * Темы Задача различима номером.
+     */
     @Test
-    void problemWithoutACaptionIsStillTellableByItsNumber() {
+    void problemHasNoCaptionAnywhereOnScreen() {
         TaxonomyNodeId topic = library.topic();
         ProblemId problem = library.problem(topic);
 
+        assertThat(administrator().get("/problems/new?topic=" + topic.value()).body())
+                .as("на форме заведения поля подписи нет")
+                .doesNotContain("name=\"caption\"")
+                .doesNotContain("Подпись");
+        assertThat(administrator().get("/problems/" + problem.value() + "/edit").body())
+                .as("на форме правки поля подписи нет")
+                .doesNotContain("name=\"caption\"")
+                .doesNotContain("Подпись");
+        assertThat(administrator().get("/problems/" + problem.value()).body())
+                .contains("Задача № " + problem.value())
+                .doesNotContain("Подпис");
         assertThat(administrator().get("/taxonomy?node=" + topic.value()).body())
                 .contains("№ " + problem.value());
-        assertThat(administrator().get("/problems/" + problem.value()).body())
-                .contains("Подписи нет: Задача различается номером.");
     }
 
     /**
@@ -217,7 +228,7 @@ class ProblemScreenTest extends IntegrationTest {
     }
 
     /**
-     * Отказ заведения не теряет разметку: Подпись, Часть, обе Темы, Метод
+     * Отказ заведения не теряет разметку: Часть, обе Темы, Метод
      * и Характеристика возвращаются отмеченными, блок Характеристик раскрыт.
      * Отказ вызывает недостающий PDF решения.
      */
@@ -228,7 +239,6 @@ class ProblemScreenTest extends IntegrationTest {
         SolutionMethodId method = library.method();
         CharacteristicId characteristic = library.characteristic();
         List<Map.Entry<String, String>> fields = List.of(
-                Map.entry("caption", "Ященко, вариант 7"),
                 Map.entry("part", "SECOND"),
                 Map.entry("topics", String.valueOf(first.value())),
                 Map.entry("topics", String.valueOf(second.value())),
@@ -240,7 +250,7 @@ class ProblemScreenTest extends IntegrationTest {
 
         assertThat(refused.status()).isEqualTo(200);
         assertThat(refused.body()).contains("Не приложен PDF решения");
-        assertKeptMarkup(refused.body(), "Ященко, вариант 7", List.of(first, second), method, characteristic);
+        assertKeptMarkup(refused.body(), List.of(first, second), method, characteristic);
     }
 
     /** Отказ правки показывает присланную разметку, а не перечитанную из базы. */
@@ -252,7 +262,6 @@ class ProblemScreenTest extends IntegrationTest {
         SolutionMethodId method = library.method();
         CharacteristicId characteristic = library.characteristic();
         List<Map.Entry<String, String>> fields = List.of(
-                Map.entry("caption", "Исправленная подпись"),
                 Map.entry("part", "SECOND"),
                 Map.entry("topics", String.valueOf(sent.value())),
                 Map.entry("topics", String.valueOf(library.section().value())),
@@ -263,15 +272,14 @@ class ProblemScreenTest extends IntegrationTest {
 
         assertThat(refused.status()).isEqualTo(200);
         assertThat(refused.body()).contains("role=\"alert\"").contains("Задача № " + problem.value());
-        assertKeptMarkup(refused.body(), "Исправленная подпись", List.of(sent), method, characteristic);
+        assertKeptMarkup(refused.body(), List.of(sent), method, characteristic);
         assertThat(refused.body())
                 .as("сохранённая Тема не отмечена: показано присланное")
                 .doesNotContainPattern("value=\"" + saved.value() + "\"[^>]*selected");
     }
 
-    private static void assertKeptMarkup(String page, String caption, List<TaxonomyNodeId> topics,
+    private static void assertKeptMarkup(String page, List<TaxonomyNodeId> topics,
                                          SolutionMethodId method, CharacteristicId characteristic) {
-        assertThat(page).contains("name=\"caption\" value=\"" + caption + "\"");
         assertThat(page).containsPattern("value=\"SECOND\"[^>]*checked");
         String topicChoices = topicChoicesOf(page);
         for (TaxonomyNodeId topic : topics) {

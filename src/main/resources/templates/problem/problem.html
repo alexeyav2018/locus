@@ -17,8 +17,6 @@
 <div class="page-head">
     <div>
         <h1 th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
-        <p class="lead" th:if="${problem.hasCaption}" th:text="${problem.caption}">Сборник Ященко, вариант 12, № 8</p>
-        <p class="lead" th:unless="${problem.hasCaption}">Подписи нет: Задача различается номером.</p>
     </div>
     <span class="scope scope--shared">Общая библиотека</span>
 </div>
