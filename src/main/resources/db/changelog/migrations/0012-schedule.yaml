@@ -1,0 +1,122 @@
+# Занятие — правило расписания учителя, ЛИЧНЫЙ контур (ADR-0047).
+#
+# Хранится правило, а не Встречи: «разово в дату first_date» или «еженедельно
+# в день недели first_date, до last_date либо бессрочно». Встречи вычисляет
+# Java-функция при показе недели; таблицы встреч нет и быть не должно —
+# бессрочный повтор строками не разворачивается, а разворачивать «на N недель
+# вперёд» некому: фоновых процессов нет (ADR-0014, ADR-0017).
+#
+# Дата и время — местные, без часового пояса: так их видит учитель.
+#
+# Адресат — ровно один из student_id и group_id. Оба ключа составные, на
+# (id, user_id), как у group_student (0006): база сама не даст сослаться на
+# чужого Ученика или чужую Группу. Пустой student_id или group_id ключ
+# не проверяет (MATCH SIMPLE) — это и нужно, у Занятия ровно одна сторона.
+#
+# Каскады разные и намеренно:
+#  - на Группу — ON DELETE CASCADE: Группа удаляется в любой момент
+#    (ADR-0035), и её Занятия уходят с ней, а не идут бессрочно
+#    с адресатом, которого нет (ADR-0047);
+#  - на Ученика — без каскада: Ученик с Занятием не удаляется, отказ
+#    формулирует сервис через StudentUsage, а ключ страхует от обхода.
+databaseChangeLog:
+  - changeSet:
+      id: 0012-lesson
+      author: locus
+      comment: Занятие — разовое или еженедельное, с Учеником или Группой
+      changes:
+        - createTable:
+            tableName: lesson
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_lesson
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+              - column:
+                  name: group_id
+                  type: BIGINT
+              - column:
+                  name: first_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_date
+                  type: DATE
+              - column:
+                  name: weekly
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: TIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: duration_minutes
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: lesson
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_lesson_user
+        - addForeignKeyConstraint:
+            baseTableName: lesson
+            baseColumnNames: student_id, user_id
+            referencedTableName: student
+            referencedColumnNames: id, user_id
+            constraintName: fk_lesson_student
+        - addForeignKeyConstraint:
+            baseTableName: lesson
+            baseColumnNames: group_id, user_id
+            referencedTableName: group_
+            referencedColumnNames: id, user_id
+            constraintName: fk_lesson_group
+            onDelete: CASCADE
+        # Неделя отбирает Занятия владельца по датам — индекс под этот запрос.
+        - createIndex:
+            tableName: lesson
+            indexName: ix_lesson_user_first_date
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: first_date
+
+  - changeSet:
+      id: 0012-lesson-checks
+      author: locus
+      comment: >-
+        Инварианты правила стоят в схеме, а не только в конструкторе
+        записи (standards.md, «Данные»): адресат ровно один; длительность
+        от минуты до двенадцати часов; последняя дата не раньше первой
+        и бывает только у еженедельного. Проверочные ограничения выражаются
+        только сырым SQL — отката у changeset'а нет, и это ожидаемо
+        (ADR-0023); так же сделано у теории (0005).
+      changes:
+        - sql:
+            sql: >-
+              alter table lesson
+              add constraint ck_lesson_one_addressee
+              check (num_nonnulls(student_id, group_id) = 1),
+              add constraint ck_lesson_duration
+              check (duration_minutes between 1 and 720),
+              add constraint ck_lesson_last_date
+              check (last_date is null or last_date >= first_date),
+              add constraint ck_lesson_last_date_weekly
+              check (weekly or last_date is null)

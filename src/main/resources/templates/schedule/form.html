@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Новое Занятие — Locus</title>
+    <!--/*
+        Заведение Занятия (ADR-0047): адресат — один из своих действующих
+        Учеников либо одна из своих Групп, дата первой встречи, время,
+        длительность и вид. Адресат ровно один — два списка, правило
+        проверяет сервис, а не шаблон, так что форма работает без скрипта.
+        Выбывшие Ученики в список не попадают (ADR-0040).
+
+        Последняя дата читается только у еженедельного: у разового сервис
+        её отклонит. Отказ любого рода возвращает эту форму с введённым.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/schedule')}}">← К расписанию</a></p>
+<div class="page-head">
+    <div>
+        <h1>Новое Занятие</h1>
+        <p class="lead">С кем и когда. Еженедельное повторяется в день недели первой встречи.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Адресат Занятия — ровно один</p>
+
+<form method="post" th:action="@{/schedule/lessons}">
+    <input type="hidden" name="from" th:value="${shell.back}">
+    <fieldset>
+        <legend>С кем</legend>
+        <p th:if="${#lists.isEmpty(students) and #lists.isEmpty(groups)}">Учеников и Групп пока нет — заведите их
+            в <a th:href="@{/students}">списке Учеников</a>.</p>
+        <label>Ученик
+            <select name="student">
+                <option value="">— не выбран —</option>
+                <option th:each="one : ${students}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenStudent == one.id.value}">Иванов Пётр</option>
+            </select>
+        </label>
+        <label>или Группа
+            <select name="group">
+                <option value="">— не выбрана —</option>
+                <option th:each="one : ${groups}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenGroup == one.id.value}">9Б</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Когда</legend>
+        <label>Дата первой встречи <input type="date" name="firstDate" th:value="${firstDate}"></label>
+        <label>Начало <input type="time" name="start" th:value="${start}"></label>
+        <label>Длительность, минут
+            <input type="number" name="durationMinutes" min="1" max="720"
+                   th:value="${durationMinutes != null} ? ${durationMinutes} : 60"></label>
+        <label><input type="checkbox" name="weekly" value="true" th:checked="${weekly}"> Каждую неделю</label>
+        <label>Последняя встреча (только у еженедельного, можно не указывать)
+            <input type="date" name="lastDate" th:value="${lastDate}"></label>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Завести</button>
+        <a class="btn" th:href="@{${shell.backOr('/schedule')}}">Отмена</a>
+    </div>
+</form>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

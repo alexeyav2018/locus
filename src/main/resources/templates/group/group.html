@@ -72,6 +72,7 @@
     <details class="more" name="group-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
         <summary>Удаление</summary>
         <div class="more-body">
+            <p class="hint">Занятия этой Группы будут удалены вместе с ней.</p>
             <form method="post" data-confirm="Это действие необратимо."
                   th:action="@{/groups/{id}/deletion(id=${group.id.value})}">
                 <button type="submit" class="btn-danger">Удалить Группу</button>

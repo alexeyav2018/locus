@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Расписание — Locus</title>
+    <!--/*
+        Неделя Встреч Учителя (ADR-0047). Дни идут столбцом, а не сеткой
+        7×24: так экран читается с телефона (ux-concept). Встречи приходят
+        вычисленными и уже отобранными по владельцу — шаблон о правиле
+        Занятия и о владельце не знает.
+
+        Встреча ведёт на своё Занятие с возвратом на эту неделю (ADR-0042);
+        у каждого дня — заведение Занятия с подставленной датой.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<div class="page-head">
+    <div>
+        <h1>Расписание</h1>
+        <p class="lead" th:text="${#temporals.format(week.monday, 'dd.MM.yyyy')} + ' — ' + ${#temporals.format(week.sunday, 'dd.MM.yyyy')}">05.10.2026 — 11.10.2026</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<nav class="row" aria-label="Недели">
+    <a class="btn btn-sm" th:href="@{/schedule(week=${week.previous})}">← Предыдущая</a>
+    <a class="btn btn-sm" th:unless="${week.current}" th:href="@{/schedule}">Текущая</a>
+    <a class="btn btn-sm" th:href="@{/schedule(week=${week.next})}">Следующая →</a>
+</nav>
+
+<div class="stack">
+    <section class="card day" th:each="day : ${week.days}" th:classappend="${day.today} ? 'day--today card--personal'"
+             th:id="'day-' + ${day.date}" th:attr="aria-current=${day.today} ? 'date'">
+        <div class="card-title">
+            <h2 th:text="${day.name} + ', ' + ${#temporals.format(day.date, 'dd.MM')}">Вторник, 06.10</h2>
+            <span class="badge badge--info" th:if="${day.today}">сегодня</span>
+            <a class="btn btn-sm" th:href="@{/schedule/lessons/new(date=${day.date},from=${shell.here})}"
+               th:attr="aria-label='Новое Занятие на ' + ${#temporals.format(day.date, 'dd.MM')}">+ Занятие</a>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(day.meetings)}">Встреч нет</p>
+        <ul class="items" th:unless="${#lists.isEmpty(day.meetings)}">
+            <li class="item meeting" th:each="meeting : ${day.meetings}">
+                <span class="meeting-time"
+                      th:text="${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">17:00–18:00</span>
+                <a class="grow" th:href="@{/schedule/lessons/{id}(id=${meeting.lesson.value},from=${shell.here})}"
+                   th:text="${meeting.addresseeName}">Иванов Пётр</a>
+                <span class="badge" th:if="${meeting.withdrawn}">выбыл</span>
+            </li>
+        </ul>
+    </section>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>
