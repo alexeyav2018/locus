@@ -121,7 +121,7 @@
 | `problem-pdf-assembly` | Т | `problem-catalog`, `file-storage` | — | M | нет | общее | ✅ |
 | `problem-pdf-crop` | Т | `problem-pdf-assembly` | — | L | нет | общее | ✅ |
 | `problem-form-keeps-input` | Л | `problem-catalog` | — | S | нет | общее | ✅ |
-| `assembly-jpeg-metadata` | Б | `problem-pdf-assembly` | — | S | нет | общее | |
+| `assembly-jpeg-metadata` | Б | `problem-pdf-assembly` | — | S | нет | общее | ✅ |
 | `assembly-refusal-cause` | Т | `problem-pdf-assembly` | — | S | нет | не затрагивает | |
 | `problem-single-file-field` | Т | `problem-pdf-crop` | — | M | нет | общее | |
 | `problem-caption-removal` | — | `problem-catalog` | — | S | **да** | общее | |
