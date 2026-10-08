@@ -39,14 +39,16 @@ import ru.locus.user.UserId;
 public class LessonService {
 
     private final LessonRepository lessons;
+    private final MeetingAdjustmentRepository adjustments;
     private final StudentService students;
     private final GroupService groups;
     private final CurrentUser currentUser;
     private final Clock clock;
 
-    public LessonService(LessonRepository lessons, StudentService students, GroupService groups,
-            CurrentUser currentUser, Clock clock) {
+    public LessonService(LessonRepository lessons, MeetingAdjustmentRepository adjustments, StudentService students,
+            GroupService groups, CurrentUser currentUser, Clock clock) {
         this.lessons = lessons;
+        this.adjustments = adjustments;
         this.students = students;
         this.groups = groups;
         this.currentUser = currentUser;
@@ -62,15 +64,20 @@ public class LessonService {
     public Week week(LocalDate date) {
         LocalDate today = currentDate();
         LocalDate monday = Week.mondayOf(date == null ? today : date);
-        return Week.of(monday, today, meetings(owner(), monday, monday.plusDays(6)));
+        Schedule schedule = schedule(owner(), monday, monday.plusDays(6));
+        return Week.of(monday, today, schedule.meetings(), schedule.movedAway());
     }
 
-    /** Встречи вошедшего Учителя сегодня, в порядке времени. */
+    /**
+     * Сегодняшний день вошедшего Учителя: Встречи в порядке времени
+     * и строки о Встречах, перенесённых с сегодняшнего дня.
+     */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional(readOnly = true)
-    public List<Meeting> today() {
+    public Week.Day today() {
         LocalDate today = currentDate();
-        return meetings(owner(), today, today);
+        Schedule schedule = schedule(owner(), today, today);
+        return Week.day(today, today, schedule.meetings(), schedule.movedAway());
     }
 
     /** Занятие вошедшего Учителя с адресатом; чужое или несуществующее — 404. */
@@ -178,8 +185,16 @@ public class LessonService {
         return lessons.findById(owner, id).orElseThrow(() -> new LessonNotFoundException(id));
     }
 
-    private List<Meeting> meetings(UserId owner, LocalDate from, LocalDate to) {
-        return Meetings.between(lessons.findCandidates(owner, from, to), from, to);
+    /** Встречи отрезка с Поправками и строки «перенесена на» (ADR-0048). */
+    private Schedule schedule(UserId owner, LocalDate from, LocalDate to) {
+        List<ListedLesson> candidates = lessons.findCandidates(owner, from, to);
+        List<MeetingAdjustment> adjusted = adjustments.findForLessons(owner,
+                candidates.stream().map(listed -> listed.lesson().id()).toList(), from, to);
+        return new Schedule(Meetings.between(candidates, adjusted, from, to),
+                Meetings.movedAway(candidates, adjusted, from, to));
+    }
+
+    private record Schedule(List<Meeting> meetings, List<MovedAway> movedAway) {
     }
 
     private LocalDate currentDate() {

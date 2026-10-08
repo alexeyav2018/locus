@@ -38,6 +38,9 @@ class LessonWeekTest extends IntegrationTest {
     private LessonRepository lessons;
 
     @Autowired
+    private MeetingAdjustmentRepository adjustments;
+
+    @Autowired
     private StudentRepository students;
 
     @Autowired
@@ -101,7 +104,34 @@ class LessonWeekTest extends IntegrationTest {
 
         assertThat(week.days().get(1).meetings()).extracting(Meeting::date).containsExactly(tuesday);
         assertThat(week.days().get(2).meetings()).as("среда пустая").isEmpty();
-        assertThat(service.today()).extracting(Meeting::start).containsExactly(LocalTime.of(15, 0));
+        assertThat(service.today().meetings()).extracting(Meeting::start).containsExactly(LocalTime.of(15, 0));
+    }
+
+    /**
+     * Встреча, перенесённая из прошлой недели, видна в этой и сегодня, хотя
+     * правило разового Занятия в эту неделю Встречи не даёт; на её плановом
+     * дне в прошлой неделе — строка «перенесена на» (ADR-0048).
+     */
+    @Test
+    void meetingMovedFromThePreviousWeekIsShownInThisOne() {
+        LocalDate lastTuesday = LocalDate.of(2026, 9, 29);
+        LessonId once = lessons.create(teacher.id(), student, LessonTiming.once(lastTuesday, LocalTime.of(17, 0), 60));
+        adjustments.save(teacher.id(), MeetingAdjustment.none(once, lastTuesday)
+                .withMove(new MeetingAdjustment.Move(THURSDAY, LocalTime.of(18, 0), 45)));
+
+        Week week = service.week(null);
+
+        assertThat(week.days().get(3).meetings()).singleElement().satisfies(meeting -> {
+            assertThat(meeting.lesson()).isEqualTo(once);
+            assertThat(meeting.plannedDate()).isEqualTo(lastTuesday);
+            assertThat(meeting.start()).isEqualTo(LocalTime.of(18, 0));
+            assertThat(meeting.moved()).isTrue();
+        });
+        assertThat(service.today().meetings()).extracting(Meeting::lesson).containsExactly(once);
+        assertThat(service.week(lastTuesday).days().get(1)).satisfies(day -> {
+            assertThat(day.meetings()).isEmpty();
+            assertThat(day.movedAway()).extracting(MovedAway::date).containsExactly(THURSDAY);
+        });
     }
 
     /** Сценарий «Администратор без роли Учителя»: расписания у него нет. */

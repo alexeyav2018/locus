@@ -13,22 +13,17 @@
             <span th:if="${teacher}">Здесь — то, что требует внимания, и быстрые переходы.</span></p>
     </div>
 
-    <!--/* Встречи сегодняшнего дня (ADR-0047) — вычислены сервисом от часов
-           приложения и уже отобраны по владельцу. */-->
+    <!--/* Встречи сегодняшнего дня (ADR-0047) с их Поправками (ADR-0048) —
+           вычислены сервисом от часов приложения и уже отобраны по владельцу. */-->
     <section class="card card--personal stack" th:if="${teacher}" style="margin-bottom:1.25rem" aria-labelledby="today">
         <div class="card-title">
             <h2 id="today">Сегодня</h2>
             <span class="scope scope--personal">Мой кабинет</span>
         </div>
-        <p class="empty" th:if="${#lists.isEmpty(todaysMeetings)}">Сегодня Встреч нет.</p>
-        <ul class="items" th:unless="${#lists.isEmpty(todaysMeetings)}">
-            <li class="item meeting" th:each="meeting : ${todaysMeetings}">
-                <span class="meeting-time"
-                      th:text="${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">17:00–18:00</span>
-                <a class="grow" th:href="@{/schedule/lessons/{id}(id=${meeting.lesson.value},from=${shell.here})}"
-                   th:text="${meeting.addresseeName}">Иванов Пётр</a>
-                <span class="badge" th:if="${meeting.withdrawn}">выбыл</span>
-            </li>
+        <p class="empty" th:if="${today.empty}">Сегодня Встреч нет.</p>
+        <ul class="items" th:unless="${today.empty}">
+            <th:block th:each="meeting : ${today.meetings}"><li th:replace="~{fragments/meeting :: item(${meeting})}"></li></th:block>
+            <th:block th:each="away : ${today.movedAway}"><li th:replace="~{fragments/meeting :: away(${away})}"></li></th:block>
         </ul>
         <a th:href="@{/schedule}">Расписание недели →</a>
     </section>

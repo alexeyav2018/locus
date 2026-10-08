@@ -11,8 +11,8 @@ import ru.locus.student.StudentId;
 import ru.locus.user.UserId;
 
 /**
- * Задача 2.1: Встречи выводятся из правила чистой функцией (ADR-0047) —
- * модульно, без базы, на краях отрезка и правила.
+ * Встречи выводятся из правила и Поправок чистой функцией (ADR-0047,
+ * ADR-0048) — модульно, без базы, на краях отрезка и правила.
  */
 class MeetingsTest {
 
@@ -149,6 +149,142 @@ class MeetingsTest {
         assertThat(Meetings.between(List.of(weekly), MONDAY, SUNDAY.plusWeeks(1)))
                 .hasSize(2)
                 .allMatch(Meeting::withdrawn);
+    }
+
+    /** Сценарий «Отмена одной Встречи»: отменённая остаётся на своей дате с пометкой, соседние — как обычно. */
+    @Test
+    void cancelledMeetingStaysOnItsPlannedDate() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        LocalDate cancelled = TUESDAY.plusWeeks(1);
+        MeetingAdjustment cancellation = MeetingAdjustment.none(weekly.lesson().id(), cancelled).withCancelled(true);
+
+        List<Meeting> meetings = Meetings.between(List.of(weekly), List.of(cancellation), MONDAY,
+                SUNDAY.plusWeeks(2));
+
+        assertThat(meetings).extracting(Meeting::date)
+                .containsExactly(TUESDAY, cancelled, TUESDAY.plusWeeks(2));
+        assertThat(meetings).extracting(Meeting::cancelled).containsExactly(false, true, false);
+    }
+
+    /** Перенос внутри недели: Встреча на новом месте, на плановой дате — строка «перенесена на». */
+    @Test
+    void meetingMovedWithinTheWeek() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        LocalDate thursday = TUESDAY.plusDays(2);
+        MeetingAdjustment move = MeetingAdjustment.none(weekly.lesson().id(), TUESDAY)
+                .withMove(new MeetingAdjustment.Move(thursday, LocalTime.of(18, 0), 90));
+
+        assertThat(Meetings.between(List.of(weekly), List.of(move), MONDAY, SUNDAY)).singleElement()
+                .satisfies(meeting -> {
+                    assertThat(meeting.plannedDate()).isEqualTo(TUESDAY);
+                    assertThat(meeting.date()).isEqualTo(thursday);
+                    assertThat(meeting.start()).isEqualTo(LocalTime.of(18, 0));
+                    assertThat(meeting.end()).isEqualTo(LocalTime.of(19, 30));
+                    assertThat(meeting.moved()).isTrue();
+                });
+        assertThat(Meetings.movedAway(List.of(weekly), List.of(move), MONDAY, SUNDAY)).singleElement()
+                .satisfies(movedAway -> {
+                    assertThat(movedAway.plannedDate()).isEqualTo(TUESDAY);
+                    assertThat(movedAway.plannedStart()).isEqualTo(FIVE_PM);
+                    assertThat(movedAway.date()).isEqualTo(thursday);
+                });
+    }
+
+    /**
+     * Сценарий «Перенос во вторую неделю»: 27.10 перенесена на 02.11 — в неделе
+     * 26.10 только строка «перенесена на», в неделе 02.11 — Встреча с пометкой
+     * и обычная Встреча 03.11.
+     */
+    @Test
+    void meetingMovedToTheNextWeek() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        LocalDate planned = LocalDate.of(2026, 10, 27);
+        LocalDate moved = LocalDate.of(2026, 11, 2);
+        MeetingAdjustment move = MeetingAdjustment.none(weekly.lesson().id(), planned)
+                .withMove(new MeetingAdjustment.Move(moved, LocalTime.of(18, 0), 60));
+        LocalDate thisMonday = LocalDate.of(2026, 10, 26);
+        LocalDate nextMonday = moved;
+
+        assertThat(Meetings.between(List.of(weekly), List.of(move), thisMonday, thisMonday.plusDays(6))).isEmpty();
+        assertThat(Meetings.movedAway(List.of(weekly), List.of(move), thisMonday, thisMonday.plusDays(6)))
+                .extracting(MovedAway::date).containsExactly(moved);
+
+        List<Meeting> next = Meetings.between(List.of(weekly), List.of(move), nextMonday, nextMonday.plusDays(6));
+        assertThat(next).extracting(Meeting::date).containsExactly(moved, LocalDate.of(2026, 11, 3));
+        assertThat(next).extracting(Meeting::moved).containsExactly(true, false);
+        assertThat(next.get(0).plannedDate()).isEqualTo(planned);
+        assertThat(Meetings.movedAway(List.of(weekly), List.of(move), nextMonday, nextMonday.plusDays(6)))
+                .isEmpty();
+    }
+
+    /** Перенос в прошлую неделю: Встреча видна там, где она теперь, а не на плановой дате. */
+    @Test
+    void meetingMovedToThePreviousWeek() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        LocalDate planned = TUESDAY.plusWeeks(1);
+        LocalDate moved = SUNDAY;
+        MeetingAdjustment move = MeetingAdjustment.none(weekly.lesson().id(), planned)
+                .withMove(new MeetingAdjustment.Move(moved, FIVE_PM, 60));
+
+        assertThat(Meetings.between(List.of(weekly), List.of(move), MONDAY, SUNDAY))
+                .extracting(Meeting::date).containsExactly(TUESDAY, moved);
+        assertThat(Meetings.between(List.of(weekly), List.of(move), MONDAY.plusWeeks(1), SUNDAY.plusWeeks(1)))
+                .isEmpty();
+        assertThat(Meetings.movedAway(List.of(weekly), List.of(move), MONDAY.plusWeeks(1), SUNDAY.plusWeeks(1)))
+                .extracting(MovedAway::plannedDate).containsExactly(planned);
+    }
+
+    /** Повторный перенос меняет место той же Встречи: она одна, на последнем месте. */
+    @Test
+    void repeatedMoveKeepsOneMeeting() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        MeetingAdjustment first = MeetingAdjustment.none(weekly.lesson().id(), TUESDAY)
+                .withMove(new MeetingAdjustment.Move(TUESDAY.plusDays(1), FIVE_PM, 60));
+        MeetingAdjustment second = first.withMove(new MeetingAdjustment.Move(TUESDAY.plusDays(3), FIVE_PM, 60));
+
+        assertThat(Meetings.between(List.of(weekly), List.of(second), MONDAY, SUNDAY))
+                .extracting(Meeting::date).containsExactly(TUESDAY.plusDays(3));
+    }
+
+    /** Сценарий «Ученик не пришёл»: Встреча на своём месте с пометкой. */
+    @Test
+    void absenceMarksTheMeeting() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        MeetingAdjustment absence = MeetingAdjustment.none(weekly.lesson().id(), TUESDAY).withAbsent(true);
+
+        assertThat(Meetings.between(List.of(weekly), List.of(absence), MONDAY, SUNDAY)).singleElement()
+                .satisfies(meeting -> {
+                    assertThat(meeting.date()).isEqualTo(TUESDAY);
+                    assertThat(meeting.absent()).isTrue();
+                    assertThat(meeting.cancelled()).isFalse();
+                    assertThat(meeting.moved()).isFalse();
+                });
+    }
+
+    /** Поправка на дату, которой правило не даёт (среда у Занятия по вторникам), не показывается. */
+    @Test
+    void adjustmentOnADateTheRuleDoesNotGiveIsIgnored() {
+        ListedLesson weekly = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        LocalDate wednesday = TUESDAY.plusDays(1);
+        MeetingAdjustment stray = MeetingAdjustment.none(weekly.lesson().id(), wednesday)
+                .withMove(new MeetingAdjustment.Move(SUNDAY, FIVE_PM, 60));
+        MeetingAdjustment cancelled = MeetingAdjustment.none(weekly.lesson().id(), wednesday.plusDays(1))
+                .withCancelled(true);
+
+        assertThat(Meetings.between(List.of(weekly), List.of(stray, cancelled), MONDAY, SUNDAY))
+                .extracting(Meeting::date).containsExactly(TUESDAY);
+        assertThat(Meetings.movedAway(List.of(weekly), List.of(stray, cancelled), MONDAY, SUNDAY)).isEmpty();
+    }
+
+    /** Поправка другого Занятия чужую Встречу не трогает. */
+    @Test
+    void adjustmentAppliesOnlyToItsLesson() {
+        ListedLesson first = withStudent(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60), false);
+        ListedLesson second = withGroup(LessonTiming.weekly(TUESDAY, null, FIVE_PM, 60));
+        MeetingAdjustment cancellation = MeetingAdjustment.none(first.lesson().id(), TUESDAY).withCancelled(true);
+
+        assertThat(Meetings.between(List.of(first, second), List.of(cancellation), MONDAY, SUNDAY))
+                .extracting(Meeting::cancelled).containsExactly(true, false);
     }
 
     private ListedLesson withStudent(LessonTiming timing, boolean withdrawn) {
