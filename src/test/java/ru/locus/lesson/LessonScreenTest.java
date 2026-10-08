@@ -121,6 +121,34 @@ class LessonScreenTest extends IntegrationTest {
                 .isEqualTo(LocalTime.of(17, 0));
     }
 
+    /**
+     * Задача 4.2, сценарий «Удаление Занятия с перенесённой Встречей»: формы
+     * предупреждают о Поправках, а удаление убирает и Встречу, перенесённую
+     * в другую неделю.
+     */
+    @Test
+    void deletionTakesAMeetingMovedToAnotherWeek() {
+        TestAccounts.Account teacher = accounts.settled(Role.TEACHER);
+        String name = TestLibrary.unique("Иванов Пётр");
+        StudentId student = students.create(teacher.id(), name);
+        LessonId lesson = lessons.create(teacher.id(), student,
+                LessonTiming.weekly(TUESDAY, LocalDate.of(2026, 10, 13), LocalTime.of(17, 0), 60));
+        Browser browser = loggedIn(teacher);
+
+        String card = browser.get("/schedule/lessons/" + lesson.value()).body();
+        assertThat(card).contains("будут сняты").contains("отметками неявки");
+
+        String thursday = "2026-10-22";
+        assertThat(browser.postForm("/schedule/lessons/" + lesson.value() + "/meetings/2026-10-13/move",
+                Map.of("movedDate", thursday, "start", "10:00", "durationMinutes", "60")).status())
+                .isIn(302, 303);
+        assertThat(browser.get("/schedule?week=" + thursday).body()).contains(name).contains("10:00–11:00");
+
+        browser.postForm("/schedule/lessons/" + lesson.value() + "/deletion", Map.of());
+
+        assertThat(browser.get("/schedule?week=" + thursday).body()).doesNotContain(name);
+    }
+
     /** Сценарий «Правка чужого Занятия»: 404 на карточку, правку и удаление, Занятие прежнее. */
     @Test
     void foreignLessonIsNotFoundAndStaysTheSame() {

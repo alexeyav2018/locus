@@ -131,7 +131,12 @@ public class LessonService {
      *         даты. Не было — Занятие правится на месте целиком.</li>
      * </ol>
      *
-     * Деление и правка — одна транзакция: прежнее не закончится без
+     * При делении Поправки с плановой датой не раньше {@code effectiveFrom}
+     * переходят к новому Занятию. После правки у каждой затронутой части
+     * снимаются Поправки, чьей плановой даты правило больше не даёт
+     * (ADR-0048).
+     *
+     * Деление, правка и Поправки — одна транзакция: прежнее не закончится без
      * продолжения.
      */
     @PreAuthorize("hasRole('TEACHER')")
@@ -141,8 +146,10 @@ public class LessonService {
         Lesson lesson = existing(owner, id).lesson();
         LessonTiming before = lesson.timing();
         if (!before.weekly()) {
-            lessons.update(owner, lesson.id(),
-                    LessonTiming.of(change.date(), null, false, change.start(), change.durationMinutes()));
+            LessonTiming after = LessonTiming.of(change.date(), null, false, change.start(),
+                    change.durationMinutes());
+            lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         if (change.dayOfWeek() == null) {
@@ -150,8 +157,10 @@ public class LessonService {
         }
         if (change.dayOfWeek() == before.dayOfWeek() && before.start().equals(change.start())
                 && Objects.equals(before.durationMinutes(), change.durationMinutes())) {
-            lessons.update(owner, lesson.id(), LessonTiming.weekly(before.firstDate(), change.lastDate(),
-                    before.start(), before.durationMinutes()));
+            LessonTiming after = LessonTiming.weekly(before.firstDate(), change.lastDate(),
+                    before.start(), before.durationMinutes());
+            lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         if (effectiveFrom == null) {
@@ -162,16 +171,37 @@ public class LessonService {
                 change.durationMinutes());
         if (!before.firstDate().isBefore(effectiveFrom)) {
             lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         LocalDate dayBefore = effectiveFrom.minusDays(1);
         LocalDate lastDate = before.lastDate() != null && before.lastDate().isBefore(dayBefore)
                 ? before.lastDate() : dayBefore;
-        lessons.update(owner, lesson.id(),
-                LessonTiming.weekly(before.firstDate(), lastDate, before.start(), before.durationMinutes()));
-        return lesson.student() != null
+        LessonTiming shortened = LessonTiming.weekly(before.firstDate(), lastDate, before.start(),
+                before.durationMinutes());
+        lessons.update(owner, lesson.id(), shortened);
+        LessonId continuation = lesson.student() != null
                 ? lessons.create(owner, lesson.student(), after)
                 : lessons.create(owner, lesson.group(), after);
+        adjustments.rehome(owner, lesson.id(), continuation, effectiveFrom);
+        dropOrphanAdjustments(owner, lesson.id(), shortened);
+        dropOrphanAdjustments(owner, continuation, after);
+        return continuation;
+    }
+
+    /**
+     * Снимает Поправки Занятия, чьих плановых дат правило {@code timing}
+     * не даёт. Правило проверяется {@link LessonTiming#occursOn} — одним
+     * местом, а не повтором в SQL.
+     */
+    private void dropOrphanAdjustments(UserId owner, LessonId lesson, LessonTiming timing) {
+        List<LocalDate> orphans = adjustments.findByLesson(owner, lesson).stream()
+                .map(MeetingAdjustment::plannedDate)
+                .filter(date -> !timing.occursOn(date))
+                .toList();
+        if (!orphans.isEmpty()) {
+            adjustments.deleteDates(owner, lesson, orphans);
+        }
     }
 
     /** Удаляет своё Занятие в любой момент вместе со всеми его Встречами; адресат остаётся. */
