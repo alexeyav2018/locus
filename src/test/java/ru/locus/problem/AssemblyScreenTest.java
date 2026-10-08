@@ -46,6 +46,8 @@ import ru.locus.user.Role;
  */
 class AssemblyScreenTest extends IntegrationTest {
 
+    private static final Pattern FILE_FIELD = Pattern.compile("<input type=\"file\"[^>]*>");
+
     private static final Pattern DRAFT = Pattern.compile("name=\"(condition|solution)Draft\" value=\"(\\d+)\"");
 
     @LocalServerPort
@@ -264,6 +266,29 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(problems.problemsOf(topic)).isEmpty();
     }
 
+    /**
+     * Сценарий «Одно поле на слот» (ADR-0049): и при заведении, и в каждом
+     * блоке замены у слота ровно одно поле файла — с именем слота, чтобы
+     * без скрипта уйти готовым PDF, и с признаком исходника сборки.
+     */
+    @Test
+    void eachSlotHasOneFileField() {
+        Browser admin = administrator();
+        TaxonomyNodeId topic = library.topic();
+        ProblemId problem = library.problem(topic);
+
+        String creation = admin.get("/problems/new?topic=" + topic.value()).body();
+        assertThat(fileFieldsOf(creation)).containsExactly("condition", "solution");
+
+        String edit = admin.get("/problems/" + problem.value() + "/edit").body();
+        for (String slot : List.of("condition", "solution")) {
+            String action = "action=\"/problems/" + problem.value() + "/" + slot + "\"";
+            assertThat(edit).as("блок замены %s", slot).contains(action);
+            String form = edit.substring(edit.indexOf(action), edit.indexOf("</form>", edit.indexOf(action)));
+            assertThat(fileFieldsOf(form)).as("блок замены %s", slot).containsExactly(slot);
+        }
+    }
+
     /** Сценарий «Отказ формы не теряет черновики»: строки нарисованы заново. */
     @Test
     void refusedFormShowsTheSameAssemblyRows() throws IOException {
@@ -358,6 +383,24 @@ class AssemblyScreenTest extends IntegrationTest {
             document.save(out);
             return out.toByteArray();
         }
+    }
+
+    /**
+     * Слоты полей файла на странице по порядку; поле без имени слота или без
+     * признака исходника сборки, либо с расходящимися ими, валит тест.
+     */
+    private static List<String> fileFieldsOf(String html) {
+        List<String> slots = new ArrayList<>();
+        Matcher field = FILE_FIELD.matcher(html);
+        while (field.find()) {
+            Matcher name = Pattern.compile(" name=\"(\\w+)\"").matcher(field.group());
+            Matcher source = Pattern.compile("data-assembly-source=\"(\\w+)\"").matcher(field.group());
+            assertThat(name.find()).as("у поля есть имя: %s", field.group()).isTrue();
+            assertThat(source.find()).as("поле — исходник сборки: %s", field.group()).isTrue();
+            assertThat(name.group(1)).as("имя — слот исходника: %s", field.group()).isEqualTo(source.group(1));
+            slots.add(name.group(1));
+        }
+        return slots;
     }
 
     private static String draftOf(Browser.Page row) {

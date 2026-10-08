@@ -10,11 +10,13 @@
         или из присланного до отказа, — и источник шаблон не выбирает; файлы при правке заменяются отдельными формами, потому что
         заменяют обычно один из двух, а не оба сразу.
 
-        У каждого слота — поле исходника для сборки PDF (ADR-0044). Поле без
-        имени: в отправку формы оно не попадает, отправляются только поля
-        строк сборки. Грузит исходник и двигает строки общий static/js/locus.js
-        (ADR-0041), адрес загрузки он берёт из data-assembly-url; строку
-        рисует сервер фрагментом problem/assembly :: row.
+        У каждого слота одно поле файла (ADR-0049): оно же исходник сборки PDF
+        (ADR-0044). Имя слота у поля есть, но работающий скрипт его снимает —
+        тогда файл уходит только в черновик, а с формой отправляются поля строк
+        сборки; без скрипта поле отправляется само как готовый PDF. Грузит
+        исходник и двигает строки общий static/js/locus.js (ADR-0041), адрес
+        загрузки он берёт из data-assembly-url; строку рисует сервер фрагментом
+        problem/assembly :: row.
 
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
         разработчику и в выдачу попадать не должен.
@@ -103,16 +105,15 @@
         <legend>Файлы</legend>
         <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
-        <label>PDF условия <input type="file" name="condition" accept="application/pdf"></label>
-        <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+        <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
+        <label>PDF условия
+            <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                    accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="condition">
             <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
         </ol>
-        <label>PDF решения <input type="file" name="solution" accept="application/pdf"></label>
-        <label class="assembly-source">или собрать из картинок и страниц PDF
-            <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+        <label>PDF решения
+            <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                    accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="solution">
             <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
@@ -134,10 +135,10 @@
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
-                    <label>Новый PDF условия <input type="file" name="condition" accept="application/pdf"></label>
-                    <label class="assembly-source">или собрать из картинок и страниц PDF
-                        <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                    <label>Новый PDF условия
+                        <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
+                    <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
                     <ol class="assembly" data-slot="condition">
                         <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
                     </ol>
@@ -153,10 +154,10 @@
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
-                    <label>Новый PDF решения <input type="file" name="solution" accept="application/pdf"></label>
-                    <label class="assembly-source">или собрать из картинок и страниц PDF
-                        <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                    <label>Новый PDF решения
+                        <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
+                    <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
                     <ol class="assembly" data-slot="solution">
                         <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
                     </ol>

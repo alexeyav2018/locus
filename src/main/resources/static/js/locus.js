@@ -85,9 +85,8 @@
 
     // 5. Сборка PDF Задачи (ADR-0044): загрузить выбранные исходники и двигать
     //    строки. Правил здесь нет: строку рисует сервер фрагментом
-    //    problem/assembly :: row, отказ — фрагментом с кодом 422. Поле исходника
-    //    без имени и в отправку формы не попадает; токен CSRF берётся из скрытого
-    //    поля своей формы.
+    //    problem/assembly :: row, отказ — фрагментом с кодом 422. Токен CSRF
+    //    берётся из скрытого поля своей формы.
     function clearRefusal(list) {
         var next = list.nextElementSibling;
         if (next && next.classList.contains('assembly-refusal')) {
@@ -142,6 +141,11 @@
     }
 
     document.querySelectorAll('input[data-assembly-source]').forEach(function (input) {
+        // Поле слота одно (ADR-0049) и носит имя слота, чтобы без скрипта
+        // отправиться готовым PDF. Со скриптом файл уходит только в черновик:
+        // имя снимается, иначе форма понесла бы его ещё и готовым файлом,
+        // и сервер отклонил бы слот с двумя способами сразу.
+        input.removeAttribute('name');
         input.multiple = true;
         input.addEventListener('change', function () {
             var list = input.form.querySelector('ol.assembly[data-slot="' + input.dataset.assemblySource + '"]');
