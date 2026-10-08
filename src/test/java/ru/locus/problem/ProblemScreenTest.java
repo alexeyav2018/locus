@@ -66,7 +66,7 @@ class ProblemScreenTest extends IntegrationTest {
     void chosenTopicShowsItsProblemsWithNumberCaptionAndMarks() {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
-        ProblemId problem = problems.create("Ященко, вариант 12", ExamPart.SECOND,
+        ProblemId problem = problems.create(ExamPart.SECOND,
                 List.of(topic), List.of(method), List.of(),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));
@@ -118,7 +118,7 @@ class ProblemScreenTest extends IntegrationTest {
         SolutionMethodId method = library.method();
         String topicName = nodes.findById(topic).orElseThrow().name();
         String methodName = methods.method(method).name();
-        ProblemId problem = problems.create("Ященко, вариант 12", ExamPart.SECOND,
+        ProblemId problem = problems.create(ExamPart.SECOND,
                 List.of(topic), List.of(method), List.of(library.characteristic()),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));

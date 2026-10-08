@@ -30,7 +30,7 @@ class ProblemTest {
     /** Сценарий «Разметка несколькими Темами и Методами». */
     @Test
     void problemKeepsEveryMarkupItWasGiven() {
-        Problem problem = new Problem(ID, "Ященко, вариант 12", ExamPart.SECOND, CONDITION, SOLUTION,
+        Problem problem = new Problem(ID, ExamPart.SECOND, CONDITION, SOLUTION,
                 List.of(new TaxonomyNodeId(1), new TaxonomyNodeId(2)),
                 List.of(new SolutionMethodId(1), new SolutionMethodId(2), new SolutionMethodId(3)),
                 List.of(new CharacteristicId(1)));
@@ -59,7 +59,7 @@ class ProblemTest {
     /** Сценарий «Часть указывается ровно одна» — не указанная вовсе отклоняется. */
     @Test
     void problemWithoutAnExamPartIsNotBuilt() {
-        assertThatThrownBy(() -> new Problem(ID, null, null, CONDITION, SOLUTION,
+        assertThatThrownBy(() -> new Problem(ID, null, CONDITION, SOLUTION,
                 TOPICS, METHODS, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Часть");
@@ -68,7 +68,7 @@ class ProblemTest {
     /** Сценарий «Нет PDF условия». */
     @Test
     void problemWithoutTheConditionFileIsNotBuilt() {
-        assertThatThrownBy(() -> new Problem(ID, null, ExamPart.FIRST, null, SOLUTION,
+        assertThatThrownBy(() -> new Problem(ID, ExamPart.FIRST, null, SOLUTION,
                 TOPICS, METHODS, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("условия");
@@ -77,7 +77,7 @@ class ProblemTest {
     /** Сценарий «Нет PDF решения». */
     @Test
     void problemWithoutTheSolutionFileIsNotBuilt() {
-        assertThatThrownBy(() -> new Problem(ID, null, ExamPart.FIRST, CONDITION, null,
+        assertThatThrownBy(() -> new Problem(ID, ExamPart.FIRST, CONDITION, null,
                 TOPICS, METHODS, List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("решения");
@@ -86,34 +86,22 @@ class ProblemTest {
     /** Сценарий «Характеристики необязательны». */
     @Test
     void problemWithoutCharacteristicsIsBuilt() {
-        Problem problem = new Problem(ID, null, ExamPart.FIRST, CONDITION, SOLUTION,
+        Problem problem = new Problem(ID, ExamPart.FIRST, CONDITION, SOLUTION,
                 TOPICS, METHODS, List.of());
 
         assertThat(problem.characteristics()).isEmpty();
     }
 
-    /** Сценарий «Задача без подписи»: пустая подпись — это её отсутствие. */
+    /** Сценарий «Задача различима по номеру»: номер — её идентификатор. */
     @Test
-    void blankCaptionIsTheAbsenceOfACaption() {
-        Problem problem = new Problem(ID, "   ", ExamPart.FIRST, CONDITION, SOLUTION,
+    void problemIsTellableByItsNumber() {
+        Problem problem = new Problem(ID, ExamPart.FIRST, CONDITION, SOLUTION,
                 TOPICS, METHODS, List.of());
 
-        assertThat(problem.hasCaption())
-                .as("подпись из одних пробелов выглядела бы в списке пустой строкой")
-                .isFalse();
-        assertThat(problem.caption()).isNull();
-        assertThat(problem.number()).as("тогда Задача различима номером").isEqualTo(12);
-    }
-
-    @Test
-    void captionIsTrimmed() {
-        Problem problem = new Problem(ID, "  Ященко  ", ExamPart.FIRST, CONDITION, SOLUTION,
-                TOPICS, METHODS, List.of());
-
-        assertThat(problem.caption()).isEqualTo("Ященко");
+        assertThat(problem.number()).isEqualTo(12);
     }
 
     private static Problem problemWith(List<TaxonomyNodeId> topics, List<SolutionMethodId> methods) {
-        return new Problem(ID, null, ExamPart.FIRST, CONDITION, SOLUTION, topics, methods, List.of());
+        return new Problem(ID, ExamPart.FIRST, CONDITION, SOLUTION, topics, methods, List.of());
     }
 }

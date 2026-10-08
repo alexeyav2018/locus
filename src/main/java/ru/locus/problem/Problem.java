@@ -11,8 +11,8 @@ import ru.locus.taxonomy.TaxonomyNodeId;
  *
  * Текста Задачи система не знает и знать не должна: формулы живут внутри PDF,
  * система их не хранит и не разбирает. Поэтому разметка — единственный вход
- * в Задачу, а различают Задачи <b>номер</b> (он же идентификатор) и
- * необязательная <b>подпись</b> (ADR-0029).
+ * в Задачу, а различает Задачи <b>номер</b> — он же идентификатор.
+ * Подписи у Задачи нет (ADR-0050, заменяет ADR-0029).
  *
  * Правила состава стоят в компактном конструкторе, а не в сервисе: запись,
  * собранная в обход правил, не должна существовать вообще — ни в памяти,
@@ -24,15 +24,12 @@ import ru.locus.taxonomy.TaxonomyNodeId;
  * Задача принадлежит общей библиотеке: владельца у неё нет и быть не должно
  * (ADR-0027).
  *
- * @param caption          подпись; {@code null} — законное состояние, тогда
- *                         Задача различается номером
  * @param topics           Темы разметки, 1..n, только листья дерева;
  *                         «лист» проверяется в сервисе — вид узла не хранится
  * @param methods          Методы разметки, 1..n
  * @param characteristics  Характеристики разметки, 0..n
  */
 public record Problem(ProblemId id,
-                      String caption,
                       ExamPart part,
                       FileKey conditionFile,
                       FileKey solutionFile,
@@ -44,7 +41,6 @@ public record Problem(ProblemId id,
         if (id == null) {
             throw new IllegalArgumentException("У Задачи должен быть идентификатор");
         }
-        caption = normalizedCaption(caption);
         requireMarkup(part, topics, methods);
         requireFiles(conditionFile, solutionFile);
         topics = List.copyOf(topics);
@@ -91,23 +87,5 @@ public record Problem(ProblemId id,
     /** Номер Задачи — то, чем она названа человеку. */
     public long number() {
         return id.value();
-    }
-
-    /** Есть ли подпись: пустая — законное состояние, тогда остаётся номер. */
-    public boolean hasCaption() {
-        return caption != null;
-    }
-
-    /**
-     * Пустая подпись и подпись из одних пробелов — это отсутствие подписи,
-     * а не подпись. Иначе в списке появилась бы строка, выглядящая
-     * подписанной, но пустая на вид.
-     */
-    private static String normalizedCaption(String caption) {
-        if (caption == null) {
-            return null;
-        }
-        String trimmed = caption.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }

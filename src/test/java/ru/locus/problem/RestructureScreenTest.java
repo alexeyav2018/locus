@@ -91,7 +91,7 @@ class RestructureScreenTest extends IntegrationTest {
     void topicWithProblemsOffersRemovalWithDistributionListingEveryProblem() {
         TaxonomyNodeId topic = library.topic();
         ProblemId plain = library.problem(topic);
-        ProblemId captioned = problems.create("Ященко, вариант 12", ExamPart.SECOND,
+        ProblemId captioned = problems.create(ExamPart.SECOND,
                 List.of(topic), List.of(library.method()), List.of(),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));

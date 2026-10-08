@@ -1,12 +1,12 @@
 ## 1. Схема, запись и сервис без Подписи
 
-- [ ] 1.1 Миграция `0014-problem-caption-removal.yaml`: `dropColumn` `problem.caption`, комментарий со ссылкой на ADR-0050 и предупреждением о необратимости
-- [ ] 1.2 `Problem`: убрать `caption`, `hasCaption()`, `normalizedCaption`; Javadoc — номер (ADR-0050)
-- [ ] 1.3 `ProblemRepository`: `create` без `caption`, убрать `changeCaption`, `caption` из `Row` и всех `select`
-- [ ] 1.4 `ProblemService.create/edit` без `caption`; `ProblemForm` и `ProblemController` без `caption`
-- [ ] 1.5 Тесты: вызовы `create`/`edit` без первого аргумента — скриптом по ошибкам компиляции с проверкой образца; удалить тесты подписи (`ProblemTest` — пустая и обрезанная подпись; `ProblemRepositoryTest` — подпись меняется/отсутствует) или переписать на номер
-- [ ] 1.6 `ProblemFilesTest.failedSavingLeavesNothingInTheStorage`: сбой сохранения внешним ключом через наследника `CharacteristicService` (design.md, решение 3)
-- [ ] 1.7 Тест миграции: колонки `caption` в таблице `problem` нет (`information_schema`)
+- [x] 1.1 Миграция `0014-problem-caption-removal.yaml`: `dropColumn` `problem.caption`, комментарий со ссылкой на ADR-0050 и предупреждением о необратимости
+- [x] 1.2 `Problem`: убрать `caption`, `hasCaption()`, `normalizedCaption`; Javadoc — номер (ADR-0050)
+- [x] 1.3 `ProblemRepository`: `create` без `caption`, убрать `changeCaption`, `caption` из `Row` и всех `select`
+- [x] 1.4 `ProblemService.create/edit` без `caption`; `ProblemForm` и `ProblemController` без `caption`
+- [x] 1.5 Тесты: вызовы `create`/`edit` без первого аргумента — скриптом по ошибкам компиляции с проверкой образца; удалить тесты подписи (`ProblemTest` — пустая и обрезанная подпись; `ProblemRepositoryTest` — подпись меняется/отсутствует) или переписать на номер
+- [x] 1.6 `ProblemFilesTest.failedSavingLeavesNothingInTheStorage`: сбой сохранения внешним ключом через наследника `CharacteristicService` (design.md, решение 3)
+- [x] 1.7 Тест миграции: колонки `caption` в таблице `problem` нет (`information_schema`)
 
 ## 2. Шаблоны и экранные тесты
 

@@ -190,7 +190,7 @@ class ProblemSearchScreenTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic(section);
         SolutionMethodId method = library.method();
         CharacteristicId characteristic = library.characteristic();
-        ProblemId problem = problems.create("Ященко, вариант 12", ExamPart.SECOND,
+        ProblemId problem = problems.create(ExamPart.SECOND,
                 List.of(topic), List.of(method), List.of(characteristic),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));

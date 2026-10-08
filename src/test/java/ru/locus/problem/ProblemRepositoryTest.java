@@ -42,29 +42,17 @@ class ProblemRepositoryTest extends IntegrationTest {
         FileKey condition = library.storedPdf();
         FileKey solution = library.storedPdf();
 
-        ProblemId id = problems.create("Ященко, вариант 12", ExamPart.SECOND, condition, solution,
+        ProblemId id = problems.create(ExamPart.SECOND, condition, solution,
                 List.of(topic), List.of(method), List.of(characteristic));
 
         Problem found = problems.findById(id).orElseThrow();
         assertThat(found.id()).isEqualTo(id);
-        assertThat(found.caption()).isEqualTo("Ященко, вариант 12");
         assertThat(found.part()).isEqualTo(ExamPart.SECOND);
         assertThat(found.conditionFile()).isEqualTo(condition);
         assertThat(found.solutionFile()).isEqualTo(solution);
         assertThat(found.topics()).containsExactly(topic);
         assertThat(found.methods()).containsExactly(method);
         assertThat(found.characteristics()).containsExactly(characteristic);
-    }
-
-    /** Сценарий «Задача без подписи»: подпись хранится как отсутствующая. */
-    @Test
-    void problemWithoutACaptionIsStoredAndReadBack() {
-        TaxonomyNodeId topic = library.topic();
-
-        ProblemId id = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
-                List.of(topic), List.of(library.method()), List.of());
-
-        assertThat(problems.findById(id).orElseThrow().hasCaption()).isFalse();
     }
 
     /** Сценарий «Номер выдан при заведении». */
@@ -104,7 +92,7 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId first = library.topic();
         TaxonomyNodeId second = library.topic();
 
-        ProblemId id = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        ProblemId id = problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(first, second), List.of(library.method()), List.of());
 
         assertThat(problems.findByTopic(first)).extracting(Problem::id).contains(id);
@@ -121,7 +109,7 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId to = library.topic();
         TaxonomyNodeId other = library.topic();
         SolutionMethodId method = library.method();
-        ProblemId id = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        ProblemId id = problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(from, other), List.of(method), List.of());
 
         problems.replaceTopic(from, to);
@@ -141,7 +129,7 @@ class ProblemRepositoryTest extends IntegrationTest {
     void problemAlreadyMarkedWithTheReceiverCarriesItOnceAfterTheMove() {
         TaxonomyNodeId from = library.topic();
         TaxonomyNodeId to = library.topic();
-        ProblemId both = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        ProblemId both = problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(from, to), List.of(library.method()), List.of());
         ProblemId onlyFrom = library.problem(from);
 
@@ -172,7 +160,7 @@ class ProblemRepositoryTest extends IntegrationTest {
     void topicReplacedForOneProblemDoesNotDuplicateTheReceiver() {
         TaxonomyNodeId from = library.topic();
         TaxonomyNodeId to = library.topic();
-        ProblemId both = problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        ProblemId both = problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(from, to), List.of(library.method()), List.of());
 
         problems.replaceTopicFor(both, from, to);
@@ -187,9 +175,9 @@ class ProblemRepositoryTest extends IntegrationTest {
         SolutionMethodId shared = library.method();
         SolutionMethodId second = library.method();
         SolutionMethodId third = library.method();
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(topic), List.of(shared, second), List.of());
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(topic), List.of(shared, third), List.of());
 
         assertThat(problems.findMethodsUsedInTopic(topic))
@@ -211,9 +199,9 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId shared = library.method();
         SolutionMethodId second = library.method();
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(topic), List.of(shared, second), List.of());
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(topic), List.of(shared), List.of());
 
         assertThat(problems.findMethodsUsedByTopic().get(topic))
@@ -235,7 +223,7 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId first = library.topic();
         TaxonomyNodeId second = library.topic();
         SolutionMethodId method = library.method();
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(first, second), List.of(method), List.of());
 
         Map<TaxonomyNodeId, List<SolutionMethodId>> byTopic = problems.findMethodsUsedByTopic();
@@ -276,14 +264,12 @@ class ProblemRepositoryTest extends IntegrationTest {
     }
 
     @Test
-    void captionAndPartAreChangedWithoutTouchingTheNumber() {
+    void partIsChangedWithoutTouchingTheNumber() {
         ProblemId id = library.problem(library.topic());
 
-        problems.changeCaption(id, "Ященко, вариант 3");
         problems.changePart(id, ExamPart.FIRST);
 
         Problem found = problems.findById(id).orElseThrow();
-        assertThat(found.caption()).isEqualTo("Ященко, вариант 3");
         assertThat(found.part()).isEqualTo(ExamPart.FIRST);
         assertThat(found.id()).isEqualTo(id);
     }
@@ -322,7 +308,7 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
         CharacteristicId characteristic = library.characteristic();
-        problems.create(null, ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+        problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
                 List.of(topic), List.of(method), List.of(characteristic));
 
         assertThat(problems.countByTopic(topic)).isEqualTo(1);
@@ -340,12 +326,12 @@ class ProblemRepositoryTest extends IntegrationTest {
         TaxonomyNodeId missingNode = new TaxonomyNodeId(Long.MAX_VALUE);
         SolutionMethodId missingMethod = new SolutionMethodId(Long.MAX_VALUE);
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 library.storedPdf(), library.storedPdf(),
                 List.of(missingNode), List.of(library.method()), List.of()))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 library.storedPdf(), library.storedPdf(),
                 List.of(library.topic()), List.of(missingMethod), List.of()))
                 .isInstanceOf(DataIntegrityViolationException.class);

@@ -103,7 +103,7 @@ public class TestLibrary {
                              List<SolutionMethodId> methods,
                              List<CharacteristicId> characteristics,
                              ExamPart part) {
-        return problems.create(null, part, storedPdf(), storedPdf(),
+        return problems.create(part, storedPdf(), storedPdf(),
                 topics, methods, characteristics);
     }
 

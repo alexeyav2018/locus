@@ -114,7 +114,7 @@ class MasteryGuardsTheMethodTest extends IntegrationTest {
         assertThatThrownBy(() -> methods.delete(leaving)).isInstanceOf(EntryInUseException.class);
 
         marks.put(alice, alicesPupil, topic, leaving, UNKNOWN);
-        problems.edit(problem, null, ExamPart.FIRST, List.of(topic), List.of(staying), List.of());
+        problems.edit(problem, ExamPart.FIRST, List.of(topic), List.of(staying), List.of());
 
         assertThatCode(() -> methods.delete(leaving))
                 .as("ни отметок, ни разметки — условие перестало выполняться")

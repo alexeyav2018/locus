@@ -108,7 +108,7 @@ class AssembledProblemTest extends IntegrationTest {
         AssemblyDraft photo = upload("снимок.png", AssemblyDraftServiceTest.png());
         TaxonomyNodeId topic = library.topic();
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST, List.of(topic), List.of(), List.of(),
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST, List.of(topic), List.of(), List.of(),
                 order(photo), new UploadedFile(TestLibrary.pdf(), FileType.PDF)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("хотя бы один Метод");
@@ -186,7 +186,7 @@ class AssembledProblemTest extends IntegrationTest {
     void emptyOrderIsAMissingFile() {
         TaxonomyNodeId topic = library.topic();
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST, List.of(topic), List.of(library.method()),
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST, List.of(topic), List.of(library.method()),
                 List.of(), new PdfAssemblyOrder(List.of()), new UploadedFile(TestLibrary.pdf(), FileType.PDF)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Не приложен PDF условия");
@@ -219,7 +219,7 @@ class AssembledProblemTest extends IntegrationTest {
     }
 
     private ProblemId create(ProblemPdf condition, ProblemPdf solution) {
-        return problems.create(null, ExamPart.FIRST,
+        return problems.create(ExamPart.FIRST,
                 List.of(library.topic()), List.of(library.method()), List.of(), condition, solution);
     }
 

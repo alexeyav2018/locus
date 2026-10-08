@@ -11,11 +11,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.locus.Browser;
 import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
+import ru.locus.dictionary.Characteristic;
+import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
 import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.file.FileKey;
@@ -35,9 +38,6 @@ import ru.locus.user.Role;
  * ушла бы проверять не то, что происходит в бою.
  */
 class ProblemFilesTest extends IntegrationTest {
-
-    /** Подпись длиннее колонки: база отвергнет запись — но уже после укладки файлов. */
-    private static final String TOO_LONG_CAPTION = "я".repeat(400);
 
     @LocalServerPort
     private int port;
@@ -65,6 +65,9 @@ class ProblemFilesTest extends IntegrationTest {
 
     @Autowired
     private TestLibrary library;
+
+    @Autowired
+    private TransactionTemplate transactions;
 
     @Autowired
     private TestAccounts accounts;
@@ -101,21 +104,32 @@ class ProblemFilesTest extends IntegrationTest {
      * Задача 4.1: неудача сохранения записи не оставляет в хранилище
      * положенных файлов.
      *
-     * Сбой настоящий, а не подстроенный подменой репозитория: подпись длиннее
-     * колонки отвергается базой — то есть падает именно сохранение, уже после
-     * укладки обоих файлов, ровно в том месте, ради которого написана уборка.
+     * Сбой настоящий, а не подстроенный подменой репозитория: Характеристику,
+     * которой нет, словарь здесь признаёт существующей, и разметку отвергает
+     * внешний ключ базы — то есть падает именно сохранение, уже после укладки
+     * обоих файлов, ровно в том месте, ради которого написана уборка.
+     * Подменена только проверка заранее. Вызов идёт в транзакции, как у
+     * настоящего сервиса: иначе строка Задачи без разметки осталась бы в общей
+     * базе тестов.
      * Хранилище при этом обёрнуто наблюдателем: узнать, что осталось внутри,
      * иначе неоткуда — ключей неудавшейся Задачи не существует нигде.
      */
     @Test
     void failedSavingLeavesNothingInTheStorage() {
         List<FileKey> stored = new ArrayList<>();
-        ProblemService watched = new ProblemService(repository, taxonomy, methods, characteristics,
+        CharacteristicService believing = new CharacteristicService(null, List.of()) {
+            @Override
+            public Characteristic characteristic(CharacteristicId id) {
+                return new Characteristic(id, "Нет в словаре");
+            }
+        };
+        ProblemService watched = new ProblemService(repository, taxonomy, methods, believing,
                 new WatchedStorage(storage, stored), drafts, List.of());
+        CharacteristicId missing = new CharacteristicId(Long.MAX_VALUE);
 
-        assertThatThrownBy(() -> watched.create(TOO_LONG_CAPTION, ExamPart.FIRST,
-                List.of(library.topic()), List.of(library.method()), List.of(),
-                pdf(TestLibrary.pdf()), pdf(TestLibrary.pdf())))
+        assertThatThrownBy(() -> transactions.executeWithoutResult(status -> watched.create(ExamPart.FIRST,
+                List.of(library.topic()), List.of(library.method()), List.of(missing),
+                pdf(TestLibrary.pdf()), pdf(TestLibrary.pdf()))))
                 .as("сохранение не удалось")
                 .isInstanceOf(RuntimeException.class);
 
@@ -222,7 +236,7 @@ class ProblemFilesTest extends IntegrationTest {
 
     private ProblemId created(byte[] condition, byte[] solution) {
         TaxonomyNodeId topic = library.topic();
-        return problems.create(null, ExamPart.FIRST,
+        return problems.create(ExamPart.FIRST,
                 List.of(topic), List.of(library.method()), List.of(), pdf(condition), pdf(solution));
     }
 
