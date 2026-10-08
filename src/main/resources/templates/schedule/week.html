@@ -9,8 +9,10 @@
         вычисленными и уже отобранными по владельцу — шаблон о правиле
         Занятия и о владельце не знает.
 
-        Встреча ведёт на своё Занятие с возвратом на эту неделю (ADR-0042);
-        у каждого дня — заведение Занятия с подставленной датой.
+        Встреча ведёт на свою страницу с возвратом на эту неделю (ADR-0042);
+        отменённая остаётся на своём дне, перенесённая — на новом, а на
+        плановом дне — строка «перенесена на» (ADR-0048). У каждого дня —
+        заведение Занятия с подставленной датой.
     */-->
 </head>
 <body>
@@ -39,15 +41,10 @@
             <a class="btn btn-sm" th:href="@{/schedule/lessons/new(date=${day.date},from=${shell.here})}"
                th:attr="aria-label='Новое Занятие на ' + ${#temporals.format(day.date, 'dd.MM')}">+ Занятие</a>
         </div>
-        <p class="muted" th:if="${#lists.isEmpty(day.meetings)}">Встреч нет</p>
-        <ul class="items" th:unless="${#lists.isEmpty(day.meetings)}">
-            <li class="item meeting" th:each="meeting : ${day.meetings}">
-                <span class="meeting-time"
-                      th:text="${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">17:00–18:00</span>
-                <a class="grow" th:href="@{/schedule/lessons/{id}(id=${meeting.lesson.value},from=${shell.here})}"
-                   th:text="${meeting.addresseeName}">Иванов Пётр</a>
-                <span class="badge" th:if="${meeting.withdrawn}">выбыл</span>
-            </li>
+        <p class="muted" th:if="${day.empty}">Встреч нет</p>
+        <ul class="items" th:unless="${day.empty}">
+            <th:block th:each="meeting : ${day.meetings}"><li th:replace="~{fragments/meeting :: item(${meeting})}"></li></th:block>
+            <th:block th:each="away : ${day.movedAway}"><li th:replace="~{fragments/meeting :: away(${away})}"></li></th:block>
         </ul>
     </section>
 </div>

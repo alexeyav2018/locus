@@ -74,4 +74,20 @@ public record LessonTiming(LocalDate firstDate, LocalDate lastDate, boolean week
     public LocalTime end() {
         return start.plusMinutes(durationMinutes);
     }
+
+    /**
+     * Даёт ли правило Встречу в эту дату: у разового — только в дату первой
+     * встречи, у еженедельного — в каждый его день недели от первой даты
+     * до последней включительно. По этому вопросу снимаются Поправки, которых
+     * правило после правки больше не даёт (ADR-0048).
+     */
+    public boolean occursOn(LocalDate date) {
+        if (date.isBefore(firstDate)) {
+            return false;
+        }
+        if (!weekly) {
+            return date.equals(firstDate);
+        }
+        return date.getDayOfWeek() == dayOfWeek() && (lastDate == null || !date.isAfter(lastDate));
+    }
 }

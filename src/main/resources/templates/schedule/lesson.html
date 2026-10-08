@@ -8,6 +8,10 @@
         под раскрывающимися блоками (ADR-0042); при отказе раскрыт блок
         отклонённого действия.
 
+        Поправки Встреч при правке переходят к новой части или снимаются,
+        если новое правило их даты не даёт (ADR-0048); при удалении уходят
+        каскадом. Обе формы об этом предупреждают.
+
         Правка еженедельного действует с даты (ADR-0047): если до неё
         были Встречи, сервис делит Занятие, и после правки открывается
         карточка продолжения. Адресат и вид не правятся — нужен другой,
@@ -58,6 +62,8 @@
         <div class="more-body">
             <form class="stack" method="post"
                   th:action="@{/schedule/lessons/{id}(id=${lesson.id.value},from=${shell.back})}">
+                <p class="muted">Отмены, переносы и неявки на датах, которых новое правило
+                    не даёт, будут сняты.</p>
                 <th:block th:if="${timing.weekly}">
                     <p class="muted">Встречи до даты «с которой» останутся прежними: Занятие разделится
                         на прежнее и новое. Чтобы только закончить Занятие, поменяйте последнюю встречу.</p>
@@ -91,7 +97,7 @@
     <details class="more" name="lesson-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
         <summary>Удаление</summary>
         <div class="more-body">
-            <form method="post" data-confirm="Занятие и все его Встречи, прошлые и будущие, исчезнут."
+            <form method="post" data-confirm="Занятие и все его Встречи, прошлые и будущие, исчезнут вместе с отменами, переносами и отметками неявки."
                   th:action="@{/schedule/lessons/{id}/deletion(id=${lesson.id.value})}">
                 <button type="submit" class="btn-danger">Удалить Занятие</button>
                 <button type="button" data-close>Отмена</button>

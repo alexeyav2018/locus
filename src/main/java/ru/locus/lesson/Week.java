@@ -24,15 +24,23 @@ public record Week(LocalDate monday, LocalDate today, List<Day> days) {
     private static final Locale RUSSIAN = Locale.forLanguageTag("ru");
 
     /**
-     * День недели и его Встречи.
+     * День недели, его Встречи и строки «перенесена на …» Встреч, плановая
+     * дата которых — этот день (ADR-0048).
      *
-     * @param today сегодняшний ли это день
+     * @param today     сегодняшний ли это день
+     * @param movedAway перенесённые с этого дня Встречи, в порядке планового времени
      */
-    public record Day(LocalDate date, boolean today, List<Meeting> meetings) {
+    public record Day(LocalDate date, boolean today, List<Meeting> meetings, List<MovedAway> movedAway) {
 
         public Day {
             Objects.requireNonNull(date);
             meetings = List.copyOf(meetings);
+            movedAway = List.copyOf(movedAway);
+        }
+
+        /** Нет ни Встреч, ни строк о перенесённых. */
+        public boolean empty() {
+            return meetings.isEmpty() && movedAway.isEmpty();
         }
 
         /** Название дня недели по-русски с заглавной: «Вторник». */
@@ -61,15 +69,23 @@ public record Week(LocalDate monday, LocalDate today, List<Day> days) {
         return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
     }
 
-    /** Раскладывает Встречи недели по её дням; Встречи вне недели отбрасываются. */
-    static Week of(LocalDate monday, LocalDate today, List<Meeting> meetings) {
+    /**
+     * Раскладывает Встречи недели по их фактическим дням, а строки
+     * «перенесена на» — по плановым; всё вне недели отбрасывается.
+     */
+    static Week of(LocalDate monday, LocalDate today, List<Meeting> meetings, List<MovedAway> movedAway) {
         List<Day> days = new ArrayList<>(7);
         for (int i = 0; i < 7; i++) {
-            LocalDate date = monday.plusDays(i);
-            days.add(new Day(date, date.equals(today),
-                    meetings.stream().filter(meeting -> meeting.date().equals(date)).toList()));
+            days.add(day(monday.plusDays(i), today, meetings, movedAway));
         }
         return new Week(monday, today, days);
+    }
+
+    /** Один день: Встречи с этой фактической датой и строки «перенесена на» с этой плановой. */
+    static Day day(LocalDate date, LocalDate today, List<Meeting> meetings, List<MovedAway> movedAway) {
+        return new Day(date, date.equals(today),
+                meetings.stream().filter(meeting -> meeting.date().equals(date)).toList(),
+                movedAway.stream().filter(away -> away.plannedDate().equals(date)).toList());
     }
 
     public LocalDate sunday() {

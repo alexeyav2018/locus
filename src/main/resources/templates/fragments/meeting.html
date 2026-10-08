@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--/*
+    Строки расписания — общие для недели (schedule/week.html) и главной
+    (home.html), чтобы пометки Встречи читались одинаково (ADR-0048).
+
+    item(meeting)  — Встреча с её пометками: «отменена», «перенесена с …»,
+                     «не пришёл», «выбыл». Ведёт на страницу Встречи
+                     по Занятию и плановой дате, с возвратом сюда.
+    away(away)     — строка «перенесена на …» на плановой дате; ведёт
+                     на ту же страницу Встречи.
+
+    Подключаются внутри <ul class="items">:
+        <th:block th:each="meeting : ${day.meetings}"><li th:replace="~{fragments/meeting :: item(${meeting})}"></li></th:block>
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<ul>
+    <li th:fragment="item(meeting)" class="item meeting" th:classappend="${meeting.cancelled} ? 'meeting--cancelled'">
+        <span class="meeting-time"
+              th:text="${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">17:00–18:00</span>
+        <a class="grow"
+           th:href="@{/schedule/lessons/{id}/meetings/{date}(id=${meeting.lesson.value},date=${meeting.plannedDate},from=${shell.here})}"
+           th:text="${meeting.addresseeName}">Иванов Пётр</a>
+        <span class="badge badge--bad" th:if="${meeting.cancelled}">отменена</span>
+        <span class="badge badge--info" th:if="${meeting.moved}"
+              th:text="'перенесена с ' + ${#temporals.format(meeting.plannedDate, 'dd.MM')}">перенесена с 20.10</span>
+        <span class="badge badge--warn" th:if="${meeting.absent}">не пришёл</span>
+        <span class="badge" th:if="${meeting.withdrawn}">выбыл</span>
+    </li>
+    <li th:fragment="away(away)" class="item meeting meeting--away">
+        <span class="meeting-time" th:text="${#temporals.format(away.plannedStart, 'HH:mm')}">17:00</span>
+        <a class="grow"
+           th:href="@{/schedule/lessons/{id}/meetings/{date}(id=${away.lesson.value},date=${away.plannedDate},from=${shell.here})}"
+           th:text="${away.addresseeName}">Иванов Пётр</a>
+        <span class="badge"
+              th:text="'перенесена на ' + ${#temporals.format(away.date, 'dd.MM')} + ' ' + ${#temporals.format(away.start, 'HH:mm')}">перенесена на 22.10 18:00</span>
+        <span class="badge" th:if="${away.withdrawn}">выбыл</span>
+    </li>
+</ul>
+</body>
+</html>

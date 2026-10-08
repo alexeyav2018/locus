@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.UnaryOperator;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,14 +40,16 @@ import ru.locus.user.UserId;
 public class LessonService {
 
     private final LessonRepository lessons;
+    private final MeetingAdjustmentRepository adjustments;
     private final StudentService students;
     private final GroupService groups;
     private final CurrentUser currentUser;
     private final Clock clock;
 
-    public LessonService(LessonRepository lessons, StudentService students, GroupService groups,
-            CurrentUser currentUser, Clock clock) {
+    public LessonService(LessonRepository lessons, MeetingAdjustmentRepository adjustments, StudentService students,
+            GroupService groups, CurrentUser currentUser, Clock clock) {
         this.lessons = lessons;
+        this.adjustments = adjustments;
         this.students = students;
         this.groups = groups;
         this.currentUser = currentUser;
@@ -62,15 +65,20 @@ public class LessonService {
     public Week week(LocalDate date) {
         LocalDate today = currentDate();
         LocalDate monday = Week.mondayOf(date == null ? today : date);
-        return Week.of(monday, today, meetings(owner(), monday, monday.plusDays(6)));
+        Schedule schedule = schedule(owner(), monday, monday.plusDays(6));
+        return Week.of(monday, today, schedule.meetings(), schedule.movedAway());
     }
 
-    /** Встречи вошедшего Учителя сегодня, в порядке времени. */
+    /**
+     * Сегодняшний день вошедшего Учителя: Встречи в порядке времени
+     * и строки о Встречах, перенесённых с сегодняшнего дня.
+     */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional(readOnly = true)
-    public List<Meeting> today() {
+    public Week.Day today() {
         LocalDate today = currentDate();
-        return meetings(owner(), today, today);
+        Schedule schedule = schedule(owner(), today, today);
+        return Week.day(today, today, schedule.meetings(), schedule.movedAway());
     }
 
     /** Занятие вошедшего Учителя с адресатом; чужое или несуществующее — 404. */
@@ -123,7 +131,12 @@ public class LessonService {
      *         даты. Не было — Занятие правится на месте целиком.</li>
      * </ol>
      *
-     * Деление и правка — одна транзакция: прежнее не закончится без
+     * При делении Поправки с плановой датой не раньше {@code effectiveFrom}
+     * переходят к новому Занятию. После правки у каждой затронутой части
+     * снимаются Поправки, чьей плановой даты правило больше не даёт
+     * (ADR-0048).
+     *
+     * Деление, правка и Поправки — одна транзакция: прежнее не закончится без
      * продолжения.
      */
     @PreAuthorize("hasRole('TEACHER')")
@@ -133,8 +146,10 @@ public class LessonService {
         Lesson lesson = existing(owner, id).lesson();
         LessonTiming before = lesson.timing();
         if (!before.weekly()) {
-            lessons.update(owner, lesson.id(),
-                    LessonTiming.of(change.date(), null, false, change.start(), change.durationMinutes()));
+            LessonTiming after = LessonTiming.of(change.date(), null, false, change.start(),
+                    change.durationMinutes());
+            lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         if (change.dayOfWeek() == null) {
@@ -142,8 +157,10 @@ public class LessonService {
         }
         if (change.dayOfWeek() == before.dayOfWeek() && before.start().equals(change.start())
                 && Objects.equals(before.durationMinutes(), change.durationMinutes())) {
-            lessons.update(owner, lesson.id(), LessonTiming.weekly(before.firstDate(), change.lastDate(),
-                    before.start(), before.durationMinutes()));
+            LessonTiming after = LessonTiming.weekly(before.firstDate(), change.lastDate(),
+                    before.start(), before.durationMinutes());
+            lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         if (effectiveFrom == null) {
@@ -154,16 +171,37 @@ public class LessonService {
                 change.durationMinutes());
         if (!before.firstDate().isBefore(effectiveFrom)) {
             lessons.update(owner, lesson.id(), after);
+            dropOrphanAdjustments(owner, lesson.id(), after);
             return lesson.id();
         }
         LocalDate dayBefore = effectiveFrom.minusDays(1);
         LocalDate lastDate = before.lastDate() != null && before.lastDate().isBefore(dayBefore)
                 ? before.lastDate() : dayBefore;
-        lessons.update(owner, lesson.id(),
-                LessonTiming.weekly(before.firstDate(), lastDate, before.start(), before.durationMinutes()));
-        return lesson.student() != null
+        LessonTiming shortened = LessonTiming.weekly(before.firstDate(), lastDate, before.start(),
+                before.durationMinutes());
+        lessons.update(owner, lesson.id(), shortened);
+        LessonId continuation = lesson.student() != null
                 ? lessons.create(owner, lesson.student(), after)
                 : lessons.create(owner, lesson.group(), after);
+        adjustments.rehome(owner, lesson.id(), continuation, effectiveFrom);
+        dropOrphanAdjustments(owner, lesson.id(), shortened);
+        dropOrphanAdjustments(owner, continuation, after);
+        return continuation;
+    }
+
+    /**
+     * Снимает Поправки Занятия, чьих плановых дат правило {@code timing}
+     * не даёт. Правило проверяется {@link LessonTiming#occursOn} — одним
+     * местом, а не повтором в SQL.
+     */
+    private void dropOrphanAdjustments(UserId owner, LessonId lesson, LessonTiming timing) {
+        List<LocalDate> orphans = adjustments.findByLesson(owner, lesson).stream()
+                .map(MeetingAdjustment::plannedDate)
+                .filter(date -> !timing.occursOn(date))
+                .toList();
+        if (!orphans.isEmpty()) {
+            adjustments.deleteDates(owner, lesson, orphans);
+        }
     }
 
     /** Удаляет своё Занятие в любой момент вместе со всеми его Встречами; адресат остаётся. */
@@ -174,12 +212,118 @@ public class LessonService {
         lessons.delete(owner, existing(owner, id).lesson().id());
     }
 
+    /**
+     * Встреча своего Занятия на плановую дату с её Поправкой. Чужое Занятие
+     * и дата, которой правило не даёт, — {@link MeetingNotFoundException}.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional(readOnly = true)
+    public MeetingDetails meeting(LessonId id, LocalDate plannedDate) {
+        UserId owner = owner();
+        ListedLesson listed = existingMeeting(owner, id, plannedDate);
+        Meeting meeting = Meetings.meeting(listed, plannedDate,
+                adjustments.find(owner, id, plannedDate).orElse(null));
+        return new MeetingDetails(listed, meeting, !meeting.date().isAfter(currentDate()));
+    }
+
+    /** Переносит Встречу на новое место; перенос снимает отмену, повторный — меняет место (ADR-0048). */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void move(LessonId id, LocalDate plannedDate, MeetingAdjustment.Move move) {
+        Objects.requireNonNull(move);
+        adjust(id, plannedDate, adjustment -> adjustment.withMove(move));
+    }
+
+    /**
+     * Отменяет Встречу; отмена снимает перенос. Встреча с неявкой не
+     * отменяется: неявка — факт, и тихо стирать его отменой нельзя.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void cancel(LessonId id, LocalDate plannedDate) {
+        adjust(id, plannedDate, adjustment -> {
+            if (adjustment.absent()) {
+                throw new IllegalArgumentException(
+                        "Ученик отмечен не пришедшим: сначала отметьте, что он пришёл, потом отменяйте");
+            }
+            return adjustment.withCancelled(true);
+        });
+    }
+
+    /** Возвращает Встречу как было по правилу: снимает отмену и перенос, неявку оставляет. */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void restore(LessonId id, LocalDate plannedDate) {
+        adjust(id, plannedDate, adjustment -> adjustment.withCancelled(false).withMove(null));
+    }
+
+    /**
+     * Отмечает, что Ученик не пришёл, или снимает отметку. Ставится только
+     * у Встречи Занятия с Учеником, не отменённой и уже наступившей
+     * по {@link Clock}; снимается всегда.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void markAbsence(LessonId id, LocalDate plannedDate, boolean absent) {
+        UserId owner = owner();
+        ListedLesson listed = existingMeeting(owner, id, plannedDate);
+        if (absent && listed.lesson().student() == null) {
+            throw new IllegalArgumentException("Неявка отмечается только у Встречи с Учеником, не с Группой");
+        }
+        adjust(owner, listed, plannedDate, adjustment -> {
+            if (absent && adjustment.cancelled()) {
+                throw new IllegalArgumentException("Встреча отменена: неявку у неё не отмечают");
+            }
+            return adjustment.withAbsent(absent);
+        });
+    }
+
+    private void adjust(LessonId id, LocalDate plannedDate, UnaryOperator<MeetingAdjustment> action) {
+        UserId owner = owner();
+        adjust(owner, existingMeeting(owner, id, plannedDate), plannedDate, action);
+    }
+
+    /**
+     * Применяет действие к Поправке Встречи и сохраняет её; пустую — удаляет.
+     * Неявка бывает только у наступившей Встречи, поэтому и перенос
+     * или возврат Встречи с неявкой в будущее отклоняется.
+     */
+    private void adjust(UserId owner, ListedLesson listed, LocalDate plannedDate,
+            UnaryOperator<MeetingAdjustment> action) {
+        LessonId id = listed.lesson().id();
+        MeetingAdjustment adjusted = action.apply(adjustments.find(owner, id, plannedDate)
+                .orElse(MeetingAdjustment.none(id, plannedDate)));
+        if (adjusted.isEmpty()) {
+            adjustments.delete(owner, id, plannedDate);
+            return;
+        }
+        if (adjusted.absent() && Meetings.meeting(listed, plannedDate, adjusted).date().isAfter(currentDate())) {
+            throw new IllegalArgumentException(
+                    "Встреча ещё не наступила: неявку отмечают только у прошедшей или сегодняшней");
+        }
+        adjustments.save(owner, adjusted);
+    }
+
+    private ListedLesson existingMeeting(UserId owner, LessonId id, LocalDate plannedDate) {
+        return lessons.findById(owner, id)
+                .filter(listed -> listed.lesson().timing().occursOn(plannedDate))
+                .orElseThrow(() -> new MeetingNotFoundException(id, plannedDate));
+    }
+
     private ListedLesson existing(UserId owner, LessonId id) {
         return lessons.findById(owner, id).orElseThrow(() -> new LessonNotFoundException(id));
     }
 
-    private List<Meeting> meetings(UserId owner, LocalDate from, LocalDate to) {
-        return Meetings.between(lessons.findCandidates(owner, from, to), from, to);
+    /** Встречи отрезка с Поправками и строки «перенесена на» (ADR-0048). */
+    private Schedule schedule(UserId owner, LocalDate from, LocalDate to) {
+        List<ListedLesson> candidates = lessons.findCandidates(owner, from, to);
+        List<MeetingAdjustment> adjusted = adjustments.findForLessons(owner,
+                candidates.stream().map(listed -> listed.lesson().id()).toList(), from, to);
+        return new Schedule(Meetings.between(candidates, adjusted, from, to),
+                Meetings.movedAway(candidates, adjusted, from, to));
+    }
+
+    private record Schedule(List<Meeting> meetings, List<MovedAway> movedAway) {
     }
 
     private LocalDate currentDate() {

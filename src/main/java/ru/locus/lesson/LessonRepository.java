@@ -80,17 +80,21 @@ public class LessonRepository {
     /**
      * Занятия владельца, которые могут дать Встречу в отрезке дат включительно:
      * разовое — если его дата в отрезке, еженедельное — если отрезок
-     * пересекается с его действием. Порядок — по времени начала.
+     * пересекается с его действием, а любое — если его Встречу перенесли
+     * в отрезок (ADR-0048). Порядок — по времени начала.
      */
     public List<ListedLesson> findCandidates(UserId owner, LocalDate from, LocalDate to) {
         return database.sql(LISTED + """
                         where l.user_id = ?
-                          and l.first_date <= ?
-                          and ((l.weekly and (l.last_date is null or l.last_date >= ?))
-                               or (not l.weekly and l.first_date >= ?))
+                          and ((l.first_date <= ?
+                                and ((l.weekly and (l.last_date is null or l.last_date >= ?))
+                                     or (not l.weekly and l.first_date >= ?)))
+                               or exists (select 1 from meeting_adjustment a
+                                          where a.user_id = l.user_id and a.lesson_id = l.id
+                                            and a.moved_date between ? and ?))
                         order by l.start_time, l.id
                         """)
-                .params(owner.value(), to, from, from)
+                .params(owner.value(), to, from, from, from, to)
                 .query(LessonRepository::listed)
                 .list();
     }

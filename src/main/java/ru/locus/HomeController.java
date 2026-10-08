@@ -54,7 +54,7 @@ public class HomeController {
             model.addAttribute("notSubmittedCount", notSubmitted.size());
             model.addAttribute("notSubmitted", notSubmitted.stream().limit(OVERDUE_SHOWN).toList());
             model.addAttribute("studentCount", students.active().size());
-            model.addAttribute("todaysMeetings", lessons.today());
+            model.addAttribute("today", lessons.today());
         }
         return "home";
     }
