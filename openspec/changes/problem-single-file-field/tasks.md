@@ -16,6 +16,6 @@
 
 ## 3. Документы и версия
 
-- [ ] 3.1 `CLAUDE.md`: строка ADR-0049 в сводке решений; в абзаце `problem-pdf-assembly` — одно поле на слот и нетронутый PDF байт в байт
-- [ ] 3.2 Прочие документы `openspec/context/` (glossary, domain-model, architecture, antipatterns, strategy, ux-concept) — сверить, что не затрагиваются
-- [ ] 3.3 Поднять версию в `pom.xml` до 2.2.0 и дописать `CHANGELOG.md`: «`problem-single-file-field` — у слота Задачи одно поле файла; выбранный и не тронутый PDF ложится в Задачу байт в байт, диапазоны, рамки и картинки собираются, без скрипта поле прикладывает готовый PDF»
+- [x] 3.1 `CLAUDE.md`: строка ADR-0049 в сводке решений; в абзаце `problem-pdf-assembly` — одно поле на слот и нетронутый PDF байт в байт
+- [x] 3.2 Прочие документы `openspec/context/` (glossary, domain-model, architecture, antipatterns, strategy, ux-concept) — сверить, что не затрагиваются
+- [x] 3.3 Поднять версию в `pom.xml` до 2.2.0 и дописать `CHANGELOG.md`: «`problem-single-file-field` — у слота Задачи одно поле файла; выбранный и не тронутый PDF ложится в Задачу байт в байт, диапазоны, рамки и картинки собираются, без скрипта поле прикладывает готовый PDF»
