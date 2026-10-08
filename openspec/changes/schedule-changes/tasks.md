@@ -9,25 +9,26 @@
 
 ## 1. Схема, запись, репозиторий
 
-- [ ] 1.1 Миграция `db/changelog/migrations/0013-schedule-changes.yaml`:
+- [x] 1.1 Миграция `db/changelog/migrations/0013-schedule-changes.yaml`:
       уникальный ключ `uq_lesson_id_user` на `lesson(id, user_id)`;
       таблица `meeting_adjustment` по design.md (уникальность
       `(lesson_id, planned_date)`, FK `user_id → user_`, составной FK
       `(lesson_id, user_id) → lesson(id, user_id)` `on delete cascade`,
-      проверки сырым SQL). Подключить в `db.changelog-master.yaml`.
+      проверки сырым SQL). Мастер подключает папку целиком (`includeAll`),
+      правка `db.changelog-master.yaml` не нужна.
       Проверить: `MigrationsOnStartupTest`
-- [ ] 1.2 `MeetingAdjustment` с `Move` (проверки конструктора повторяют
+- [x] 1.2 `MeetingAdjustment` с `Move` (проверки конструктора повторяют
       проверки базы, `isEmpty()`), `LessonTiming.occursOn(date)`.
       Проверить модульными тестами без базы
-- [ ] 1.3 `MeetingAdjustmentRepository` на `JdbcClient` с `UserId` в каждом
+- [x] 1.3 `MeetingAdjustmentRepository` на `JdbcClient` с `UserId` в каждом
       публичном методе: `find(owner, lesson, plannedDate)`,
       `findForLessons(owner, lessons, from, to)` (плановая или новая дата
       в отрезке), `save` (upsert), `delete`, `findByLesson`,
-      `rehome(owner, from, to, sinceDate)`, `deleteByIds`. Проверить
+      `rehome(owner, from, to, sinceDate)`, `deleteDates`. Проверить
       `MeetingAdjustmentRepositoryTest` на двух владельцах: чужое Занятие
       база не принимает, каскад с Занятием и с Группой, отбор на краях
       отрезка
-- [ ] 1.4 `OwnerIsRequiredByLessonsTest` распространить
+- [x] 1.4 `OwnerIsRequiredByLessonsTest` распространить
       на `MeetingAdjustmentRepository` и таблицу `meeting_adjustment`
       (или отдельный тест по тому же образцу). Проверить: тест зелёный
 

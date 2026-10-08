@@ -15,18 +15,22 @@ import ru.locus.user.UserId;
 /**
  * Граница общего и личного для Занятий: в личный контур владельца невозможно
  * не передать (ADR-0027). У каждого публичного метода {@link LessonRepository}
- * есть {@link UserId}, у таблицы {@code lesson} — колонка {@code user_id}.
- * Исключений класса ADR-0036 нет: библиотека о Занятиях не спрашивает,
+ * и {@link MeetingAdjustmentRepository} есть {@link UserId}, у таблиц
+ * {@code lesson} и {@code meeting_adjustment} — колонка {@code user_id}.
+ * Исключений класса ADR-0036 нет: библиотека о Занятиях и их Поправках
+ * не спрашивает,
  * и появиться такое исключение может только вместе с записью журнала.
  *
  * <p>Проверяется форма; поведение — что чужой владелец получает пусто —
- * проверяет {@code LessonRepositoryTest} двумя владельцами.
+ * проверяют {@code LessonRepositoryTest} и {@code MeetingAdjustmentRepositoryTest}
+ * двумя владельцами.
  */
 class OwnerIsRequiredByLessonsTest extends IntegrationTest {
 
-    private static final List<Class<?>> REPOSITORIES = List.of(LessonRepository.class);
+    private static final List<Class<?>> REPOSITORIES = List.of(LessonRepository.class,
+            MeetingAdjustmentRepository.class);
 
-    private static final List<String> TABLES = List.of("lesson");
+    private static final List<String> TABLES = List.of("lesson", "meeting_adjustment");
 
     @Autowired
     private JdbcClient database;

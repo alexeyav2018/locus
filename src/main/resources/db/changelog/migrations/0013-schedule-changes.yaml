@@ -1,0 +1,125 @@
+# Поправка Встречи — отмена, перенос или неявка одной Встречи Занятия,
+# ЛИЧНЫЙ контур (ADR-0048).
+#
+# Встречи по-прежнему не хранятся (ADR-0047): строка здесь — только то,
+# чем реальная Встреча отличается от правила, на паре «Занятие × плановая
+# дата». Плановая дата — та, что Встрече даёт правило; она же ключ Встречи,
+# сколько бы раз её ни переносили. «Как по правилу» — отсутствие строки,
+# как «неизвестно» у Владения (ADR-0039), поэтому пустая строка запрещена.
+#
+# Занятие того же владельца держит составной ключ (lesson_id, user_id) —
+# для него у lesson заводится уникальный ключ, как у student и group_ (0006).
+# Каскад с Занятием даёт и каскад с Группой: Группа уносит Занятия (0012),
+# Занятия уносят Поправки.
+#
+# Что неявка бывает только у Занятия с Учеником, здесь не проверяется:
+# для этого пришлось бы смотреть в соседнюю таблицу. Это держит сервис.
+databaseChangeLog:
+  - changeSet:
+      id: 0013-lesson-id-user
+      author: locus
+      comment: Ключ (id, user_id) Занятия — под составную ссылку Поправки
+      changes:
+        - addUniqueConstraint:
+            tableName: lesson
+            columnNames: id, user_id
+            constraintName: uq_lesson_id_user
+
+  - changeSet:
+      id: 0013-meeting-adjustment
+      author: locus
+      comment: Поправка Встречи — отмена, перенос, неявка
+      changes:
+        - createTable:
+            tableName: meeting_adjustment
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_meeting_adjustment
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: lesson_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: planned_date
+                  type: DATE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cancelled
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: moved_date
+                  type: DATE
+              - column:
+                  name: moved_start
+                  type: TIME
+              - column:
+                  name: moved_duration_minutes
+                  type: INT
+              - column:
+                  name: absent
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: meeting_adjustment
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_meeting_adjustment_user
+        - addForeignKeyConstraint:
+            baseTableName: meeting_adjustment
+            baseColumnNames: lesson_id, user_id
+            referencedTableName: lesson
+            referencedColumnNames: id, user_id
+            constraintName: fk_meeting_adjustment_lesson
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: meeting_adjustment
+            columnNames: lesson_id, planned_date
+            constraintName: uq_meeting_adjustment_lesson_date
+        # Неделя ищет и Встречи, перенесённые в неё с другой даты.
+        - createIndex:
+            tableName: meeting_adjustment
+            indexName: ix_meeting_adjustment_user_moved_date
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: moved_date
+
+  - changeSet:
+      id: 0013-meeting-adjustment-checks
+      author: locus
+      comment: >-
+        Правила Поправки стоят в схеме, а не только в конструкторе записи
+        (standards.md, «Данные»): перенос — три поля вместе; отмена исключает
+        перенос и неявку; пустая Поправка не хранится; длительность переноса
+        от минуты до двенадцати часов. Сырой SQL, отката нет (ADR-0023).
+      changes:
+        - sql:
+            sql: >-
+              alter table meeting_adjustment
+              add constraint ck_meeting_adjustment_move_whole
+              check (num_nonnulls(moved_date, moved_start, moved_duration_minutes) in (0, 3)),
+              add constraint ck_meeting_adjustment_cancel_or_move
+              check (not (cancelled and moved_date is not null)),
+              add constraint ck_meeting_adjustment_cancel_or_absent
+              check (not (cancelled and absent)),
+              add constraint ck_meeting_adjustment_not_empty
+              check (cancelled or moved_date is not null or absent),
+              add constraint ck_meeting_adjustment_duration
+              check (moved_duration_minutes is null or moved_duration_minutes between 1 and 720)
