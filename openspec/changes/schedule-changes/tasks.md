@@ -51,19 +51,19 @@
 
 ## 3. Действия над Встречей
 
-- [ ] 3.1 `LessonService.meeting(id, plannedDate)` и действия `move`,
+- [x] 3.1 `LessonService.meeting(id, plannedDate)` и действия `move`,
       `cancel`, `restore`, `markAbsence(absent)` по правилам design.md;
       `MeetingNotFoundException` на дату без Встречи и на чужое Занятие;
       пустая Поправка удаляется. Проверить сервисными тестами на каждый
       отказ: неявка в будущем, у Группы, у отменённой; отмена с неявкой;
       длительность переноса 0
-- [ ] 3.2 `ScheduleController`: `GET /schedule/lessons/{id}/meetings/{date}`
+- [x] 3.2 `ScheduleController`: `GET /schedule/lessons/{id}/meetings/{date}`
       и `POST .../move`, `.../cancellation`, `.../restoration`,
       `.../absence`; шаблон `schedule/meeting.html` с блоками действий
       (ADR-0042: при отказе раскрыт блок своего действия, «Отмена»,
       возврат `from`). Проверить веб-тестом проход «перенёс — увидел
       в другой неделе — вернул — отметил неявку — снял»
-- [ ] 3.3 Изоляция: `LessonsAreFilteredByOwnerTest` дополнить — Учитель Б
+- [x] 3.3 Изоляция: `LessonsAreFilteredByOwnerTest` дополнить — Учитель Б
       не открывает Встречу Учителя А и не поправляет её, Поправки А не
       видны Б. Проверить: тест зелёный
 

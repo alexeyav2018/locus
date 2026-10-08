@@ -107,7 +107,8 @@ public final class Meetings {
         return dates;
     }
 
-    private static Meeting meeting(ListedLesson listed, LocalDate plannedDate, MeetingAdjustment adjustment) {
+    /** Встреча Занятия на плановую дату с её Поправкой; {@code null} — Встреча по правилу. */
+    static Meeting meeting(ListedLesson listed, LocalDate plannedDate, MeetingAdjustment adjustment) {
         LessonTiming timing = listed.lesson().timing();
         LessonId id = listed.lesson().id();
         if (adjustment == null) {

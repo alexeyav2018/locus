@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Встреча — Locus</title>
+    <!--/*
+        Страница Встречи: Занятие и плановая дата — её ключ (ADR-0048).
+        Показывает плановое и фактическое место, отмену, перенос и неявку;
+        действия — под раскрывающимися блоками (ADR-0042), при отказе раскрыт
+        блок отклонённого действия, возврат — параметром from.
+
+        Блок «Неявка» есть только у Встречи с Учеником. «Не пришёл» предлагается
+        лишь у наступившей и не отменённой Встречи — остальные отказы сервис
+        повторит и для прямого POST.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium"
+      th:with="listed=${details.listed}, meeting=${details.meeting}, timing=${details.listed.lesson.timing},
+               base='/schedule/lessons/' + ${details.listed.lesson.id.value} + '/meetings/' + ${details.meeting.plannedDate}">
+<p class="back"><a th:href="@{${shell.backOr('/schedule?week=' + meeting.date)}}">← К расписанию</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Встреча: ' + ${listed.addresseeName}">Встреча: Иванов Пётр</h1>
+        <p class="lead">
+            <a th:href="@{/schedule/lessons/{id}(id=${listed.lesson.id.value},from=${shell.here})}">Занятие</a>
+            <span th:if="${listed.lesson.group != null}">с Группой</span>
+            <span class="badge" th:if="${listed.withdrawn}">выбыл</span>
+        </p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Встреча ещё не наступила</p>
+
+<div class="card card--personal stack">
+    <p th:text="'По расписанию: ' + ${#temporals.format(meeting.plannedDate, 'dd.MM.yyyy')} + ', ' + ${#temporals.format(timing.start, 'HH:mm')} + '–' + ${#temporals.format(timing.end, 'HH:mm')}">По расписанию: 20.10.2026, 17:00–18:00</p>
+    <p th:if="${meeting.moved}"
+       th:text="'Перенесена на ' + ${#temporals.format(meeting.date, 'dd.MM.yyyy')} + ', ' + ${#temporals.format(meeting.start, 'HH:mm')} + '–' + ${#temporals.format(meeting.end, 'HH:mm')}">Перенесена на 22.10.2026, 18:00–19:00</p>
+    <div class="row">
+        <span class="badge badge--bad" th:if="${meeting.cancelled}">отменена</span>
+        <span class="badge badge--info" th:if="${meeting.moved}">перенесена</span>
+        <span class="badge badge--warn" th:if="${meeting.absent}">не пришёл</span>
+        <span class="badge badge--ok" th:unless="${meeting.cancelled or meeting.moved or meeting.absent}">как по расписанию</span>
+    </div>
+    <div class="row">
+        <a class="btn" th:href="@{/schedule(week=${meeting.date})}">К неделе Встречи</a>
+    </div>
+</div>
+
+<h2>Действия</h2>
+<div class="folds">
+    <details class="more" name="meeting-actions" th:attr="open=${shell.opened('/move')} ? 'open'">
+        <summary>Перенести</summary>
+        <div class="more-body">
+            <form class="stack" method="post" th:action="@{${base} + '/move'(from=${shell.back})}">
+                <p class="muted">Переносится только эта Встреча, остальные идут по расписанию.
+                    Пересечения с другими Встречами не проверяются.</p>
+                <label>Дата <input type="date" name="movedDate"
+                                   th:value="${shell.echo('movedDate', '/move') ?: meeting.date}"></label>
+                <label>Начало <input type="time" name="start"
+                                     th:value="${shell.echo('start', '/move') ?: meeting.start}"></label>
+                <label>Длительность, минут
+                    <input type="number" name="durationMinutes" min="1" max="720"
+                           th:value="${shell.echo('durationMinutes', '/move') ?: timing.durationMinutes}"></label>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Перенести</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details class="more" name="meeting-actions" th:unless="${meeting.cancelled}"
+             th:attr="open=${shell.opened('/cancellation')} ? 'open'">
+        <summary>Отменить</summary>
+        <div class="more-body">
+            <form method="post" th:action="@{${base} + '/cancellation'(from=${shell.back})}">
+                <p class="muted">Встреча останется на неделе с пометкой «отменена».</p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-danger">Отменить Встречу</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details class="more" name="meeting-actions" th:if="${meeting.cancelled or meeting.moved}"
+             th:attr="open=${shell.opened('/restoration')} ? 'open'">
+        <summary>Вернуть как было</summary>
+        <div class="more-body">
+            <form method="post" th:action="@{${base} + '/restoration'(from=${shell.back})}">
+                <p class="muted">Встреча вернётся на дату и время по расписанию; отметка неявки останется.</p>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Вернуть</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details class="more" name="meeting-actions" th:if="${details.withStudent}"
+             th:attr="open=${shell.opened('/absence')} ? 'open'">
+        <summary>Неявка</summary>
+        <div class="more-body">
+            <form method="post" th:if="${meeting.absent}"
+                  th:action="@{${base} + '/absence'(from=${shell.back})}">
+                <input type="hidden" name="absent" value="false">
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Ученик всё-таки пришёл</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+            <form method="post" th:if="${!meeting.absent and details.started and !meeting.cancelled}"
+                  th:action="@{${base} + '/absence'(from=${shell.back})}">
+                <input type="hidden" name="absent" value="true">
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Ученик не пришёл</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+            <p class="muted" th:if="${!meeting.absent and !details.started}">Встреча ещё не наступила:
+                неявку отмечают в день Встречи или позже.</p>
+            <p class="muted" th:if="${!meeting.absent and details.started and meeting.cancelled}">Встреча
+                отменена: неявку у неё не отмечают.</p>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -43,6 +44,9 @@ class LessonsAreFilteredByOwnerTest extends IntegrationTest {
     @Autowired
     private LessonRepository lessons;
 
+    @Autowired
+    private MeetingAdjustmentRepository adjustments;
+
     /** Сценарий «Неделя другого Учителя» — и та же Встреча на главной. */
     @Test
     void anotherTeachersMeetingsAreShownNeitherInTheWeekNorOnTheHomePage() {
@@ -78,6 +82,46 @@ class LessonsAreFilteredByOwnerTest extends IntegrationTest {
                 .doesNotContain(studentName)
                 .doesNotContain(groupName)
                 .contains("Сегодня Встреч нет");
+    }
+
+    /**
+     * Сценарий «Отмена Встречи чужого Занятия» (ADR-0048): Учитель Б не
+     * открывает и не поправляет Встречу Учителя А — ни отменой, ни переносом,
+     * ни неявкой, — а перенос, поставленный А, не виден Б в неделе, куда
+     * Встреча перенесена.
+     */
+    @Test
+    void anotherTeachersMeetingIsNeitherOpenedNorAdjusted() {
+        TestAccounts.Account first = accounts.settled(Role.TEACHER);
+        TestAccounts.Account second = accounts.settled(Role.TEACHER);
+        String studentName = TestLibrary.unique("Сидоров Илья");
+        LocalDate tuesday = LocalDate.of(2026, 10, 20);
+        LocalDate thursday = LocalDate.of(2026, 10, 22);
+        LessonId weekly = lessons.create(first.id(), students.create(first.id(), studentName),
+                LessonTiming.weekly(LocalDate.of(2026, 10, 6), null, LocalTime.of(17, 0), 60));
+        adjustments.save(first.id(), MeetingAdjustment.none(weekly, LocalDate.of(2026, 10, 13))
+                .withMove(new MeetingAdjustment.Move(thursday, LocalTime.of(18, 0), 60)));
+        String meeting = "/schedule/lessons/" + weekly.value() + "/meetings/" + tuesday;
+        Browser own = loggedIn(first);
+        Browser other = loggedIn(second);
+
+        assertThat(other.get(meeting).status()).as("чужая Встреча — как несуществующая").isEqualTo(404);
+        assertThat(other.postForm(meeting + "/cancellation", Map.of()).status()).isEqualTo(404);
+        assertThat(other.postForm(meeting + "/move",
+                Map.of("movedDate", thursday.toString(), "start", "10:00", "durationMinutes", "60")).status())
+                .isEqualTo(404);
+        assertThat(other.postForm(meeting + "/absence", Map.of("absent", "true")).status()).isEqualTo(404);
+        assertThat(other.postForm(meeting + "/restoration", Map.of()).status()).isEqualTo(404);
+
+        assertThat(adjustments.find(first.id(), weekly, tuesday)).as("у А Встреча как прежде").isEmpty();
+        assertThat(own.get(meeting).body()).contains("как по расписанию");
+        assertThat(own.get("/schedule?week=" + thursday).body())
+                .as("свой перенос владелец видит")
+                .contains("перенесена с 13.10");
+        assertThat(other.get("/schedule?week=" + thursday).body())
+                .as("Поправки А не видны Б")
+                .doesNotContain(studentName)
+                .doesNotContain("перенесена");
     }
 
     private Browser loggedIn(TestAccounts.Account account) {
