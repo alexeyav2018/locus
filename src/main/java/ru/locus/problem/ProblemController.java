@@ -75,8 +75,7 @@ public class ProblemController {
     @GetMapping(Addresses.PROBLEMS + "/new")
     public String form(@RequestParam(required = false) Long topic, Model model) {
         drafts.sweep();
-        model.addAttribute("chosenTopic", topic == null ? 0L : topic);
-        fillMarkupChoices(topic, model);
+        fillMarkup(ProblemForm.startingAt(topic), model);
         return "problem/form";
     }
 
@@ -107,8 +106,7 @@ public class ProblemController {
                     slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
             return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
         } catch (NotATopicException | IllegalArgumentException refusal) {
-            model.addAttribute("chosenTopic", first(topics));
-            fillMarkupChoices(first(topics) == 0 ? null : first(topics), model);
+            fillMarkup(ProblemForm.sent(caption, part, topics, methodIds, characteristicIds), model);
             model.addAttribute("conditionRows", drafts.rows(conditionOrder));
             model.addAttribute("solutionRows", drafts.rows(solutionOrder));
             model.addAttribute("error", refusal.getMessage());
@@ -164,10 +162,7 @@ public class ProblemController {
     public String edit(@PathVariable long id, Model model) {
         drafts.sweep();
         Problem problem = problems.problem(new ProblemId(id));
-        model.addAttribute("problem", problem);
-        model.addAttribute("chosenTopic", problem.topics().isEmpty() ? 0L : problem.topics().get(0).value());
-        fillMarkupChoices(problem.topics().isEmpty() ? null : problem.topics().get(0).value(), model);
-        return "problem/form";
+        return editForm(problem, ProblemForm.of(problem), model);
     }
 
     @PostMapping(Addresses.PROBLEMS + "/{id}")
@@ -182,7 +177,11 @@ public class ProblemController {
             problems.edit(new ProblemId(id), caption, part,
                     nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds));
         } catch (ProblemInUseException | NotATopicException | IllegalArgumentException refusal) {
-            return refusedEdit(id, refusal, model);
+            Problem problem = problems.problem(new ProblemId(id));
+            String page = editForm(problem, ProblemForm.sent(caption, part, topics, methodIds, characteristicIds),
+                    model);
+            model.addAttribute("error", refusal.getMessage());
+            return page;
         }
         return "redirect:" + Addresses.PROBLEMS + "/" + id;
     }
@@ -243,16 +242,26 @@ public class ProblemController {
         }
     }
 
+    private String editForm(Problem problem, ProblemForm form, Model model) {
+        model.addAttribute("problem", problem);
+        fillMarkup(form, model);
+        return "problem/form";
+    }
+
     /**
-     * Что предлагается в форме разметки: Темы дерева, Методы и Характеристики.
+     * Что отмечено в форме разметки и что в ней предлагается: Темы дерева,
+     * Методы и Характеристики.
      *
      * Методы Темы идут отдельным списком и показываются первыми, полный
      * словарь — вторым: на сотне записей выбор из полного списка превращается
      * в перебор, при котором заводится смысловой дубль вместо существующей
      * записи (ADR-0009, ADR-0010). Выбор при этом ничем не ограничен — Метод,
-     * в Теме не встречавшийся, указать можно.
+     * в Теме не встречавшийся, указать можно. Подсказка строится по первой
+     * отмеченной Теме — после отказа это первая присланная.
      */
-    private void fillMarkupChoices(Long topic, Model model) {
+    private void fillMarkup(ProblemForm form, Model model) {
+        Long topic = form.firstTopic();
+        model.addAttribute("form", form);
         model.addAttribute("topicPaths", taxonomy.topicPaths());
         model.addAttribute("topicMethods",
                 topic == null ? List.of() : problems.methodsUsedIn(new TaxonomyNodeId(topic)));
@@ -261,6 +270,10 @@ public class ProblemController {
         model.addAttribute("parts", ExamPart.values());
     }
 
+    /**
+     * Отказ замены файла или удаления: форма с сохранённой Задачей. Разметку
+     * эти формы не присылают, поэтому показывать, кроме сохранённой, нечего.
+     */
     private String refusedEdit(long id, RuntimeException refusal, Model model) {
         String message = refusal.getMessage();
         String page = edit(id, model);
@@ -359,10 +372,5 @@ public class ProblemController {
 
     private static List<CharacteristicId> characteristicIds(List<Long> values) {
         return values == null ? List.of() : values.stream().map(CharacteristicId::new).toList();
-    }
-
-    /** «Тема не выбрана» — нуль: идентификаторы положительны по построению. */
-    private static long first(List<Long> topics) {
-        return topics == null || topics.isEmpty() ? 0L : topics.get(0);
     }
 }

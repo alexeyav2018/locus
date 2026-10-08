@@ -6,7 +6,8 @@
     <!--/*
         Одна страница на заведение и правку: поля те же, и разъехались бы они
         молча — сначала порядком, потом составом. Различает их наличие
-        ${problem}; файлы при правке заменяются отдельными формами, потому что
+        ${problem}. Отмечает поля одна запись ${form} — пустая, из Задачи
+        или из присланного до отказа, — и источник шаблон не выбирает; файлы при правке заменяются отдельными формами, потому что
         заменяют обычно один из двух, а не оба сразу.
 
         У каждого слота — поле исходника для сборки PDF (ADR-0044). Поле без
@@ -37,7 +38,7 @@
       th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
 
     <label>Подпись
-        <input type="text" name="caption" th:value="${problem} ? ${problem.caption} : ''">
+        <input type="text" name="caption" th:value="${form.caption}">
     </label>
     <p class="hint">Необязательна: без неё Задача различается номером.</p>
 
@@ -45,7 +46,7 @@
         <legend>Часть ЕГЭ</legend>
         <label th:each="examPart : ${parts}">
             <input type="radio" name="part" th:value="${examPart}"
-                   th:checked="${problem != null and problem.part == examPart}">
+                   th:checked="${form.part == examPart}">
             <span th:text="${examPart.title}">первая часть</span>
         </label>
     </fieldset>
@@ -57,8 +58,7 @@
             <option th:each="path : ${topicPaths}"
                     th:value="${path.id.value}"
                     th:text="${path.path}"
-                    th:selected="${(problem != null and problem.topics.contains(path.id))
-                                   or (problem == null and path.id.value == chosenTopic)}">Алгебра / Уравнения</option>
+                    th:selected="${form.topics.contains(path.id.value)}">Алгебра / Уравнения</option>
         </select>
     </fieldset>
 
@@ -72,7 +72,7 @@
                 <option th:each="method : ${topicMethods}"
                         th:value="${method.id.value}"
                         th:text="${method.name}"
-                        th:selected="${problem != null and problem.methods.contains(method.id)}">Замена переменной</option>
+                        th:selected="${form.methods.contains(method.id.value)}">Замена переменной</option>
             </select>
         </div>
         <p class="hint">Весь словарь Методов:</p>
@@ -80,20 +80,21 @@
             <option th:each="method : ${methods}"
                     th:value="${method.id.value}"
                     th:text="${method.name}"
-                    th:selected="${problem != null and problem.methods.contains(method.id)}">Разложение на множители</option>
+                    th:selected="${form.methods.contains(method.id.value)}">Разложение на множители</option>
         </select>
     </fieldset>
 
-    <!--/* Необязательное — под кнопкой; у Задачи с уже выбранными
-           Характеристиками блок раскрыт, чтобы выбор был виден. */-->
-    <details class="more" th:attr="open=${problem != null and not #lists.isEmpty(problem.characteristics)} ? 'open'">
+    <!--/* Необязательное — под кнопкой; если Характеристики уже выбраны —
+           у Задачи или в присланном до отказа, — блок раскрыт, чтобы выбор
+           был виден. */-->
+    <details class="more" th:attr="open=${not #sets.isEmpty(form.characteristics)} ? 'open'">
         <summary>Характеристики (необязательно)</summary>
         <div class="more-body">
             <select name="characteristicIds" multiple size="6">
                 <option th:each="characteristic : ${characteristics}"
                         th:value="${characteristic.id.value}"
                         th:text="${characteristic.name}"
-                        th:selected="${problem != null and problem.characteristics.contains(characteristic.id)}">Двойной угол</option>
+                        th:selected="${form.characteristics.contains(characteristic.id.value)}">Двойной угол</option>
             </select>
         </div>
     </details>
