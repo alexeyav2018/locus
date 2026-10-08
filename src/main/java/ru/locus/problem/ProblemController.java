@@ -106,6 +106,7 @@ public class ProblemController {
                     slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
             return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
         } catch (NotATopicException | IllegalArgumentException refusal) {
+            AssemblyRefusals.report(refusal);
             fillMarkup(ProblemForm.sent(caption, part, topics, methodIds, characteristicIds), model);
             model.addAttribute("conditionRows", drafts.rows(conditionOrder));
             model.addAttribute("solutionRows", drafts.rows(solutionOrder));
@@ -275,6 +276,7 @@ public class ProblemController {
      * эти формы не присылают, поэтому показывать, кроме сохранённой, нечего.
      */
     private String refusedEdit(long id, RuntimeException refusal, Model model) {
+        AssemblyRefusals.report(refusal);
         String message = refusal.getMessage();
         String page = edit(id, model);
         model.addAttribute("error", message);

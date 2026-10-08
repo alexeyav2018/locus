@@ -205,7 +205,7 @@ public class PdfAssembly {
                     / Math.max(upright.getWidth(), upright.getHeight()));
             return scale == 1 ? upright : Thumbnails.of(upright).scale(scale).asBufferedImage();
         } catch (IOException e) {
-            throw new IllegalArgumentException("Картинка «" + name + "» не разбирается");
+            throw new IllegalArgumentException("Картинка «" + name + "» не разбирается", e);
         }
     }
 
@@ -233,9 +233,10 @@ public class PdfAssembly {
         try {
             return Loader.loadPDF(file.toFile());
         } catch (InvalidPasswordException e) {
-            throw new IllegalArgumentException("PDF «" + name + "» закрыт паролем: откройте его и сохраните без пароля");
+            throw new IllegalArgumentException("PDF «" + name + "» закрыт паролем: откройте его и сохраните без пароля",
+                    e);
         } catch (IOException e) {
-            throw new IllegalArgumentException("Файл «" + name + "» не разбирается как PDF");
+            throw new IllegalArgumentException("Файл «" + name + "» не разбирается как PDF", e);
         }
     }
 
@@ -394,7 +395,7 @@ public class PdfAssembly {
                     .useExifOrientation(true)
                     .asBufferedImage();
         } catch (IOException e) {
-            throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается");
+            throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается", e);
         }
         BufferedImage cut = cut(upright, part.frame());
         PDImageXObject image = jpeg
@@ -586,7 +587,7 @@ public class PdfAssembly {
             try {
                 image = JPEGFactory.createFromByteArray(result, content);
             } catch (IOException e) {
-                throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается");
+                throw new IllegalArgumentException("Картинка «" + part.name() + "» не разбирается", e);
             }
             orientation = orientationOf(content);
         } else if (isPng(content)) {
