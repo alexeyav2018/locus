@@ -9,7 +9,7 @@
 
 ## 1. Схема, запись, репозиторий
 
-- [ ] 1.1 Миграция `db/changelog/migrations/0012-schedule.yaml`: таблица
+- [x] 1.1 Миграция `db/changelog/migrations/0012-schedule.yaml`: таблица
       `lesson` (`id`, `user_id`, `student_id` null, `group_id` null,
       `first_date`, `last_date` null, `weekly`, `start_time`,
       `duration_minutes`). FK `user_id → user_`, составные FK
@@ -18,7 +18,7 @@
       Четыре check-ограничения из design.md. Проверить: миграция
       применяется на заполненной базе разработки (`mvn spring-boot:run`)
       и в тестах (`MigrationsOnStartupTest`)
-- [ ] 1.2 Пакет `ru.locus.lesson`: `LessonId`, `Lesson` (адресат — ровно
+- [x] 1.2 Пакет `ru.locus.lesson`: `LessonId`, `Lesson` (адресат — ровно
       один из `StudentId`/`GroupId`, проверка в компактном конструкторе)
       и `LessonRepository` на `JdbcClient` с `UserId` в каждом публичном
       методе: `create`, `findById`, `findCandidates(owner, from, to)`
@@ -27,7 +27,7 @@
       владельцах: отбор кандидатов на краях отрезка, чужой Ученик
       и чужая Группа отклоняются базой, каскад с Группой, отказ базы
       при удалении Ученика с Занятием
-- [ ] 1.3 `OwnerIsRequiredByLessonsTest` по образцу
+- [x] 1.3 `OwnerIsRequiredByLessonsTest` по образцу
       `OwnerIsRequiredByStudentsTest`: у каждого публичного метода
       `LessonRepository` есть `UserId`, у таблицы `lesson` есть `user_id`,
       списка исключений нет. Проверить: тест зелёный
