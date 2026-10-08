@@ -14,6 +14,7 @@ import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
+import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.file.FileType;
@@ -213,6 +214,81 @@ class ProblemScreenTest extends IntegrationTest {
         String form = administrator().get("/problems/" + problem.value() + "/edit").body();
 
         assertThat(form).contains("Задача № " + problem.value()).contains("Сохранить");
+    }
+
+    /**
+     * Отказ заведения не теряет разметку: Подпись, Часть, обе Темы, Метод
+     * и Характеристика возвращаются отмеченными, блок Характеристик раскрыт.
+     * Отказ вызывает недостающий PDF решения.
+     */
+    @Test
+    void refusedCreationKeepsTheWholeMarkup() {
+        TaxonomyNodeId first = library.topic();
+        TaxonomyNodeId second = library.topic();
+        SolutionMethodId method = library.method();
+        CharacteristicId characteristic = library.characteristic();
+        List<Map.Entry<String, String>> fields = List.of(
+                Map.entry("caption", "Ященко, вариант 7"),
+                Map.entry("part", "SECOND"),
+                Map.entry("topics", String.valueOf(first.value())),
+                Map.entry("topics", String.valueOf(second.value())),
+                Map.entry("methodIds", String.valueOf(method.value())),
+                Map.entry("characteristicIds", String.valueOf(characteristic.value())));
+
+        Browser.Page refused = administrator().postMultipart("/problems", fields, List.of(
+                new Browser.FilePart("condition", "condition.pdf", "application/pdf", TestLibrary.pdf())));
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("Не приложен PDF решения");
+        assertKeptMarkup(refused.body(), "Ященко, вариант 7", List.of(first, second), method, characteristic);
+    }
+
+    /** Отказ правки показывает присланную разметку, а не перечитанную из базы. */
+    @Test
+    void refusedEditKeepsTheSentMarkup() {
+        TaxonomyNodeId saved = library.topic();
+        TaxonomyNodeId sent = library.topic();
+        ProblemId problem = library.problem(saved);
+        SolutionMethodId method = library.method();
+        CharacteristicId characteristic = library.characteristic();
+        List<Map.Entry<String, String>> fields = List.of(
+                Map.entry("caption", "Исправленная подпись"),
+                Map.entry("part", "SECOND"),
+                Map.entry("topics", String.valueOf(sent.value())),
+                Map.entry("topics", String.valueOf(library.section().value())),
+                Map.entry("methodIds", String.valueOf(method.value())),
+                Map.entry("characteristicIds", String.valueOf(characteristic.value())));
+
+        Browser.Page refused = administrator().postForm("/problems/" + problem.value(), fields);
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("role=\"alert\"").contains("Задача № " + problem.value());
+        assertKeptMarkup(refused.body(), "Исправленная подпись", List.of(sent), method, characteristic);
+        assertThat(refused.body())
+                .as("сохранённая Тема не отмечена: показано присланное")
+                .doesNotContainPattern("value=\"" + saved.value() + "\"[^>]*selected");
+    }
+
+    private static void assertKeptMarkup(String page, String caption, List<TaxonomyNodeId> topics,
+                                         SolutionMethodId method, CharacteristicId characteristic) {
+        assertThat(page).contains("name=\"caption\" value=\"" + caption + "\"");
+        assertThat(page).containsPattern("value=\"SECOND\"[^>]*checked");
+        String topicChoices = topicChoicesOf(page);
+        for (TaxonomyNodeId topic : topics) {
+            assertThat(topicChoices).containsPattern("value=\"" + topic.value() + "\"[^>]*selected");
+        }
+        assertThat(choicesOf(page, "methodIds", "Весь словарь Методов:"))
+                .containsPattern("value=\"" + method.value() + "\"[^>]*selected");
+        assertThat(choicesOf(page, "characteristicIds", "Характеристики"))
+                .containsPattern("value=\"" + characteristic.value() + "\"[^>]*selected");
+        assertThat(page).as("блок Характеристик раскрыт").containsPattern("<details[^>]*open[^>]*>\\s*<summary>Характеристики");
+    }
+
+    /** Список выбора с данным именем, первый после указанной метки. */
+    private static String choicesOf(String page, String name, String after) {
+        int start = page.indexOf("name=\"" + name + "\"", page.indexOf(after));
+        assertThat(start).as("на странице есть выбор %s", name).isNotNegative();
+        return page.substring(start, page.indexOf("</select>", start));
     }
 
     /** Задача 7.6: с главной страницы к Задачам есть дорога. */
