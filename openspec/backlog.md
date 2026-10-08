@@ -114,7 +114,7 @@
 | `teacher-proposes` | — | `problem-catalog`, `auth-roles` | — | M | нет | общее | ждёт условия |
 | `mastery-history` | — | `mastery-marks` | — | S | **да** | личное | ждёт условия |
 | `topic-merge` | — | `rubricator-restructure` | — | M | **да** | общее → личное | ждёт условия |
-| `schedule` | — | `students-groups` | — | L | нет | личное | |
+| `schedule` | — | `students-groups` | — | L | нет | личное | ✅ |
 | `schedule-changes` | — | `schedule` | — | M | нет | личное | |
 | `silent-failure-principle` | Д | — | — | S | нет | не затрагивает | ✅ |
 | `backlog-skill-arcs` | Л | `backlog-stage-column` | — | L | нет | не затрагивает | ждёт условия |
