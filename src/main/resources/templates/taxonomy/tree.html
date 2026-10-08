@@ -42,9 +42,8 @@
                 <p class="empty" th:if="${#lists.isEmpty(problems)}">Задач на этой Теме нет.</p>
                 <ul class="items" th:unless="${#lists.isEmpty(problems)}">
                     <li class="item" th:each="problem : ${problems}">
-                        <a th:href="@{/problems/{id}(id=${problem.id.value},from=${shell.here})}"
+                        <a class="grow" th:href="@{/problems/{id}(id=${problem.id.value},from=${shell.here})}"
                            th:text="'№ ' + ${problem.number}">№ 12</a>
-                        <span class="grow muted" th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
                         <span class="badge" th:text="${problem.part.title}">вторая часть</span>
                     </li>
                 </ul>
@@ -194,7 +193,6 @@
                         <li class="item" th:each="problem : ${problems}">
                             <label class="grow">
                                 <span class="item-title" th:text="'№ ' + ${problem.number}">№ 12</span>
-                                <span th:if="${problem.hasCaption}" th:text="${problem.caption}">Ященко, вариант 12</span>
                                 <!--/* Список приёмников здесь свой: считается по дереву
                                        после снятия, и родитель, остающийся без потомков,
                                        в нём есть, а снимаемая Тема — нет. */-->

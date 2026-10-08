@@ -264,8 +264,7 @@ public class ProblemService {
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
-    public ProblemId create(String caption,
-                            ExamPart part,
+    public ProblemId create(ExamPart part,
                             List<TaxonomyNodeId> topics,
                             List<SolutionMethodId> methodIds,
                             List<CharacteristicId> characteristicIds,
@@ -282,7 +281,7 @@ public class ProblemService {
         FileKey solutionKey = null;
         try {
             solutionKey = storage.put(solutionFile.content(), solutionFile.contentType());
-            ProblemId created = problems.create(caption, part, conditionKey, solutionKey,
+            ProblemId created = problems.create(part, conditionKey, solutionKey,
                     topics, methodIds, characteristicIds);
             discardDrafts(condition, solution);
             return created;
@@ -294,8 +293,8 @@ public class ProblemService {
     }
 
     /**
-     * Меняет подпись и разметку Задачи. Номер при этом не меняется — он и есть
-     * идентификатор Задачи и человеку обещан неизменным (ADR-0029).
+     * Меняет Часть и разметку Задачи. Номер при этом не меняется — он и есть
+     * идентификатор Задачи и человеку обещан неизменным (ADR-0050).
      *
      * Правка не снимает обязательности состава: Задача без Темы или без Метода
      * не сохраняется и правкой тоже.
@@ -303,7 +302,6 @@ public class ProblemService {
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     @Transactional
     public void edit(ProblemId id,
-                     String caption,
                      ExamPart part,
                      List<TaxonomyNodeId> topics,
                      List<SolutionMethodId> methodIds,
@@ -313,7 +311,6 @@ public class ProblemService {
         Problem.requireMarkup(part, topics, methodIds);
         requireExistingMarkup(topics, methodIds, characteristicIds);
 
-        problems.changeCaption(problem.id(), caption);
         problems.changePart(problem.id(), part);
         problems.replaceMarkup(problem.id(), topics, methodIds, characteristicIds);
     }

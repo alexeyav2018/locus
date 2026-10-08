@@ -110,7 +110,7 @@ class MethodCannotBeUnmarkedUnderMasteryTest extends IntegrationTest {
         Problem current = problems.problem(problem);
 
         LoggedIn.as(Role.ADMINISTRATOR);
-        assertThatThrownBy(() -> problems.edit(problem, current.caption(), current.part(),
+        assertThatThrownBy(() -> problems.edit(problem, current.part(),
                 current.topics(), List.of(otherMethod), List.of()))
                 .as("Задача заморожена Заданием (ADR-0030), правка отклоняется целиком")
                 .isInstanceOf(ProblemInUseException.class)

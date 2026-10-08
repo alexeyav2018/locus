@@ -18,14 +18,12 @@ import java.util.Set;
  * Идентификаторы — числами, как их шлёт и сравнивает форма; порядок Тем
  * сохраняется, потому что подсказку Методов строит первая.
  *
- * @param caption         Подпись как прислана; {@code null} — пустое поле
  * @param part            Часть ЕГЭ; {@code null} — не выбрана
  * @param topics          отмеченные Темы, первая — та, по которой подсказка
  * @param methods         отмеченные Методы
  * @param characteristics отмеченные Характеристики
  */
-public record ProblemForm(String caption,
-                          ExamPart part,
+public record ProblemForm(ExamPart part,
                           Set<Long> topics,
                           Set<Long> methods,
                           Set<Long> characteristics) {
@@ -38,21 +36,21 @@ public record ProblemForm(String caption,
 
     /** Пустая форма заведения; Тема, с которой пришли, выбрана заранее. */
     static ProblemForm startingAt(Long topic) {
-        return new ProblemForm(null, null, topic == null ? Set.of() : Set.of(topic), Set.of(), Set.of());
+        return new ProblemForm(null, topic == null ? Set.of() : Set.of(topic), Set.of(), Set.of());
     }
 
     /** Форма правки, заполненная сохранённой Задачей. */
     static ProblemForm of(Problem problem) {
-        return new ProblemForm(problem.caption(), problem.part(),
+        return new ProblemForm(problem.part(),
                 ids(problem.topics().stream().map(id -> id.value()).toList()),
                 ids(problem.methods().stream().map(id -> id.value()).toList()),
                 ids(problem.characteristics().stream().map(id -> id.value()).toList()));
     }
 
     /** Форма после отказа — ровно то, что было прислано. */
-    static ProblemForm sent(String caption, ExamPart part, List<Long> topics,
+    static ProblemForm sent(ExamPart part, List<Long> topics,
                             List<Long> methods, List<Long> characteristics) {
-        return new ProblemForm(caption, part, ids(topics), ids(methods), ids(characteristics));
+        return new ProblemForm(part, ids(topics), ids(methods), ids(characteristics));
     }
 
     /** Первая отмеченная Тема или {@code null}: по ней строится подсказка Методов. */

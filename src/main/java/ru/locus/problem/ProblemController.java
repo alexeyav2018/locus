@@ -80,8 +80,7 @@ public class ProblemController {
     }
 
     @PostMapping(Addresses.PROBLEMS)
-    public String create(@RequestParam(required = false) String caption,
-                         @RequestParam(required = false) ExamPart part,
+    public String create(@RequestParam(required = false) ExamPart part,
                          @RequestParam(required = false) List<Long> topics,
                          @RequestParam(required = false) List<Long> methodIds,
                          @RequestParam(required = false) List<Long> characteristicIds,
@@ -101,13 +100,13 @@ public class ProblemController {
         try {
             requireFrames(conditionCrop);
             requireFrames(solutionCrop);
-            ProblemId created = problems.create(caption, part,
+            ProblemId created = problems.create(part,
                     nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds),
                     slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
             return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
         } catch (NotATopicException | IllegalArgumentException refusal) {
             AssemblyRefusals.report(refusal);
-            fillMarkup(ProblemForm.sent(caption, part, topics, methodIds, characteristicIds), model);
+            fillMarkup(ProblemForm.sent(part, topics, methodIds, characteristicIds), model);
             model.addAttribute("conditionRows", drafts.rows(conditionOrder));
             model.addAttribute("solutionRows", drafts.rows(solutionOrder));
             model.addAttribute("error", refusal.getMessage());
@@ -115,7 +114,7 @@ public class ProblemController {
         }
     }
 
-    /** Просмотр Задачи: разметка, номер, подпись и обе временные ссылки. */
+    /** Просмотр Задачи: разметка, номер и обе временные ссылки. */
     @GetMapping(Addresses.PROBLEMS + "/{id}")
     public String problem(@PathVariable long id, Model model) {
         Problem problem = problems.problem(new ProblemId(id));
@@ -168,18 +167,17 @@ public class ProblemController {
 
     @PostMapping(Addresses.PROBLEMS + "/{id}")
     public String edit(@PathVariable long id,
-                       @RequestParam(required = false) String caption,
                        @RequestParam(required = false) ExamPart part,
                        @RequestParam(required = false) List<Long> topics,
                        @RequestParam(required = false) List<Long> methodIds,
                        @RequestParam(required = false) List<Long> characteristicIds,
                        Model model) {
         try {
-            problems.edit(new ProblemId(id), caption, part,
+            problems.edit(new ProblemId(id), part,
                     nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds));
         } catch (ProblemInUseException | NotATopicException | IllegalArgumentException refusal) {
             Problem problem = problems.problem(new ProblemId(id));
-            String page = editForm(problem, ProblemForm.sent(caption, part, topics, methodIds, characteristicIds),
+            String page = editForm(problem, ProblemForm.sent(part, topics, methodIds, characteristicIds),
                     model);
             model.addAttribute("error", refusal.getMessage());
             return page;

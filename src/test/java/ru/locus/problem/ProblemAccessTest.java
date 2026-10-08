@@ -101,7 +101,7 @@ class ProblemAccessTest extends IntegrationTest {
         SolutionMethodId method = library.method();
 
         Browser.Page created = loggedIn(Role.ADMINISTRATOR).postMultipart("/problems",
-                Map.of("caption", "Ященко, вариант 12", "part", "SECOND",
+                Map.of("part", "SECOND",
                         "topics", String.valueOf(topic.value()),
                         "methodIds", String.valueOf(method.value())),
                 Map.of("condition", TestLibrary.pdf(), "solution", TestLibrary.pdf()));
@@ -109,7 +109,6 @@ class ProblemAccessTest extends IntegrationTest {
         assertThat(created.status()).as("операция выполнена, ответ — переадресация").isEqualTo(302);
         List<Problem> onTopic = problems.findByTopic(topic);
         assertThat(onTopic).hasSize(1);
-        assertThat(onTopic.get(0).caption()).isEqualTo("Ященко, вариант 12");
         assertThat(onTopic.get(0).part()).isEqualTo(ExamPart.SECOND);
     }
 

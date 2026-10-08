@@ -39,11 +39,6 @@
       enctype="multipart/form-data"
       th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
 
-    <label>Подпись
-        <input type="text" name="caption" th:value="${form.caption}">
-    </label>
-    <p class="hint">Необязательна: без неё Задача различается номером.</p>
-
     <fieldset>
         <legend>Часть ЕГЭ</legend>
         <label th:each="examPart : ${parts}">

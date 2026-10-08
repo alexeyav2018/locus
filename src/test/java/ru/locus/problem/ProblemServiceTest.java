@@ -54,11 +54,10 @@ class ProblemServiceTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
 
-        ProblemId id = problems.create("Ященко, вариант 12", ExamPart.SECOND,
+        ProblemId id = problems.create(ExamPart.SECOND,
                 List.of(topic), List.of(method), List.of(), pdf(), pdf());
 
         Problem created = problems.problem(id);
-        assertThat(created.caption()).isEqualTo("Ященко, вариант 12");
         assertThat(created.topics()).containsExactly(topic);
         assertThat(created.methods()).containsExactly(method);
         assertThat(problems.problemsOf(topic)).extracting(Problem::id).contains(id);
@@ -75,7 +74,7 @@ class ProblemServiceTest extends IntegrationTest {
     void problemCannotBeAttachedToASection() {
         TaxonomyNodeId section = library.section();
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(section), List.of(library.method()), List.of(), pdf(), pdf()))
                 .isInstanceOf(NotATopicException.class)
                 .hasMessageContaining("Задачи несут только Темы");
@@ -86,7 +85,7 @@ class ProblemServiceTest extends IntegrationTest {
     /** Сценарий «Задача без Темы». */
     @Test
     void problemWithoutATopicIsNotCreated() {
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(), List.of(library.method()), List.of(), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("хотя бы одна Тема");
@@ -95,7 +94,7 @@ class ProblemServiceTest extends IntegrationTest {
     /** Сценарий «Задача без Метода». */
     @Test
     void problemWithoutAMethodIsNotCreated() {
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(library.topic()), List.of(), List.of(), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("хотя бы один Метод");
@@ -104,7 +103,7 @@ class ProblemServiceTest extends IntegrationTest {
     /** Сценарий «Часть указывается ровно одна» — не указанная отклоняется. */
     @Test
     void problemWithoutAnExamPartIsNotCreated() {
-        assertThatThrownBy(() -> problems.create(null, null,
+        assertThatThrownBy(() -> problems.create(null,
                 List.of(library.topic()), List.of(library.method()), List.of(), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Часть");
@@ -116,12 +115,12 @@ class ProblemServiceTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(topic), List.of(method), List.of(), pdf(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("решения");
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(topic), List.of(method), List.of(), null, pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("условия");
@@ -133,17 +132,17 @@ class ProblemServiceTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId method = library.method();
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(new TaxonomyNodeId(Long.MAX_VALUE)), List.of(method), List.of(), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Узла рубрикатора");
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(topic), List.of(new SolutionMethodId(Long.MAX_VALUE)), List.of(), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Метода");
 
-        assertThatThrownBy(() -> problems.create(null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.create(ExamPart.FIRST,
                 List.of(topic), List.of(method), List.of(new CharacteristicId(Long.MAX_VALUE)), pdf(), pdf()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Характеристики");
@@ -157,11 +156,10 @@ class ProblemServiceTest extends IntegrationTest {
         SolutionMethodId added = library.method();
         List<SolutionMethodId> both = List.of(problems.problem(id).methods().get(0), added);
 
-        problems.edit(id, "Подпись появилась", ExamPart.FIRST, List.of(topic), both, List.of());
+        problems.edit(id, ExamPart.FIRST, List.of(topic), both, List.of());
 
         Problem edited = problems.problem(id);
         assertThat(edited.methods()).containsExactlyInAnyOrderElementsOf(both);
-        assertThat(edited.caption()).isEqualTo("Подпись появилась");
         assertThat(edited.number()).as("номер при правке не меняется").isEqualTo(id.value());
     }
 
@@ -172,7 +170,7 @@ class ProblemServiceTest extends IntegrationTest {
         ProblemId id = library.problem(topic);
         List<SolutionMethodId> before = problems.problem(id).methods();
 
-        assertThatThrownBy(() -> problems.edit(id, null, ExamPart.FIRST, List.of(topic), List.of(), List.of()))
+        assertThatThrownBy(() -> problems.edit(id, ExamPart.FIRST, List.of(topic), List.of(), List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(problems.problem(id).methods())
@@ -186,7 +184,7 @@ class ProblemServiceTest extends IntegrationTest {
         ProblemId id = library.problem(library.topic());
         TaxonomyNodeId section = library.section();
 
-        assertThatThrownBy(() -> problems.edit(id, null, ExamPart.FIRST,
+        assertThatThrownBy(() -> problems.edit(id, ExamPart.FIRST,
                 List.of(section), problems.problem(id).methods(), List.of()))
                 .isInstanceOf(NotATopicException.class);
     }
@@ -219,7 +217,7 @@ class ProblemServiceTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         ProblemId id = library.problem(topic);
 
-        assertThatCode(() -> problems.edit(id, "Правится", ExamPart.FIRST,
+        assertThatCode(() -> problems.edit(id, ExamPart.FIRST,
                 List.of(topic), problems.problem(id).methods(), List.of()))
                 .doesNotThrowAnyException();
         assertThatCode(() -> problems.delete(id)).doesNotThrowAnyException();
@@ -362,7 +360,7 @@ class ProblemServiceTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId newcomer = library.method();
 
-        problems.create(null, ExamPart.FIRST, List.of(topic), List.of(newcomer), List.of(), pdf(), pdf());
+        problems.create(ExamPart.FIRST, List.of(topic), List.of(newcomer), List.of(), pdf(), pdf());
 
         assertThat(problems.methodsUsedIn(topic))
                 .as("выборка не ограничивает выбор, а следует за ним")

@@ -15,7 +15,6 @@ import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
-import ru.locus.file.FileType;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyRepository;
 import ru.locus.user.Role;
@@ -90,11 +89,8 @@ class RestructureScreenTest extends IntegrationTest {
     @Test
     void topicWithProblemsOffersRemovalWithDistributionListingEveryProblem() {
         TaxonomyNodeId topic = library.topic();
-        ProblemId plain = library.problem(topic);
-        ProblemId captioned = problems.create("Ященко, вариант 12", ExamPart.SECOND,
-                List.of(topic), List.of(library.method()), List.of(),
-                new UploadedFile(TestLibrary.pdf(), FileType.PDF),
-                new UploadedFile(TestLibrary.pdf(), FileType.PDF));
+        ProblemId first = library.problem(topic);
+        ProblemId second = library.problem(topic);
 
         String body = loggedIn(Role.ADMINISTRATOR).get("/taxonomy?node=" + topic.value()).body();
 
@@ -104,12 +100,11 @@ class RestructureScreenTest extends IntegrationTest {
                 .contains("action=\"/taxonomy/" + topic.value() + "/distribution\"")
                 .doesNotContain("action=\"/taxonomy/" + topic.value() + "/deletion\"");
         assertThat(body)
-                .as("каждая Задача названа номером и подписью и получает свой выбор приёмника")
-                .contains("№ " + plain.value())
-                .contains("name=\"destination[" + plain.value() + "]\"")
-                .contains("№ " + captioned.value())
-                .contains("Ященко, вариант 12")
-                .contains("name=\"destination[" + captioned.value() + "]\"");
+                .as("каждая Задача названа номером и получает свой выбор приёмника")
+                .contains("№ " + first.value())
+                .contains("name=\"destination[" + first.value() + "]\"")
+                .contains("№ " + second.value())
+                .contains("name=\"destination[" + second.value() + "]\"");
     }
 
     /** Сценарий «Отметок нет»: число исчезающих отметок показано до подтверждения — сегодня оно нулевое. */

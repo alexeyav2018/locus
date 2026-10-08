@@ -75,7 +75,7 @@ class ProblemsGuardTheDictionariesTest extends IntegrationTest {
     @Test
     void characteristicUsedInTheMarkupOfAProblemIsNotDeleted() {
         CharacteristicId characteristic = library.characteristic();
-        problems.create(null, ExamPart.FIRST, List.of(library.topic()), List.of(library.method()),
+        problems.create(ExamPart.FIRST, List.of(library.topic()), List.of(library.method()),
                 List.of(characteristic),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));
@@ -92,12 +92,12 @@ class ProblemsGuardTheDictionariesTest extends IntegrationTest {
         TaxonomyNodeId topic = library.topic();
         SolutionMethodId leaving = library.method();
         SolutionMethodId staying = library.method();
-        ProblemId problem = problems.create(null, ExamPart.FIRST, List.of(topic),
+        ProblemId problem = problems.create(ExamPart.FIRST, List.of(topic),
                 List.of(leaving, staying), List.of(),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF),
                 new UploadedFile(TestLibrary.pdf(), FileType.PDF));
 
-        problems.edit(problem, null, ExamPart.FIRST, List.of(topic), List.of(staying), List.of());
+        problems.edit(problem, ExamPart.FIRST, List.of(topic), List.of(staying), List.of());
 
         assertThatCode(() -> methods.delete(leaving))
                 .as("Метод снят разметкой — условие перестало выполняться")

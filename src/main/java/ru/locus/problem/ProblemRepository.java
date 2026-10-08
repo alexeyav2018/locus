@@ -50,19 +50,18 @@ public class ProblemRepository {
      * Задача без файла выглядела бы настоящей, а забытый в хранилище файл
      * не виден никому (design.md, «Порядок укладки файлов»).
      */
-    public ProblemId create(String caption,
-                            ExamPart part,
+    public ProblemId create(ExamPart part,
                             FileKey conditionFile,
                             FileKey solutionFile,
                             List<TaxonomyNodeId> topics,
                             List<SolutionMethodId> methods,
                             List<CharacteristicId> characteristics) {
         Long id = database.sql("""
-                        insert into problem (caption, exam_part, condition_file_key, solution_file_key)
-                        values (?, ?, ?, ?)
+                        insert into problem (exam_part, condition_file_key, solution_file_key)
+                        values (?, ?, ?)
                         returning id
                         """)
-                .params(caption, part.name(), conditionFile.value(), solutionFile.value())
+                .params(part.name(), conditionFile.value(), solutionFile.value())
                 .query(Long.class)
                 .single();
         ProblemId problem = new ProblemId(id);
@@ -72,7 +71,7 @@ public class ProblemRepository {
 
     public Optional<Problem> findById(ProblemId id) {
         return database.sql("""
-                        select id, caption, exam_part, condition_file_key, solution_file_key
+                        select id, exam_part, condition_file_key, solution_file_key
                         from problem
                         where id = ?
                         """)
@@ -85,15 +84,13 @@ public class ProblemRepository {
     /**
      * Задачи, размеченные указанной Темой, по номеру.
      *
-     * Порядок — по номеру, а не по подписи: подписи может не быть вовсе,
-     * и порядок «сначала подписанные» переставлял бы список при каждой правке.
      * Обхода поддерева здесь нет намеренно: список отвечает на вопрос «что
      * лежит на этой Теме», а поиск по всей библиотеке придёт
      * с {@code library-search}.
      */
     public List<Problem> findByTopic(TaxonomyNodeId topic) {
         List<Row> rows = database.sql("""
-                        select p.id, p.caption, p.exam_part, p.condition_file_key, p.solution_file_key
+                        select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
                         from problem p
                         join problem_topic pt on pt.problem_id = p.id
                         where pt.topic_id = ?
@@ -120,7 +117,7 @@ public class ProblemRepository {
             return List.of();
         }
         List<Row> rows = database.sql("""
-                        select p.id, p.caption, p.exam_part, p.condition_file_key, p.solution_file_key
+                        select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
                         from problem p
                         where p.id in (""" + placeholders(ids.size()) + """
                         )
@@ -178,7 +175,7 @@ public class ProblemRepository {
                     "Пустой список Тем: поддерево всегда содержит сам узел, значит вызов испорчен");
         }
         StringBuilder sql = new StringBuilder("""
-                select p.id, p.caption, p.exam_part, p.condition_file_key, p.solution_file_key
+                select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
                 from problem p
                 where 1 = 1
                 """);
@@ -337,13 +334,6 @@ public class ProblemRepository {
                 .single();
     }
 
-    /** Меняет подпись Задачи. Номер при этом не меняется — он и есть её id. */
-    public void changeCaption(ProblemId id, String caption) {
-        database.sql("update problem set caption = ? where id = ?")
-                .params(caption, id.value())
-                .update();
-    }
-
     public void changePart(ProblemId id, ExamPart part) {
         database.sql("update problem set exam_part = ? where id = ?")
                 .params(part.name(), id.value())
@@ -486,7 +476,6 @@ public class ProblemRepository {
     private Problem withMarkup(Row row) {
         return new Problem(
                 row.id(),
-                row.caption(),
                 row.part(),
                 row.conditionFile(),
                 row.solutionFile(),
@@ -525,7 +514,6 @@ public class ProblemRepository {
         return rows.stream()
                 .map(row -> new Problem(
                         row.id(),
-                        row.caption(),
                         row.part(),
                         row.conditionFile(),
                         row.solutionFile(),
@@ -609,13 +597,12 @@ public class ProblemRepository {
      * а подставленные заглушки означали бы, что Задача с выдуманной разметкой
      * может уйти наружу, если дочитать разметку однажды забудут.
      */
-    private record Row(ProblemId id, String caption, ExamPart part, FileKey conditionFile, FileKey solutionFile) {
+    private record Row(ProblemId id, ExamPart part, FileKey conditionFile, FileKey solutionFile) {
     }
 
     private static Row row(ResultSet rs, int rowNum) throws SQLException {
         return new Row(
                 new ProblemId(rs.getLong("id")),
-                rs.getString("caption"),
                 ExamPart.valueOf(rs.getString("exam_part")),
                 new FileKey(rs.getString("condition_file_key")),
                 new FileKey(rs.getString("solution_file_key")));

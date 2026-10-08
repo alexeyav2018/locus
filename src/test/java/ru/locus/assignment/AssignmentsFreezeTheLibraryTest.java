@@ -94,7 +94,9 @@ class AssignmentsFreezeTheLibraryTest extends IntegrationTest {
         issue();
         Problem current = problems.problem(problem);
 
-        assertThatThrownBy(() -> problems.edit(problem, "Правится", current.part(),
+        ExamPart otherPart = current.part() == ExamPart.FIRST ? ExamPart.SECOND : ExamPart.FIRST;
+
+        assertThatThrownBy(() -> problems.edit(problem, otherPart,
                 current.topics(), current.methods(), List.of()))
                 .isInstanceOf(ProblemInUseException.class)
                 .hasMessageContaining("вошла в Задания (2)");
@@ -108,7 +110,7 @@ class AssignmentsFreezeTheLibraryTest extends IntegrationTest {
                 .isInstanceOf(ProblemInUseException.class)
                 .hasMessageContaining("вошла в Задания (2)");
 
-        assertThat(problems.problem(problem).caption()).as("ничего не изменилось").isEqualTo(current.caption());
+        assertThat(problems.problem(problem)).as("ничего не изменилось").isEqualTo(current);
     }
 
     /**
@@ -150,7 +152,7 @@ class AssignmentsFreezeTheLibraryTest extends IntegrationTest {
 
         service.delete(only);
 
-        assertThatCode(() -> problems.edit(problem, "Снова правится", current.part(),
+        assertThatCode(() -> problems.edit(problem, current.part(),
                 current.topics(), current.methods(), List.of()))
                 .doesNotThrowAnyException();
         assertThatCode(() -> problems.replaceCondition(problem, pdf())).doesNotThrowAnyException();
