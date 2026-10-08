@@ -37,8 +37,7 @@ public record Week(LocalDate monday, LocalDate today, List<Day> days) {
 
         /** Название дня недели по-русски с заглавной: «Вторник». */
         public String name() {
-            String name = date.getDayOfWeek().getDisplayName(TextStyle.FULL_STANDALONE, RUSSIAN);
-            return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+            return dayName(date.getDayOfWeek());
         }
     }
 
@@ -49,6 +48,12 @@ public record Week(LocalDate monday, LocalDate today, List<Day> days) {
             throw new IllegalArgumentException("Неделя начинается с понедельника: " + monday);
         }
         days = List.copyOf(days);
+    }
+
+    /** Имя дня недели с заглавной буквы: «Вторник». */
+    public static String dayName(DayOfWeek day) {
+        String name = day.getDisplayName(TextStyle.FULL_STANDALONE, RUSSIAN);
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
     /** Понедельник недели, в которую попадает дата. */

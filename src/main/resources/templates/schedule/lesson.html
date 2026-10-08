@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Занятие — Locus</title>
+    <!--/*
+        Карточка Занятия: адресат, правило во времени, правка и удаление
+        под раскрывающимися блоками (ADR-0042); при отказе раскрыт блок
+        отклонённого действия.
+
+        Правка еженедельного действует с даты (ADR-0047): если до неё
+        были Встречи, сервис делит Занятие, и после правки открывается
+        карточка продолжения. Адресат и вид не правятся — нужен другой,
+        Занятие заводится заново.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium"
+      th:with="lesson=${listed.lesson}, timing=${listed.lesson.timing}">
+<p class="back"><a th:href="@{${shell.backOr('/schedule')}}">← К расписанию</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Занятие: ' + ${listed.addresseeName}">Занятие: Иванов Пётр</h1>
+        <p class="lead" th:if="${lesson.student != null}">Ученик:
+            <a th:href="@{/students/{id}(id=${lesson.student.value},from=${shell.here})}"
+               th:text="${listed.addresseeName}">Иванов Пётр</a>
+            <span class="badge" th:if="${listed.withdrawn}">выбыл</span></p>
+        <p class="lead" th:if="${lesson.group != null}">Группа:
+            <a th:href="@{/groups/{id}(id=${lesson.group.value},from=${shell.here})}"
+               th:text="${listed.addresseeName}">9Б</a></p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Укажите дату, с которой правка действует</p>
+
+<div class="card card--personal stack">
+    <p th:if="${timing.weekly}"
+       th:text="'Каждую неделю: ' + ${dayName} + ', ' + ${#temporals.format(timing.start, 'HH:mm')} + '–' + ${#temporals.format(timing.end, 'HH:mm')}">Каждую неделю: Вторник, 17:00–18:00</p>
+    <p th:unless="${timing.weekly}"
+       th:text="'Разово: ' + ${#temporals.format(timing.firstDate, 'dd.MM.yyyy')} + ', ' + ${#temporals.format(timing.start, 'HH:mm')} + '–' + ${#temporals.format(timing.end, 'HH:mm')}">Разово: 10.10.2026, 12:00–13:30</p>
+    <p th:if="${timing.weekly}">
+        <span th:text="'С ' + ${#temporals.format(timing.firstDate, 'dd.MM.yyyy')}">С 06.10.2026</span>
+        <span th:if="${timing.lastDate != null}" th:text="'по ' + ${#temporals.format(timing.lastDate, 'dd.MM.yyyy')}">по 20.10.2026</span>
+        <span th:if="${timing.lastDate == null}">бессрочно</span>
+    </p>
+    <div class="row">
+        <a class="btn" th:href="@{/schedule(week=${timing.firstDate})}">К неделе первой встречи</a>
+    </div>
+</div>
+
+<h2>Действия</h2>
+<div class="folds">
+    <details class="more" name="lesson-actions"
+             th:attr="open=${shell.opened('/lessons/' + lesson.id.value)} ? 'open'">
+        <summary>Изменить</summary>
+        <div class="more-body">
+            <form class="stack" method="post"
+                  th:action="@{/schedule/lessons/{id}(id=${lesson.id.value},from=${shell.back})}">
+                <th:block th:if="${timing.weekly}">
+                    <p class="muted">Встречи до даты «с которой» останутся прежними: Занятие разделится
+                        на прежнее и новое. Чтобы только закончить Занятие, поменяйте последнюю встречу.</p>
+                    <label>День недели
+                        <select name="dayOfWeek">
+                            <option th:each="entry : ${dayNames}" th:value="${entry.key}" th:text="${entry.value}"
+                                    th:selected="${entry.key == timing.dayOfWeek}">Вторник</option>
+                        </select>
+                    </label>
+                    <label>Начало <input type="time" name="start" th:value="${timing.start}"></label>
+                    <label>Длительность, минут
+                        <input type="number" name="durationMinutes" min="1" max="720" th:value="${timing.durationMinutes}"></label>
+                    <label>Последняя встреча (можно не указывать)
+                        <input type="date" name="lastDate" th:value="${timing.lastDate}"></label>
+                    <label>Действует с <input type="date" name="effectiveFrom"></label>
+                </th:block>
+                <th:block th:unless="${timing.weekly}">
+                    <label>Дата <input type="date" name="date" th:value="${timing.firstDate}"></label>
+                    <label>Начало <input type="time" name="start" th:value="${timing.start}"></label>
+                    <label>Длительность, минут
+                        <input type="number" name="durationMinutes" min="1" max="720" th:value="${timing.durationMinutes}"></label>
+                </th:block>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+
+    <details class="more" name="lesson-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <form method="post" data-confirm="Занятие и все его Встречи, прошлые и будущие, исчезнут."
+                  th:action="@{/schedule/lessons/{id}/deletion(id=${lesson.id.value})}">
+                <button type="submit" class="btn-danger">Удалить Занятие</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

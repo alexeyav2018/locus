@@ -3,7 +3,6 @@ package ru.locus.lesson;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Objects;
 
 /**
  * Правило во времени, по которому Занятие порождает Встречи (ADR-0047):
@@ -26,8 +25,12 @@ public record LessonTiming(LocalDate firstDate, LocalDate lastDate, boolean week
     public static final int MAX_DURATION_MINUTES = 720;
 
     public LessonTiming {
-        Objects.requireNonNull(firstDate, "Дата первой встречи обязательна");
-        Objects.requireNonNull(start, "Время начала обязательно");
+        if (firstDate == null) {
+            throw new IllegalArgumentException("Дата первой встречи обязательна");
+        }
+        if (start == null) {
+            throw new IllegalArgumentException("Время начала обязательно");
+        }
         if (durationMinutes < 1 || durationMinutes > MAX_DURATION_MINUTES) {
             throw new IllegalArgumentException(
                     "Длительность Занятия — от 1 до " + MAX_DURATION_MINUTES + " минут: " + durationMinutes);
@@ -38,6 +41,18 @@ public record LessonTiming(LocalDate firstDate, LocalDate lastDate, boolean week
         if (lastDate != null && lastDate.isBefore(firstDate)) {
             throw new IllegalArgumentException("Последняя дата Занятия раньше первой встречи");
         }
+    }
+
+    /**
+     * Правило из полей формы: незаполненная длительность — такой же отказ,
+     * как недопустимая, а не ошибка разбора.
+     */
+    public static LessonTiming of(LocalDate firstDate, LocalDate lastDate, boolean weekly, LocalTime start,
+            Integer durationMinutes) {
+        if (durationMinutes == null) {
+            throw new IllegalArgumentException("Длительность Занятия обязательна");
+        }
+        return new LessonTiming(firstDate, lastDate, weekly, start, durationMinutes);
     }
 
     /** Разовое Занятие на дату. */

@@ -9,7 +9,8 @@
         вычисленными и уже отобранными по владельцу — шаблон о правиле
         Занятия и о владельце не знает.
 
-        Встреча ведёт на своё Занятие с возвратом на эту неделю (ADR-0042).
+        Встреча ведёт на своё Занятие с возвратом на эту неделю (ADR-0042);
+        у каждого дня — заведение Занятия с подставленной датой.
     */-->
 </head>
 <body>
@@ -35,6 +36,8 @@
         <div class="card-title">
             <h2 th:text="${day.name} + ', ' + ${#temporals.format(day.date, 'dd.MM')}">Вторник, 06.10</h2>
             <span class="badge badge--info" th:if="${day.today}">сегодня</span>
+            <a class="btn btn-sm" th:href="@{/schedule/lessons/new(date=${day.date},from=${shell.here})}"
+               th:attr="aria-label='Новое Занятие на ' + ${#temporals.format(day.date, 'dd.MM')}">+ Занятие</a>
         </div>
         <p class="muted" th:if="${#lists.isEmpty(day.meetings)}">Встреч нет</p>
         <ul class="items" th:unless="${#lists.isEmpty(day.meetings)}">
