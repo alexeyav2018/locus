@@ -108,7 +108,7 @@ public class AssemblyDraftService {
                 kind = AssemblyDraft.Kind.IMAGE;
                 contentType = FileType.PNG;
                 pageCount = 1;
-            } else if (isPdf(head)) {
+            } else if (PdfAssembly.isPdf(head)) {
                 kind = AssemblyDraft.Kind.PDF;
                 contentType = FileType.PDF;
                 pageCount = assembly.pageCount(file, name);
@@ -135,6 +135,10 @@ public class AssemblyDraftService {
      * <p>Строка с рамкой становится куском одной страницы (ADR-0045); рамка
      * на диапазоне из нескольких страниц отклоняется, называя источник.
      *
+     * <p>Порядок, берущий ровно один PDF целиком — все страницы, без рамки, —
+     * не собирается: результатом служит сам исходный файл, байт в байт,
+     * со ссылками и закладками, которые пересборка потеряла бы (ADR-0049).
+     *
      * @throws IllegalArgumentException если порядок пуст, черновика нет,
      *                                  диапазон выходит за его страницы
      *                                  или рамка стоит на нескольких страницах
@@ -146,6 +150,10 @@ public class AssemblyDraftService {
         }
         Map<AssemblyDraftId, AssemblyDraft> own = drafts.findByIds(currentUser.id(), order.drafts()).stream()
                 .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
+        Optional<AssemblyDraft> untouched = untouchedPdf(order, own);
+        if (untouched.isPresent()) {
+            return contentOf(untouched.get());
+        }
         List<PdfAssemblyPart> parts = new ArrayList<>();
         for (PdfAssemblyOrder.Line line : order.lines()) {
             AssemblyDraft draft = own.get(line.draft());
@@ -168,6 +176,30 @@ public class AssemblyDraftService {
             });
         }
         return assembly.assemble(parts);
+    }
+
+    /**
+     * Черновик, который порядок берёт нетронутым: одна строка, PDF,
+     * страницы с первой по последнюю, рамки нет. Число страниц знает
+     * черновик, поэтому сам PDF для этого не открывается.
+     */
+    private static Optional<AssemblyDraft> untouchedPdf(PdfAssemblyOrder order,
+                                                        Map<AssemblyDraftId, AssemblyDraft> own) {
+        if (order.lines().size() != 1) {
+            return Optional.empty();
+        }
+        PdfAssemblyOrder.Line line = order.lines().getFirst();
+        return Optional.ofNullable(own.get(line.draft()))
+                .filter(draft -> draft.kind() == AssemblyDraft.Kind.PDF)
+                .filter(draft -> line.frame() == null && line.from() == 1 && line.to() == draft.pageCount());
+    }
+
+    private byte[] contentOf(AssemblyDraft draft) {
+        try {
+            return Files.readAllBytes(fileOf(draft.fileName()));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Не удалось прочитать исходник «" + draft.originalName() + "»", e);
+        }
     }
 
     /**
@@ -288,11 +320,6 @@ public class AssemblyDraftService {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-    }
-
-    private static boolean isPdf(byte[] head) {
-        return head.length >= 5 && head[0] == '%' && head[1] == 'P' && head[2] == 'D' && head[3] == 'F'
-                && head[4] == '-';
     }
 
     private static String displayName(String originalName) {

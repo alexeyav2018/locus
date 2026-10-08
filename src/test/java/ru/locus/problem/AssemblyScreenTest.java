@@ -6,15 +6,20 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +45,8 @@ import ru.locus.user.Role;
  * отправкой.
  */
 class AssemblyScreenTest extends IntegrationTest {
+
+    private static final Pattern FILE_FIELD = Pattern.compile("<input type=\"file\"[^>]*>");
 
     private static final Pattern DRAFT = Pattern.compile("name=\"(condition|solution)Draft\" value=\"(\\d+)\"");
 
@@ -203,6 +210,85 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(problems.problemsOf(topic)).isEmpty();
     }
 
+    /** Сценарий «Выбран и не тронут»: строка целиком — в слот ложится сам файл (ADR-0049). */
+    @Test
+    void untouchedPdfLandsInTheSlotByteForByte() throws IOException {
+        Browser admin = administrator();
+        byte[] source = AssemblyDraftServiceTest.pdf(4);
+        List<Map.Entry<String, String>> fields = markup(library.topic(), library.method());
+        fields.addAll(wholeRowFields(upload(admin, "condition", "задача.pdf", source), 4));
+
+        Browser.Page created = admin.postMultipart("/problems", fields, List.of(solution()));
+
+        assertThat(created.status()).as("Задача заведена").isEqualTo(302);
+        assertThat(admin.getBytes(problems.conditionLink(createdId(created)).toString())).isEqualTo(source);
+    }
+
+    /** Сценарий «Крупный PDF целиком»: держит предел инструмента, а не общий. */
+    @Test
+    void untouchedPdfAboveTheCommonLimitIsAccepted() throws IOException {
+        Browser admin = administrator();
+        byte[] source = heavyPdf(21 * 1024 * 1024);
+        List<Map.Entry<String, String>> fields = markup(library.topic(), library.method());
+        fields.addAll(wholeRowFields(upload(admin, "condition", "крупный.pdf", source), 1));
+
+        Browser.Page created = admin.postMultipart("/problems", fields, List.of(solution()));
+
+        assertThat(created.status()).as("Задача заведена: %s", created.body()).isEqualTo(302);
+        assertThat(admin.getBytes(problems.conditionLink(createdId(created)).toString())).isEqualTo(source);
+    }
+
+    /** Сценарий «Задача без скрипта»: поле слота уходит готовым PDF, байт в байт. */
+    @Test
+    void readyPdfWithoutScriptLandsByteForByte() throws IOException {
+        Browser admin = administrator();
+        byte[] source = AssemblyDraftServiceTest.pdf(2);
+
+        Browser.Page created = admin.postMultipart("/problems", markup(library.topic(), library.method()),
+                List.of(new Browser.FilePart("condition", "условие.pdf", "application/pdf", source), solution()));
+
+        assertThat(created.status()).isEqualTo(302);
+        assertThat(admin.getBytes(problems.conditionLink(createdId(created)).toString())).isEqualTo(source);
+    }
+
+    /** Сценарий «Картинка без скрипта»: в слот PDF она не ложится. */
+    @Test
+    void readyImageWithoutScriptIsRefused() throws IOException {
+        Browser admin = administrator();
+        TaxonomyNodeId topic = library.topic();
+
+        Browser.Page refused = admin.postMultipart("/problems", markup(topic, library.method()),
+                List.of(new Browser.FilePart("condition", "снимок.png", "image/png", AssemblyDraftServiceTest.png()),
+                        solution()));
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("PDF условия: без скрипта принимается только PDF");
+        assertThat(problems.problemsOf(topic)).isEmpty();
+    }
+
+    /**
+     * Сценарий «Одно поле на слот» (ADR-0049): и при заведении, и в каждом
+     * блоке замены у слота ровно одно поле файла — с именем слота, чтобы
+     * без скрипта уйти готовым PDF, и с признаком исходника сборки.
+     */
+    @Test
+    void eachSlotHasOneFileField() {
+        Browser admin = administrator();
+        TaxonomyNodeId topic = library.topic();
+        ProblemId problem = library.problem(topic);
+
+        String creation = admin.get("/problems/new?topic=" + topic.value()).body();
+        assertThat(fileFieldsOf(creation)).containsExactly("condition", "solution");
+
+        String edit = admin.get("/problems/" + problem.value() + "/edit").body();
+        for (String slot : List.of("condition", "solution")) {
+            String action = "action=\"/problems/" + problem.value() + "/" + slot + "\"";
+            assertThat(edit).as("блок замены %s", slot).contains(action);
+            String form = edit.substring(edit.indexOf(action), edit.indexOf("</form>", edit.indexOf(action)));
+            assertThat(fileFieldsOf(form)).as("блок замены %s", slot).containsExactly(slot);
+        }
+    }
+
     /** Сценарий «Отказ формы не теряет черновики»: строки нарисованы заново. */
     @Test
     void refusedFormShowsTheSameAssemblyRows() throws IOException {
@@ -267,6 +353,54 @@ class AssemblyScreenTest extends IntegrationTest {
         fields.add(Map.entry(slot + "From", "1"));
         fields.add(Map.entry(slot + "To", "1"));
         return fields;
+    }
+
+    /** Поля нетронутой строки PDF: все страницы, рамки нет — как её рисует загрузка. */
+    private static List<Map.Entry<String, String>> wholeRowFields(Browser.Page row, int pages) {
+        String slot = slotOf(row);
+        return new ArrayList<>(List.of(
+                Map.entry(slot + "Draft", draftOf(row)),
+                Map.entry(slot + "Crop", ""),
+                Map.entry(slot + "From", "1"),
+                Map.entry(slot + "To", String.valueOf(pages))));
+    }
+
+    private static ProblemId createdId(Browser.Page created) {
+        return new ProblemId(Long.parseLong(created.location().replaceAll(".*/", "")));
+    }
+
+    /** Одностраничный PDF заданного веса: содержимое страницы — длинный комментарий. */
+    private static byte[] heavyPdf(int bytes) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+            byte[] filler = new byte[bytes];
+            Arrays.fill(filler, (byte) 'x');
+            filler[0] = '%';
+            filler[bytes - 1] = '\n';
+            page.setContents(new PDStream(document, new ByteArrayInputStream(filler)));
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * Слоты полей файла на странице по порядку; поле без имени слота или без
+     * признака исходника сборки, либо с расходящимися ими, валит тест.
+     */
+    private static List<String> fileFieldsOf(String html) {
+        List<String> slots = new ArrayList<>();
+        Matcher field = FILE_FIELD.matcher(html);
+        while (field.find()) {
+            Matcher name = Pattern.compile(" name=\"(\\w+)\"").matcher(field.group());
+            Matcher source = Pattern.compile("data-assembly-source=\"(\\w+)\"").matcher(field.group());
+            assertThat(name.find()).as("у поля есть имя: %s", field.group()).isTrue();
+            assertThat(source.find()).as("поле — исходник сборки: %s", field.group()).isTrue();
+            assertThat(name.group(1)).as("имя — слот исходника: %s", field.group()).isEqualTo(source.group(1));
+            slots.add(name.group(1));
+        }
+        return slots;
     }
 
     private static String draftOf(Browser.Page row) {

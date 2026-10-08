@@ -305,6 +305,9 @@ public class ProblemController {
      * Выбор одного из двух — разбор формы, а не правило Задачи: сервис
      * получает ровно один вариант, и что он был единственным, решается здесь
      * (design.md, «Слот принимает „готовый файл или порядок сборки“»).
+     * Поле файла у слота одно (ADR-0049): готовый файл приходит из него, только
+     * когда скрипт не работал, — со скриптом он снимает у поля имя, и приходят
+     * строки сборки.
      */
     private static ProblemPdf slot(MultipartFile file, PdfAssemblyOrder order, String what) {
         UploadedFile ready = uploaded(file);

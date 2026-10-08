@@ -275,8 +275,8 @@ public class ProblemService {
         requireExistingMarkup(topics, methodIds, characteristicIds);
         requireFile(condition, "условия");
         requireFile(solution, "решения");
-        UploadedFile conditionFile = resolved(condition);
-        UploadedFile solutionFile = resolved(solution);
+        UploadedFile conditionFile = resolved(condition, "условия");
+        UploadedFile solutionFile = resolved(solution, "решения");
 
         FileKey conditionKey = storage.put(conditionFile.content(), conditionFile.contentType());
         FileKey solutionKey = null;
@@ -328,7 +328,7 @@ public class ProblemService {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
         requireFile(condition, "условия");
-        UploadedFile file = resolved(condition);
+        UploadedFile file = resolved(condition, "условия");
 
         FileKey replacement = storage.put(file.content(), file.contentType());
         problems.changeConditionFile(problem.id(), replacement);
@@ -349,7 +349,7 @@ public class ProblemService {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
         requireFile(solution, "решения");
-        UploadedFile file = resolved(solution);
+        UploadedFile file = resolved(solution, "решения");
 
         FileKey replacement = storage.put(file.content(), file.contentType());
         problems.changeSolutionFile(problem.id(), replacement);
@@ -526,9 +526,18 @@ public class ProblemService {
         }
     }
 
-    /** Слот к готовому файлу: порядок сборки собирается из своих черновиков. */
-    private UploadedFile resolved(ProblemPdf file) {
+    /**
+     * Слот к готовому файлу: порядок сборки собирается из своих черновиков.
+     *
+     * Готовый файл приходит из формы без скрипта, и что это PDF, проверяется
+     * по содержимому: фильтр выбора файла в браузере ничего не гарантирует,
+     * а картинка в слоте PDF ничем себя не выдаст до просмотра (ADR-0049).
+     */
+    private UploadedFile resolved(ProblemPdf file, String what) {
         return switch (file) {
+            case UploadedFile uploaded when !PdfAssembly.isPdf(uploaded.content()) ->
+                    throw new IllegalArgumentException("PDF " + what
+                            + ": без скрипта принимается только PDF; картинку соберите при включённом скрипте");
             case UploadedFile uploaded -> uploaded;
             case PdfAssemblyOrder order -> new UploadedFile(drafts.assemble(order), FileType.PDF);
         };

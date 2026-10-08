@@ -2,6 +2,7 @@ package ru.locus.problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -17,8 +18,11 @@ import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +42,7 @@ import ru.locus.user.Role;
 /**
  * Задачи 2.4–2.6: черновик сборки — загрузка с распознаванием исходника,
  * сборка только из своих черновиков, удаление после фиксации и уборка
- * по сроку и при старте (ADR-0044).
+ * по сроку и при старте (ADR-0044); нетронутый PDF — байт в байт (ADR-0049).
  */
 class AssemblyDraftServiceTest extends IntegrationTest {
 
@@ -171,6 +175,69 @@ class AssemblyDraftServiceTest extends IntegrationTest {
     }
 
     @Test
+    void untouchedPdfIsTheSourceByteForByte() throws IOException {
+        byte[] source = bookmarkedPdf(3);
+        AssemblyDraft book = service.upload("с закладкой.pdf", stream(source));
+
+        byte[] result = service.assemble(new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(book.id(), 1, 3))));
+
+        assertThat(result).as("нетронутый PDF не пересобирается — закладка на месте (ADR-0049)")
+                .isEqualTo(source);
+    }
+
+    @Test
+    void pdfWithoutItsLastPageIsReassembled() throws IOException {
+        byte[] source = bookmarkedPdf(3);
+        AssemblyDraft book = service.upload("с закладкой.pdf", stream(source));
+
+        byte[] result = service.assemble(new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(book.id(), 1, 2))));
+
+        assertThat(result).isNotEqualTo(source);
+        try (PDDocument assembled = Loader.loadPDF(result)) {
+            assertThat(assembled.getNumberOfPages()).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void wholePdfWithAFrameIsReassembled() throws IOException {
+        byte[] source = pdf(1);
+        AssemblyDraft page = service.upload("лист.pdf", stream(source));
+
+        byte[] result = service.assemble(new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(page.id(), 1, 1, CropFrame.parse("0.1;0.1;0.5;0.5")))));
+
+        assertThat(result).isNotEqualTo(source);
+    }
+
+    @Test
+    void wholePdfTwiceIsReassembled() throws IOException {
+        byte[] source = pdf(2);
+        AssemblyDraft book = service.upload("сборник.pdf", stream(source));
+
+        byte[] result = service.assemble(new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(book.id(), 1, 2),
+                new PdfAssemblyOrder.Line(book.id(), 1, 2))));
+
+        try (PDDocument assembled = Loader.loadPDF(result)) {
+            assertThat(assembled.getNumberOfPages()).isEqualTo(4);
+        }
+    }
+
+    @Test
+    void singleImageIsStillAPageOfItsOwnSize() throws IOException {
+        AssemblyDraft photo = service.upload("снимок.png", stream(png()));
+
+        byte[] result = service.assemble(new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(photo.id(), 1, 1))));
+
+        try (PDDocument assembled = Loader.loadPDF(result)) {
+            assertThat(assembled.getNumberOfPages()).isEqualTo(1);
+            PDRectangle box = assembled.getPage(0).getMediaBox();
+            assertThat(box.getWidth() / box.getHeight()).as("страница размером с картинку 40×30")
+                    .isCloseTo(40f / 30f, within(0.01f));
+        }
+    }
+
+    @Test
     void rowsKeepTheFrameForTheRedrawnForm() throws IOException {
         AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
         CropFrame frame = new CropFrame(0.1, 0.2, 0.3, 0.4);
@@ -266,6 +333,24 @@ class AssemblyDraftServiceTest extends IntegrationTest {
             for (int i = 0; i < pages; i++) {
                 document.addPage(new PDPage());
             }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    /** PDF с закладкой на первую страницу — её теряет пересборка. */
+    private static byte[] bookmarkedPdf(int pages) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            for (int i = 0; i < pages; i++) {
+                document.addPage(new PDPage());
+            }
+            PDDocumentOutline outline = new PDDocumentOutline();
+            PDOutlineItem item = new PDOutlineItem();
+            item.setTitle("Задача 1");
+            item.setDestination(document.getPage(0));
+            outline.addLast(item);
+            document.getDocumentCatalog().setDocumentOutline(outline);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.save(out);
             return out.toByteArray();

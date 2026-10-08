@@ -668,6 +668,15 @@ public class PdfAssembly {
                 && content[2] == 'N' && content[3] == 'G';
     }
 
+    /**
+     * Сигнатура PDF в начале файла. Одна проверка на оба пути слота: исходник
+     * сборки и готовый файл, присланный формой без скрипта (ADR-0049).
+     */
+    static boolean isPdf(byte[] content) {
+        return content.length >= 5 && content[0] == '%' && content[1] == 'P' && content[2] == 'D'
+                && content[3] == 'F' && content[4] == '-';
+    }
+
     private static void closeQuietly(PDDocument document) {
         try {
             document.close();
