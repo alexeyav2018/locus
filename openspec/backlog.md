@@ -131,7 +131,7 @@
 | `deployment-decisions-cleanup` | Д | `versioning` | — | S | нет | не затрагивает | ✅ |
 | `pdf-served-as-txt` | Б | `file-storage` | — | S | нет | не затрагивает | ✅ |
 | `problem-slot-labels` | Т | `problem-single-file-field` | — | XS | нет | общее | ✅ |
-| `pdf-pages-as-images` | Б | `problem-pdf-crop` | — | M | нет | общее и личное | |
+| `pdf-pages-as-images` | Б | `problem-pdf-crop` | — | M | нет | общее и личное | ✅ |
 | `crop-frame-zoom` | Т | `problem-pdf-crop` | — | M | нет | общее | |
 
 ## 4. Карточки
@@ -1578,6 +1578,14 @@ JPEG/PNG. Учитель читает подпись буквально и не 
 ---
 
 ### `pdf-pages-as-images` · Б · M · не ломает
+
+> ✅ Выполнено 10.10.2026. Change:
+> [2026-10-10-pdf-pages-as-images](changes/archive/2026-10-10-pdf-pages-as-images/).
+> Решение — [ADR-0052](context/adr/0052-pdf-na-stranice-prosmotra-kartinkami-stranic.md):
+> PDF на странице просмотра — столбец картинок страниц (до 20), отрисованных
+> PDFBox на сервере; `FileStorage` получил чтение, рамка снова `DENY`.
+> Долг: несуществующая Задача или материал отвечают 500, а не 404, — прежнее
+> поведение библиотеки, на будущую карточку.
 
 **Симптом.** Учитель открывает условие или решение Задачи на планшете —
 вместо PDF на странице просмотра надпись «Этот браузер не показывает PDF
