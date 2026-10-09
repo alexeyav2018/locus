@@ -132,9 +132,9 @@ class FileViewerScreenTest extends IntegrationTest {
     }
 
     @Test
-    void headersAllowFramingFromTheSameOriginOnly() {
+    void headersForbidFramingAltogether() {
         Browser.Page page = teacher.get("/problems/" + problem.value());
 
-        assertThat(page.frameOptions()).contains("SAMEORIGIN");
+        assertThat(page.frameOptions()).contains("DENY");
     }
 }

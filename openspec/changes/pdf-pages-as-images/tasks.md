@@ -62,12 +62,12 @@
 
 ## 4. Рамка, документы, приёмка
 
-- [ ] 4.1 `SecurityConfig`: `frameOptions().deny()` и комментарий;
+- [x] 4.1 `SecurityConfig`: `frameOptions().deny()` и комментарий;
       `FileViewerScreenTest` — проверка заголовка на `DENY`
-- [ ] 4.2 `architecture.md`: у `FileStorage` есть чтение (отрисовка
+- [x] 4.2 `architecture.md`: у `FileStorage` есть чтение (отрисовка
       страниц и отдача файловым хранилищем), PDF на странице просмотра —
       картинками со ссылкой на ADR-0052; `ux-concept.md` — абзац о PDF
       на странице просмотра
-- [ ] 4.3 `mvn clean package` зелёный
-- [ ] 4.4 Поднять версию в `pom.xml` до 3.1.0 и дописать в `CHANGELOG.md`
+- [x] 4.3 `mvn clean package` зелёный
+- [x] 4.4 Поднять версию в `pom.xml` до 3.1.0 и дописать в `CHANGELOG.md`
       строку из `proposal.md`, раздел «Версия»
