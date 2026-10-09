@@ -98,16 +98,16 @@
 
     <fieldset th:unless="${problem}">
         <legend>Файлы</legend>
-        <p class="hint">Оба PDF обязательны: Задача без решения обнаружит свою
+        <p class="hint">Условие и решение обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
-        <label>PDF условия
+        <label>Условие
             <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                    accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="condition">
             <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
         </ol>
-        <label>PDF решения
+        <label>Решение
             <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                    accept="application/pdf,image/jpeg,image/png"></label>
         <ol class="assembly" data-slot="solution">
@@ -126,11 +126,11 @@
     <h2>Замена файлов</h2>
     <div class="folds">
         <details class="more" name="replace-file" th:attr="open=${shell.opened('/condition')} ? 'open'">
-            <summary>Другой PDF условия</summary>
+            <summary>Другое условие</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
-                    <label>Новый PDF условия
+                    <label>Новое условие
                         <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
                     <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
@@ -145,11 +145,11 @@
             </div>
         </details>
         <details class="more" name="replace-file" th:attr="open=${shell.opened('/solution')} ? 'open'">
-            <summary>Другой PDF решения</summary>
+            <summary>Другое решение</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
                       th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
-                    <label>Новый PDF решения
+                    <label>Новое решение
                         <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
                     <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>

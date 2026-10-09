@@ -159,6 +159,25 @@ class ProblemScreenTest extends IntegrationTest {
     }
 
     /**
+     * Поле слота принимает и PDF, и картинки (ADR-0044, ADR-0049), поэтому
+     * подписи полей формы не говорят «PDF»: только «Условие» и «Решение».
+     */
+    @Test
+    void fileFieldsAreLabelledWithoutPdf() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId problem = library.problem(topic);
+
+        assertThat(administrator().get("/problems/new?topic=" + topic.value()).body())
+                .as("форма заведения")
+                .contains("Условие", "Решение", "Условие и решение обязательны")
+                .doesNotContain("PDF условия", "PDF решения", "Оба PDF");
+        assertThat(administrator().get("/problems/" + problem.value() + "/edit").body())
+                .as("форма правки с заменой файлов")
+                .contains("Другое условие", "Новое условие", "Другое решение", "Новое решение")
+                .doesNotContain("PDF условия", "PDF решения");
+    }
+
+    /**
      * Задача 7.4: Методы Темы показываются первыми, полный словарь —
      * отдельным списком, и выбор не ограничен ни тем, ни другим.
      */
