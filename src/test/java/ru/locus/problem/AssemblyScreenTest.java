@@ -11,6 +11,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -352,6 +354,22 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(row.body()).contains("name=\"conditionCrop\" value=\"\"")
                 .contains("data-preview-url=\"/problems/drafts/" + draft + "/pages/\"")
                 .contains("data-assembly=\"crop\"");
+    }
+
+
+    /**
+     * Сцену рамки строит скрипт (crop-frame-zoom): панель масштаба, режим
+     * «Рисовать | Двигать», восемь ручек и крупная картинка при увеличении;
+     * общий файл стилей задаёт им окно с прокруткой и поле касания ручки.
+     */
+    @Test
+    void scriptBuildsTheZoomPanelAndTheHandles() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String styles = Files.readString(Path.of("src/main/resources/static/css/locus.css"), StandardCharsets.UTF_8);
+
+        assertThat(script).contains("crop-toolbar", "crop-viewport", "crop-handle",
+                "data-crop-zoom", "data-crop-mode", "?large=true", "'nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'");
+        assertThat(styles).contains(".crop-viewport", ".crop-handle", ".crop-canvas.crop-moving { touch-action: pan-x pan-y");
     }
 
     /** Отказ формы возвращает рамку в поле: скрипт нарисует её заново. */

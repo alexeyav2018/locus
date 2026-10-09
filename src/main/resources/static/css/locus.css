@@ -523,13 +523,39 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .assembly-row .crop-control { display: none; }
 .js .assembly-row .crop-control { display: inline-flex; }
 .crop-note { flex-basis: 100%; margin: 0; }
-.crop-stage { flex-basis: 100%; }
+.crop-stage { flex-basis: 100%; min-width: 0; }
 .crop-stage[hidden], .crop-frame[hidden], .crop-whole[hidden] { display: none; }
-.crop-canvas { position: relative; display: inline-block; max-width: 100%; touch-action: none;
+/* Масштаб, режим и ручки (crop-frame-zoom): панель над окном, окно прокручивается
+   и не выше 80vh; в «Двигать» палец прокручивает окно, в «Рисовать» — ставит рамку.
+   Кнопки панели — обычной высоты касания, у ручки поле касания 28 px. */
+.crop-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.5rem; margin: 0 0 0.35rem; }
+.crop-toolbar button { min-height: var(--tap); min-width: var(--tap); }
+.crop-zoom { min-width: 3.5rem; text-align: center; font-variant-numeric: tabular-nums; }
+.crop-mode { display: inline-flex; gap: 0.25rem; }
+.crop-mode button[aria-pressed=true] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.crop-viewport { max-width: 100%; max-height: 80vh; overflow: auto; }
+.crop-canvas { position: relative; display: inline-block; vertical-align: top; max-width: 100%; touch-action: none;
     cursor: crosshair; user-select: none; -webkit-user-select: none; outline: 1px solid var(--border-strong); }
 .crop-canvas img { display: block; max-width: 100%; max-height: 80vh; pointer-events: none; }
+.crop-canvas.crop-zoomed { max-width: none; }
+.crop-canvas.crop-zoomed img { width: 100%; height: auto; max-width: none; max-height: none; }
+.crop-canvas.crop-moving { touch-action: pan-x pan-y; cursor: grab; }
 .crop-frame { position: absolute; box-sizing: border-box; border: 2px solid var(--shared);
     background: color-mix(in srgb, var(--shared) 12%, transparent); pointer-events: none; }
+.crop-handle { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px;
+    pointer-events: auto; touch-action: none; }
+.crop-handle::after { content: ""; position: absolute; inset: 9px; background: var(--surface);
+    border: 2px solid var(--shared); border-radius: 2px; }
+.crop-handle[data-handle^=n] { top: 0; }
+.crop-handle[data-handle=e], .crop-handle[data-handle=w] { top: 50%; }
+.crop-handle[data-handle^=s] { top: 100%; }
+.crop-handle[data-handle$=w] { left: 0; }
+.crop-handle[data-handle=n], .crop-handle[data-handle=s] { left: 50%; }
+.crop-handle[data-handle$=e] { left: 100%; }
+.crop-handle[data-handle=nw], .crop-handle[data-handle=se] { cursor: nwse-resize; }
+.crop-handle[data-handle=ne], .crop-handle[data-handle=sw] { cursor: nesw-resize; }
+.crop-handle[data-handle=n], .crop-handle[data-handle=s] { cursor: ns-resize; }
+.crop-handle[data-handle=e], .crop-handle[data-handle=w] { cursor: ew-resize; }
 .crop-whole { margin: 0.25rem 0 0; }
 
 /* Просмотр файла и страница ошибки */
