@@ -129,7 +129,7 @@ abstract class FileStorageContractTest extends IntegrationTest {
      * Ссылка файловой реализации относительна — хост и порт ей неизвестны;
      * ссылка объектного хранилища абсолютна и разрешением не меняется.
      */
-    private HttpResponse<byte[]> get(URI link) {
+    protected HttpResponse<byte[]> get(URI link) {
         URI target = URI.create("http://localhost:" + port).resolve(link);
         try {
             return http.send(HttpRequest.newBuilder(target).GET().build(), HttpResponse.BodyHandlers.ofByteArray());

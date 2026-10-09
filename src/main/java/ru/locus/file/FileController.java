@@ -2,6 +2,7 @@ package ru.locus.file;
 
 import java.time.Instant;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,9 +53,14 @@ public class FileController {
 
         // Пустой результат — «файла нет»; отличить «никогда не существовал»
         // от «удалён» по ответу нельзя, и это требование, а не упущение.
+        // Имя файла ответ называет сам: иначе Spring, защищаясь от Reflected
+        // File Download, дописывает к пути на .pdf «inline;filename=f.txt»,
+        // и браузер, поверивший имени, PDF не показывает.
         return storage.read(fileKey)
                 .map(content -> ResponseEntity.ok()
                         .header(HttpHeaders.CONTENT_TYPE, FileType.contentTypeFor(fileKey))
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                ContentDisposition.inline().filename(fileKey.value()).build().toString())
                         .body(content))
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
