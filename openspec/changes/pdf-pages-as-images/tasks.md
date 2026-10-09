@@ -10,16 +10,16 @@
 
 ## 1. Чтение из хранилища
 
-- [ ] 1.1 `FileStorage.read(FileKey)` → `Optional<byte[]>` с javadoc
+- [x] 1.1 `FileStorage.read(FileKey)` → `Optional<byte[]>` с javadoc
       (пусто — «файла нет», недоступность — `FileStorageUnavailableException`);
       поправить javadoc интерфейса о «трёх операциях» и ссылку на ADR-0052
-- [ ] 1.2 `LocalFileStorage.read` — публичная реализация (javadoc
+- [x] 1.2 `LocalFileStorage.read` — публичная реализация (javadoc
       «не часть FileStorage» убрать); `ObjectFileStorage.read` — `GetObject`,
       `NoSuchKeyException` → пусто, `SdkException` → недоступность
-- [ ] 1.3 `FileStorageContractTest`: положенный файл читается тем же
+- [x] 1.3 `FileStorageContractTest`: положенный файл читается тем же
       содержимым; удалённый и отсутствующий — пусто; `UnavailableStorageTest`:
       чтение при недоступном хранилище — исключение, а не пусто
-- [ ] 1.4 `mvn test -Dtest='*FileStorage*Test,UnavailableStorageTest,OwnerIsUnknownToStorageTest'` зелёный
+- [x] 1.4 `mvn test -Dtest='*FileStorage*Test,UnavailableStorageTest,OwnerIsUnknownToStorageTest'` зелёный
 
 ## 2. Отрисовщик страниц
 

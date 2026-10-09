@@ -28,9 +28,10 @@ import ru.locus.IntegrationTest;
  * и удобная файловая, иначе боевой код остаётся единственным непроверенным
  * (ADR-0021).
  *
- * Содержимое читается только по выданной ссылке, обращением по HTTP: метода
- * «прочитать по ключу» у хранилища нет, и проверять надо ровно тот путь,
- * которым файл получит браузер учителя.
+ * Содержимое проверяется прежде всего по выданной ссылке, обращением по HTTP:
+ * это тот путь, которым файл получит браузер учителя. Чтение по ключу —
+ * путь самой системы (отрисовка страниц PDF, ADR-0052) — проверяется рядом
+ * и тем же контрактом.
  */
 abstract class FileStorageContractTest extends IntegrationTest {
 
@@ -55,6 +56,22 @@ abstract class FileStorageContractTest extends IntegrationTest {
 
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).isEqualTo(CONTENT);
+    }
+
+    @Test
+    void storedFileIsReadBackByItsKey() {
+        FileKey key = storage.put(CONTENT, FileType.PDF);
+
+        assertThat(storage.read(key)).hasValue(CONTENT);
+    }
+
+    @Test
+    void missingAndDeletedFilesReadAsNothing() {
+        FileKey deleted = storage.put(CONTENT, FileType.PDF);
+        storage.delete(deleted);
+
+        assertThat(storage.read(FileKey.generated(FileType.PDF))).isEmpty();
+        assertThat(storage.read(deleted)).isEmpty();
     }
 
     @Test

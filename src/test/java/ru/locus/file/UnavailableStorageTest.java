@@ -78,6 +78,13 @@ class UnavailableStorageTest extends IntegrationTest {
     }
 
     @Test
+    void readingFailsExplicitlyRatherThanReportingAMissingFile() {
+        assertThatThrownBy(() -> storage.read(FileKey.generated(FileType.PDF)))
+                .isInstanceOf(FileStorageUnavailableException.class)
+                .hasMessageContaining("Не прочитать объект");
+    }
+
+    @Test
     void pagesThatDoNotTouchFilesKeepWorking() {
         Browser.Page form = new Browser(port).follow("/");
 

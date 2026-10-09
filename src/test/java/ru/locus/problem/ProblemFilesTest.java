@@ -275,6 +275,11 @@ class ProblemFilesTest extends IntegrationTest {
         }
 
         @Override
+        public java.util.Optional<byte[]> read(FileKey key) {
+            return real.read(key);
+        }
+
+        @Override
         public void delete(FileKey key) {
             real.delete(key);
             stored.remove(key);
