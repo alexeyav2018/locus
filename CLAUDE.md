@@ -327,6 +327,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Стек: Java 21, Spring, Thymeleaf, PostgreSQL, VPS ([ADR-0020](openspec/context/adr/0020-stek.md)).
 - Оснастка: Maven, Liquibase, Compose и Testcontainers; откатных скриптов нет ([ADR-0023](openspec/context/adr/0023-osnastka-sborki.md)).
 - Обновление идёт с остановкой, миграции не обязаны быть обратно совместимыми ([ADR-0024](openspec/context/adr/0024-obnovlenie-s-ostanovkoj.md)).
+- Эксплуатация стенда ведётся владельцем вне репозитория; остановка и архив базы перед каждым обновлением для неё обязательны ([ADR-0051](openspec/context/adr/0051-ekspluataciya-stenda-vne-repozitoriya.md)).
 - Вход формой и серверной сессией; первый Администратор — из миграции, с обязательной сменой пароля ([ADR-0026](openspec/context/adr/0026-vhod-i-pervyj-administrator.md)).
 - Владелец — обязательный параметр репозитория личного контура; библиотечный такого параметра не принимает ([ADR-0027](openspec/context/adr/0027-mehanizm-granicy-obshchego-i-lichnogo.md)).
 - Все идентификаторы английские, транслита нет ([ADR-0028](openspec/context/adr/0028-imena-v-kode-tolko-anglijskie.md)).
