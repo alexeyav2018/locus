@@ -23,14 +23,14 @@
 
 ## 2. Отрисовщик страниц
 
-- [ ] 2.1 `ru.locus.file.PdfPages`: `outline(byte[])` → `Optional<PdfOutline>`
+- [x] 2.1 `ru.locus.file.PdfPages`: `outline(byte[])` → `Optional<PdfOutline>`
       (общее число страниц, размеры первых `SHOWN = 20` в пикселях
       отрисовки; неразбираемый и запароленный — пусто) и
       `render(byte[], int page)` → JPEG (ширина ≤ 1600 px, ≤ 200 dpi,
       по видимой области и с поворотом; страницы нет — пусто);
       проверить — `PdfPagesTest`: число страниц, размеры, предел ширины
       и dpi, мусор вместо PDF, страница вне файла
-- [ ] 2.2 `ru.locus.file.FilePages` (компонент над `FileStorage`
+- [x] 2.2 `ru.locus.file.FilePages` (компонент над `FileStorage`
       и `PdfPages`): `outline(FileKey)`, `page(FileKey, int)` и
       `etag(FileKey)` (хеш ключа, не сам ключ); файла нет в хранилище —
       пусто; проверить — `FilePagesTest` на файловом хранилище
