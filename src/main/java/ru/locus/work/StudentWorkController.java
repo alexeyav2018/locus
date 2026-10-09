@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,12 +15,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
 import ru.locus.ShellAdvice;
 import ru.locus.assignment.AssignmentId;
-import ru.locus.file.FileView;
+import ru.locus.file.FilePages;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.student.StudentService;
@@ -55,15 +57,18 @@ public class StudentWorkController {
     private final StudentService students;
     private final AssignmentScreen screen;
     private final ShellAdvice shell;
+    private final FilePages filePages;
 
     public StudentWorkController(StudentWorkService works,
                                  StudentService students,
                                  AssignmentScreen screen,
-                                 ShellAdvice shell) {
+                                 ShellAdvice shell,
+                                 FilePages filePages) {
         this.works = works;
         this.students = students;
         this.screen = screen;
         this.shell = shell;
+        this.filePages = filePages;
     }
 
     /**
@@ -114,10 +119,28 @@ public class StudentWorkController {
         List<LinkedFile> linked = works.filesOf(work);
         for (int i = 0; i < linked.size(); i++) {
             if (linked.get(i).file().id().value() == fileId) {
-                model.addAttribute("view", FileView.of("Работа: файл " + (i + 1),
+                model.addAttribute("view", filePages.view("Работа: файл " + (i + 1),
                         linked.get(i).link().toString(), linked.get(i).file().key(),
+                        Addresses.WORKS + "/" + id + "/files/" + fileId,
                         Addresses.WORKS + "?assignment=" + work.assignment().value()));
                 return "file/viewer";
+            }
+        }
+        throw new StudentWorkNotFoundException(work.id());
+    }
+
+    /**
+     * Картинка страницы PDF из Работы (ADR-0052) — под теми же правами,
+     * что страница просмотра: Работа читается сервисом с владельцем,
+     * и картинка страницы чужой Работы неотличима от несуществующей.
+     */
+    @GetMapping(Addresses.WORKS + "/{id}/files/{fileId}/pages/{page}")
+    public ResponseEntity<byte[]> filePage(@PathVariable long id, @PathVariable long fileId,
+                                           @PathVariable int page, WebRequest request) {
+        StudentWork work = works.work(new StudentWorkId(id));
+        for (StudentWorkFile file : work.files()) {
+            if (file.id().value() == fileId) {
+                return filePages.image(file.key(), page, request);
             }
         }
         throw new StudentWorkNotFoundException(work.id());

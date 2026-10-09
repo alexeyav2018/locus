@@ -2,15 +2,19 @@ package ru.locus.theory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import ru.locus.Addresses;
-import ru.locus.file.FileView;
+import ru.locus.file.FilePages;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.taxonomy.TaxonomyService;
 import ru.locus.user.CurrentUser;
@@ -40,11 +44,14 @@ public class TheoryController {
     private final TheoryService theory;
     private final TaxonomyService taxonomy;
     private final CurrentUser currentUser;
+    private final FilePages filePages;
 
-    public TheoryController(TheoryService theory, TaxonomyService taxonomy, CurrentUser currentUser) {
+    public TheoryController(TheoryService theory, TaxonomyService taxonomy, CurrentUser currentUser,
+                            FilePages filePages) {
         this.theory = theory;
         this.taxonomy = taxonomy;
         this.currentUser = currentUser;
+        this.filePages = filePages;
     }
 
     /**
@@ -94,9 +101,19 @@ public class TheoryController {
         if (!material.hasFile()) {
             return "redirect:" + Addresses.THEORY + "/" + id;
         }
-        model.addAttribute("view", FileView.of(material.title(), theory.fileLink(material.id()).toString(),
-                material.file(), Addresses.THEORY + "/" + id));
+        model.addAttribute("view", filePages.view(material.title(), theory.fileLink(material.id()).toString(),
+                material.file(), Addresses.THEORY + "/" + id + "/view", Addresses.THEORY + "/" + id));
         return "file/viewer";
+    }
+
+    /** Картинка страницы приложенного PDF; у материала-ссылки страниц нет — 404. */
+    @GetMapping(Addresses.THEORY + "/{id}/view/pages/{page}")
+    public ResponseEntity<byte[]> viewPage(@PathVariable long id, @PathVariable int page, WebRequest request) {
+        TheoryMaterial material = theory.material(new TheoryMaterialId(id));
+        if (!material.hasFile()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return filePages.image(material.file(), page, request);
     }
 
     /** Форма правки — та же, что и заведения, но с заполненным материалом. */

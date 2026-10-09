@@ -5,7 +5,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Optional;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Страницы PDF из хранилища картинками — для страницы просмотра
@@ -27,6 +33,44 @@ public class FilePages {
 
     public FilePages(FileStorage storage) {
         this.storage = storage;
+    }
+
+    /**
+     * Страница просмотра файла по ключу: изображение — картинкой, PDF —
+     * картинками первых страниц (файл читается здесь один раз, чтобы
+     * узнать их число и размеры).
+     *
+     * @param viewer адрес самой страницы просмотра — от него строятся
+     *               адреса картинок страниц
+     */
+    public FileView view(String title, String link, FileKey key, String viewer, String fallback) {
+        if (FileType.isImage(FileType.contentTypeFor(key))) {
+            return FileView.picture(title, link, fallback);
+        }
+        return FileView.pdf(title, link, fallback, viewer, outline(key));
+    }
+
+    /**
+     * Ответ на адрес картинки страницы: JPEG с {@code ETag}
+     * и {@code Cache-Control: private, no-cache}. Совпала метка
+     * из {@code If-None-Match} — {@code 304} без чтения файла.
+     * Файл не PDF, страницы нет, файла нет в хранилище — {@code 404},
+     * тот же, что у чужой и несуществующей записи.
+     */
+    public ResponseEntity<byte[]> image(FileKey key, int page, WebRequest request) {
+        if (!FileType.PDF.equals(FileType.contentTypeFor(key))) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        String etag = etag(key);
+        if (request.checkNotModified(etag)) {
+            return null;
+        }
+        byte[] jpeg = page(key, page).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .eTag(etag)
+                .body(jpeg);
     }
 
     /** Число страниц и размеры первых; пусто — файла нет или он не разбирается. */
