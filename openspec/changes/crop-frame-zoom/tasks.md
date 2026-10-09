@@ -8,18 +8,18 @@
 
 ## 1. Крупный показ страницы на сервере
 
-- [ ] 1.1 `PdfAssembly.preview` — параметр `boolean large`: крупный показ —
-      длинная сторона до 3200 px (`LARGE_PREVIEW_LONG_SIDE`), страница PDF
-      до 300 dpi (`LARGE_PREVIEW_DPI`); обычный прежний; картинка
-      не увеличивается; javadoc и ссылка на design.md, «Крупный показ»
-- [ ] 1.2 `AssemblyDraftService.preview(id, page, large)` и
+- [x] 1.1 `PdfAssembly.preview` — параметр размера `PdfAssembly.PreviewSize`
+      (`NORMAL` — прежние 1600 px / 150 dpi, `LARGE` — 3200 px / 300 dpi):
+      перечисление вместо пары констант и флага, чтобы размеров было ровно
+      два; картинка не увеличивается; javadoc со ссылкой на design.md, решение 1
+- [x] 1.2 `AssemblyDraftService.preview(id, page, large)` и
       `AssemblyDraftController.page` — `@RequestParam(defaultValue = "false") boolean large`
-- [ ] 1.3 `PdfAssemblyTest`: крупный показ A4 — длинная сторона 3200;
+- [x] 1.3 `PdfAssemblyTest`: крупный показ A4 — длинная сторона 3200;
       мелкой страницы — предел 300 dpi; большой картинки — 3200; мелкая
       картинка не увеличивается
-- [ ] 1.4 `AssemblyScreenTest`: `/pages/2?large=true` — JPEG крупнее
+- [x] 1.4 `AssemblyScreenTest`: `/pages/2?large=true` — JPEG крупнее
       обычного; чужой черновик и страница вне черновика с `large` — 404
-- [ ] 1.5 `mvn test -Dtest='PdfAssemblyTest,AssemblyScreenTest,DraftsAreFilteredByOwnerTest,AssemblyDraftServiceTest'` зелёный
+- [x] 1.5 `mvn test -Dtest='PdfAssemblyTest,AssemblyScreenTest,DraftsAreFilteredByOwnerTest,AssemblyDraftServiceTest'` зелёный
 
 ## 2. Масштаб, режим и ручки на сцене
 

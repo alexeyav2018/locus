@@ -2,6 +2,8 @@ package ru.locus.problem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static ru.locus.problem.PdfAssembly.PreviewSize.LARGE;
+import static ru.locus.problem.PdfAssembly.PreviewSize.NORMAL;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -76,11 +78,12 @@ class DraftsAreFilteredByOwnerTest extends IntegrationTest {
     /** Сценарий «Показ страницы чужого черновика»: ответ тот же, что у несуществующего. */
     @Test
     void anotherAdministratorCannotSeeItsPages() {
-        assertThat(service.preview(alicesDraft.id(), 1)).isEmpty();
-        assertThat(service.preview(new AssemblyDraftId(alicesDraft.id().value() + 1_000_000), 1)).isEmpty();
+        assertThat(service.preview(alicesDraft.id(), 1, NORMAL)).isEmpty();
+        assertThat(service.preview(new AssemblyDraftId(alicesDraft.id().value() + 1_000_000), 1, NORMAL)).isEmpty();
+        assertThat(service.preview(alicesDraft.id(), 1, LARGE)).isEmpty();
 
         LoggedIn.as(alice);
-        assertThat(service.preview(alicesDraft.id(), 1)).isPresent();
+        assertThat(service.preview(alicesDraft.id(), 1, NORMAL)).isPresent();
     }
 
     /** Сценарий «Учитель запрашивает показ». */
@@ -88,7 +91,7 @@ class DraftsAreFilteredByOwnerTest extends IntegrationTest {
     void teacherIsRefusedThePages() {
         LoggedIn.as(accounts.settled(Role.TEACHER));
 
-        assertThatThrownBy(() -> service.preview(alicesDraft.id(), 1))
+        assertThatThrownBy(() -> service.preview(alicesDraft.id(), 1, NORMAL))
                 .isInstanceOf(AccessDeniedException.class);
     }
 

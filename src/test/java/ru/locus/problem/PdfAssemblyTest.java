@@ -3,6 +3,8 @@ package ru.locus.problem;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static ru.locus.problem.PdfAssembly.PreviewSize.LARGE;
+import static ru.locus.problem.PdfAssembly.PreviewSize.NORMAL;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -575,7 +577,7 @@ class PdfAssemblyTest {
     void previewOfAnA4PageIsLimitedByItsLongSide() throws IOException {
         Path book = textBook(3);
 
-        BufferedImage shown = shown(assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2));
+        BufferedImage shown = shown(assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2, NORMAL));
 
         assertThat(shown.getHeight()).isEqualTo(1600);
         assertThat(shown.getWidth()).isEqualTo((int) (PDRectangle.A4.getWidth() * 1600 / PDRectangle.A4.getHeight()));
@@ -590,7 +592,7 @@ class PdfAssemblyTest {
             document.save(book.toFile());
         }
 
-        BufferedImage shown = shown(assembly.preview(book, "маленькая.pdf", AssemblyDraft.Kind.PDF, 1));
+        BufferedImage shown = shown(assembly.preview(book, "маленькая.pdf", AssemblyDraft.Kind.PDF, 1, NORMAL));
 
         assertThat(shown.getWidth()).isEqualTo(300);
         assertThat(shown.getHeight()).isEqualTo(150);
@@ -607,7 +609,7 @@ class PdfAssemblyTest {
             document.save(book.toFile());
         }
 
-        BufferedImage shown = shown(assembly.preview(book, "повёрнутый.pdf", AssemblyDraft.Kind.PDF, 1));
+        BufferedImage shown = shown(assembly.preview(book, "повёрнутый.pdf", AssemblyDraft.Kind.PDF, 1, NORMAL));
 
         assertThat(shown.getWidth()).isEqualTo(1600);
         assertThat(shown.getHeight()).isLessThan(shown.getWidth());
@@ -617,7 +619,7 @@ class PdfAssemblyTest {
     void previewOfAPageBeyondTheBookIsRefused() throws IOException {
         Path book = textBook(3);
 
-        assertThatThrownBy(() -> assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 4))
+        assertThatThrownBy(() -> assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 4, NORMAL))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -625,7 +627,7 @@ class PdfAssemblyTest {
     void previewOfALargePictureIsReducedTo1600() throws IOException {
         Path picture = png("широкая.png", 4000, 1000);
 
-        BufferedImage shown = shown(assembly.preview(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1));
+        BufferedImage shown = shown(assembly.preview(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1, NORMAL));
 
         assertThat(shown.getWidth()).isEqualTo(1600);
         assertThat(shown.getHeight()).isEqualTo(400);
@@ -635,7 +637,55 @@ class PdfAssemblyTest {
     void previewOfASmallPictureIsNotEnlarged() throws IOException {
         Path picture = png("картинка.png", 300, 200);
 
-        BufferedImage shown = shown(assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 1));
+        BufferedImage shown = shown(assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 1, NORMAL));
+
+        assertThat(shown.getWidth()).isEqualTo(300);
+        assertThat(shown.getHeight()).isEqualTo(200);
+    }
+
+    // --- crop-frame-zoom 1.3 Крупный показ ----------------------------------
+
+    /** A4 при 300 dpi — 2480 × 3508: выше предела, длинная сторона — 3200. */
+    @Test
+    void largePreviewOfAnA4PageIsLimitedByItsLongSide() throws IOException {
+        Path book = textBook(3);
+
+        BufferedImage shown = shown(assembly.preview(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2, LARGE));
+
+        assertThat(shown.getHeight()).isEqualTo(3200);
+        assertThat(shown.getWidth()).isEqualTo((int) (PDRectangle.A4.getWidth() * 3200 / PDRectangle.A4.getHeight()));
+    }
+
+    /** Маленькая страница в крупном показе — не больше 300 dpi. */
+    @Test
+    void largePreviewOfASmallPageIsLimitedByResolution() throws IOException {
+        Path book = directory.resolve("маленькая.pdf");
+        try (PDDocument document = new PDDocument()) {
+            document.addPage(new PDPage(new PDRectangle(144, 72)));
+            document.save(book.toFile());
+        }
+
+        BufferedImage shown = shown(assembly.preview(book, "маленькая.pdf", AssemblyDraft.Kind.PDF, 1, LARGE));
+
+        assertThat(shown.getWidth()).isEqualTo(600);
+        assertThat(shown.getHeight()).isEqualTo(300);
+    }
+
+    @Test
+    void largePreviewOfALargePictureIsReducedTo3200() throws IOException {
+        Path picture = png("широкая.png", 4000, 1000);
+
+        BufferedImage shown = shown(assembly.preview(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1, LARGE));
+
+        assertThat(shown.getWidth()).isEqualTo(3200);
+        assertThat(shown.getHeight()).isEqualTo(800);
+    }
+
+    @Test
+    void largePreviewOfASmallPictureIsNotEnlarged() throws IOException {
+        Path picture = png("картинка.png", 300, 200);
+
+        BufferedImage shown = shown(assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 1, LARGE));
 
         assertThat(shown.getWidth()).isEqualTo(300);
         assertThat(shown.getHeight()).isEqualTo(200);
@@ -649,7 +699,7 @@ class PdfAssemblyTest {
             Files.write(photo, in.readAllBytes());
         }
 
-        BufferedImage shown = shown(assembly.preview(photo, "повёрнутый.jpg", AssemblyDraft.Kind.IMAGE, 1));
+        BufferedImage shown = shown(assembly.preview(photo, "повёрнутый.jpg", AssemblyDraft.Kind.IMAGE, 1, NORMAL));
 
         assertThat(shown.getWidth()).isEqualTo(400);
         assertThat(shown.getHeight()).isEqualTo(600);
@@ -659,7 +709,7 @@ class PdfAssemblyTest {
     void pictureHasOnlyOnePageToPreview() throws IOException {
         Path picture = png("картинка.png", 300, 200);
 
-        assertThatThrownBy(() -> assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 2))
+        assertThatThrownBy(() -> assembly.preview(picture, "картинка.png", AssemblyDraft.Kind.IMAGE, 2, NORMAL))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

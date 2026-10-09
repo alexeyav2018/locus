@@ -81,11 +81,28 @@ public class PdfAssembly {
     /** Качество JPEG растрового куска (design.md). */
     private static final float JPEG_QUALITY = 0.9f;
 
-    /** Длинная сторона показа страницы, пиксели (design.md, «Показ страницы»). */
-    private static final int PREVIEW_LONG_SIDE = 1600;
+    /**
+     * Размер показа страницы для рамки. Обычный — для страницы во весь экран
+     * (problem-pdf-crop, design.md, «Показ страницы»); крупный — для масштаба
+     * больше 100 %, чтобы при 300 % страница не мылилась (crop-frame-zoom,
+     * design.md, решение 1). Размеров два и они фиксированы: запрос не может
+     * заставить сервер рисовать страницу любого размера.
+     *
+     * @param longSide предел длинной стороны, пиксели
+     * @param dpi      предел разрешения страницы PDF
+     */
+    public enum PreviewSize {
+        NORMAL(1600, 150),
+        LARGE(3200, 300);
 
-    /** Предел разрешения показа страницы PDF (design.md, «Показ страницы»). */
-    private static final int PREVIEW_DPI = 150;
+        private final int longSide;
+        private final int dpi;
+
+        PreviewSize(int longSide, int dpi) {
+            this.longSide = longSide;
+            this.dpi = dpi;
+        }
+    }
 
     private static final COSName PATTERN_TYPE = COSName.getPDFName("PatternType");
 
@@ -161,38 +178,39 @@ public class PdfAssembly {
      * страница PDF — с поворотом и по видимой области, картинка — развёрнутой
      * по сведениям о съёмке; рамка в долях от этого вида и считается.
      *
-     * <p>Длинная сторона — не больше {@value #PREVIEW_LONG_SIDE} пикселей,
-     * страница PDF — ещё и не больше {@value #PREVIEW_DPI} dpi, мелкая
-     * картинка не увеличивается: ширины хватает рамке, а на телефоне
-     * страница весит сотни килобайт, а не мегабайты.
+     * <p>Длинная сторона и разрешение страницы PDF ограничены размером показа
+     * {@link PreviewSize}, мелкая картинка не увеличивается: обычного размера
+     * хватает рамке во весь экран, и на телефоне страница весит сотни
+     * килобайт, а не мегабайты; крупный запрашивается только при увеличении.
      *
      * @param page номер страницы с единицы; у картинки страница одна
+     * @param size размер показа
      * @throws IllegalArgumentException если страницы с таким номером нет
      *                                  или источник не разбирается
      */
-    public byte[] preview(Path file, String name, AssemblyDraft.Kind kind, int page) {
+    public byte[] preview(Path file, String name, AssemblyDraft.Kind kind, int page, PreviewSize size) {
         BufferedImage shown = switch (kind) {
-            case PDF -> pdfPreview(file, name, page);
-            case IMAGE -> imagePreview(file, name, page);
+            case PDF -> pdfPreview(file, name, page, size);
+            case IMAGE -> imagePreview(file, name, page, size);
         };
         return jpeg(shown);
     }
 
-    private static BufferedImage pdfPreview(Path file, String name, int page) {
+    private static BufferedImage pdfPreview(Path file, String name, int page, PreviewSize size) {
         try (PDDocument document = open(file, name)) {
             if (page < 1 || page > document.getNumberOfPages()) {
                 throw new IllegalArgumentException("Источник «" + name + "»: страницы " + page + " в нём нет");
             }
             PDRectangle visible = document.getPage(page - 1).getCropBox();
             float longSide = Math.max(visible.getWidth(), visible.getHeight());
-            float scale = Math.min(PREVIEW_LONG_SIDE / longSide, PREVIEW_DPI / 72f);
+            float scale = Math.min(size.longSide / longSide, size.dpi / 72f);
             return new PDFRenderer(document).renderImage(page - 1, scale, ImageType.RGB);
         } catch (IOException e) {
             throw new UncheckedIOException("Не удалось показать страницу источника «" + name + "»", e);
         }
     }
 
-    private static BufferedImage imagePreview(Path file, String name, int page) {
+    private static BufferedImage imagePreview(Path file, String name, int page, PreviewSize size) {
         if (page != 1) {
             throw new IllegalArgumentException("Источник «" + name + "» — картинка, страница у неё одна");
         }
@@ -201,7 +219,7 @@ public class PdfAssembly {
                     .scale(1)
                     .useExifOrientation(true)
                     .asBufferedImage();
-            double scale = Math.min(1, (double) PREVIEW_LONG_SIDE
+            double scale = Math.min(1, (double) size.longSide
                     / Math.max(upright.getWidth(), upright.getHeight()));
             return scale == 1 ? upright : Thumbnails.of(upright).scale(scale).asBufferedImage();
         } catch (IOException e) {

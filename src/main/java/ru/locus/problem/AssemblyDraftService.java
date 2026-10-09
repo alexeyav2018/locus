@@ -212,11 +212,11 @@ public class AssemblyDraftService {
      * открытого инструмента, а не его открытие.
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
-    public Optional<byte[]> preview(AssemblyDraftId id, int page) {
+    public Optional<byte[]> preview(AssemblyDraftId id, int page, PdfAssembly.PreviewSize size) {
         return drafts.findByIds(currentUser.id(), List.of(id)).stream()
                 .findFirst()
                 .filter(draft -> page >= 1 && page <= draft.pageCount())
-                .map(draft -> assembly.preview(fileOf(draft.fileName()), draft.originalName(), draft.kind(), page));
+                .map(draft -> assembly.preview(fileOf(draft.fileName()), draft.originalName(), draft.kind(), page, size));
     }
 
     /**
