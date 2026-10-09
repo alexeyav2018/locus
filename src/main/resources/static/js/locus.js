@@ -233,27 +233,88 @@
     }
 
     function showPage(row) {
-        var image = stageOf(row).querySelector('img');
+        var stage = stageOf(row);
+        var image = stage.querySelector('img');
         if (image) {
-            image.src = row.dataset.previewUrl + pageOf(row);
+            image.src = row.dataset.previewUrl + pageOf(row) + (stage.dataset.large ? '?large=true' : '');
         }
+    }
+
+    // Масштаб сцены (crop-frame-zoom, design.md, решение 2): при 100 % страница
+    // вписана в окно, при большем — холсту задаётся ширина «вписанная × масштаб»,
+    // окно прокручивается. Рамка стоит в процентах холста, и масштаб её не сбивает.
+    var ZOOM_STEPS = [1, 1.5, 2, 3, 4];
+    var HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+
+    function zoom(row, step) {
+        var stage = stageOf(row);
+        var viewport = stage.querySelector('.crop-viewport');
+        var canvas = stage.querySelector('.crop-canvas');
+        var from = parseInt(stage.dataset.zoom || '0', 10);
+        var to = Math.min(ZOOM_STEPS.length - 1, Math.max(0, from + step));
+        if (from === 0) {
+            stage.dataset.fit = canvas.getBoundingClientRect().width;
+        }
+        var fit = parseFloat(stage.dataset.fit);
+        if (to === from || !(fit > 0)) {
+            return;
+        }
+        var middleX = (viewport.scrollLeft + viewport.clientWidth / 2) / viewport.scrollWidth;
+        var middleY = (viewport.scrollTop + viewport.clientHeight / 2) / viewport.scrollHeight;
+        stage.dataset.zoom = to;
+        canvas.classList.toggle('crop-zoomed', to > 0);
+        canvas.style.width = to > 0 ? fit * ZOOM_STEPS[to] + 'px' : '';
+        if (to > 0 && !stage.dataset.large) {
+            stage.dataset.large = 'true';
+            showPage(row);
+        }
+        viewport.scrollLeft = middleX * viewport.scrollWidth - viewport.clientWidth / 2;
+        viewport.scrollTop = middleY * viewport.scrollHeight - viewport.clientHeight / 2;
+        stage.querySelector('.crop-zoom').textContent = ZOOM_STEPS[to] * 100 + ' %';
+        stage.querySelector('[data-crop-zoom="-1"]').disabled = to === 0;
+        stage.querySelector('[data-crop-zoom="1"]').disabled = to === ZOOM_STEPS.length - 1;
+    }
+
+    // Режим (решение 3): «Рисовать» — касание ставит рамку, «Двигать» —
+    // касание прокручивает окно силами браузера, мышь тянет прокрутку скриптом.
+    function mode(row, moving) {
+        var stage = stageOf(row);
+        stage.querySelector('.crop-canvas').classList.toggle('crop-moving', moving);
+        stage.querySelectorAll('[data-crop-mode]').forEach(function (button) {
+            button.setAttribute('aria-pressed', String((button.dataset.cropMode === 'move') === moving));
+        });
     }
 
     function openStage(row) {
         var stage = stageOf(row);
         if (!stage.firstChild) {
-            stage.innerHTML = '<div class="crop-canvas"><img alt="страница не показывается" draggable="false">'
-                + '<div class="crop-frame" hidden></div></div>'
+            stage.innerHTML = '<div class="crop-toolbar">'
+                + '<button type="button" class="btn-sm" data-crop-zoom="-1" aria-label="Уменьшить" disabled>−</button>'
+                + '<span class="crop-zoom" aria-live="polite">100 %</span>'
+                + '<button type="button" class="btn-sm" data-crop-zoom="1" aria-label="Увеличить">+</button>'
+                + '<span class="crop-mode" role="group" aria-label="Режим">'
+                + '<button type="button" class="btn-sm" data-crop-mode="draw" aria-pressed="true">Рисовать</button>'
+                + '<button type="button" class="btn-sm" data-crop-mode="move" aria-pressed="false">Двигать</button>'
+                + '</span></div>'
+                + '<div class="crop-viewport"><div class="crop-canvas">'
+                + '<img alt="страница не показывается" draggable="false">'
+                + '<div class="crop-frame" hidden>'
+                + HANDLES.map(function (handle) {
+                    return '<span class="crop-handle" data-handle="' + handle + '"></span>';
+                }).join('')
+                + '</div></div></div>'
                 + '<p class="hint crop-whole">Рамки нет — берётся вся страница.</p>';
-            listenForFrame(row, stage.querySelector('.crop-canvas'));
+            listenForFrame(row, stage.querySelector('.crop-viewport'), stage.querySelector('.crop-canvas'));
         }
         stage.hidden = false;
         showPage(row);
         drawFrame(row);
     }
 
-    function listenForFrame(row, canvas) {
+    function listenForFrame(row, viewport, canvas) {
         var start = null;
+        var drag = null;
+        var handle = null;
 
         function share(event) {
             var box = canvas.getBoundingClientRect();
@@ -263,10 +324,11 @@
             };
         }
 
-        function stretch(event) {
-            var end = share(event);
-            var frame = [Math.min(start.x, end.x), Math.min(start.y, end.y),
-                Math.abs(end.x - start.x), Math.abs(end.y - start.y)];
+        // Рамка из двух противоположных углов: перетянутая через сторону
+        // выворачивается, мельче 0,5 % не записывается.
+        function put(a, b) {
+            var frame = [Math.min(a.x, b.x), Math.min(a.y, b.y),
+                Math.abs(b.x - a.x), Math.abs(b.y - a.y)];
             if (frame[2] > 0.005 && frame[3] > 0.005) {
                 field(row, 'Crop').value = frame.map(function (value) {
                     return value.toFixed(4);
@@ -275,25 +337,69 @@
             }
         }
 
+        // Ручка (решение 4): угол двигает две стороны, сторона — одну;
+        // противоположные стороны держатся на месте.
+        function pull(event) {
+            var point = share(event);
+            var a = {x: handle.left, y: handle.top};
+            var b = {x: handle.right, y: handle.bottom};
+            if (handle.name.indexOf('w') >= 0) {
+                a.x = point.x;
+            }
+            if (handle.name.indexOf('e') >= 0) {
+                b.x = point.x;
+            }
+            if (handle.name.indexOf('n') >= 0) {
+                a.y = point.y;
+            }
+            if (handle.name.indexOf('s') >= 0) {
+                b.y = point.y;
+            }
+            put(a, b);
+        }
+
         canvas.addEventListener('pointerdown', function (event) {
             if (event.button !== 0) {
                 return;
             }
+            var grip = event.target.closest('.crop-handle');
+            if (grip) {
+                var parts = field(row, 'Crop').value.split(';').map(Number);
+                handle = {name: grip.dataset.handle, left: parts[0], top: parts[1],
+                    right: parts[0] + parts[2], bottom: parts[1] + parts[3]};
+            } else if (canvas.classList.contains('crop-moving')) {
+                if (event.pointerType !== 'mouse') {
+                    return;
+                }
+                drag = {x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop};
+            } else {
+                start = share(event);
+            }
             event.preventDefault();
             canvas.setPointerCapture(event.pointerId);
-            start = share(event);
         });
         canvas.addEventListener('pointermove', function (event) {
-            if (start) {
-                stretch(event);
+            if (handle) {
+                pull(event);
+            } else if (drag) {
+                viewport.scrollLeft = drag.left - (event.clientX - drag.x);
+                viewport.scrollTop = drag.top - (event.clientY - drag.y);
+            } else if (start) {
+                put(start, share(event));
             }
         });
         ['pointerup', 'pointercancel'].forEach(function (type) {
             canvas.addEventListener(type, function (event) {
-                if (start && type === 'pointerup') {
-                    stretch(event);
+                if (type === 'pointerup') {
+                    if (handle) {
+                        pull(event);
+                    } else if (start) {
+                        put(start, share(event));
+                    }
                 }
                 start = null;
+                drag = null;
+                handle = null;
             });
         });
     }
@@ -306,6 +412,9 @@
         var stage = stageOf(copy);
         stage.innerHTML = '';
         stage.hidden = true;
+        delete stage.dataset.zoom;
+        delete stage.dataset.fit;
+        delete stage.dataset.large;
         var hint = copy.querySelector('.crop-note');
         if (hint) {
             hint.remove();
@@ -356,6 +465,19 @@
             if (!stageOf(row).hidden) {
                 drawFrame(row);
             }
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest && event.target.closest('button[data-crop-zoom], button[data-crop-mode]');
+        if (!button) {
+            return;
+        }
+        var row = button.closest('li.assembly-row');
+        if (button.dataset.cropZoom) {
+            zoom(row, parseInt(button.dataset.cropZoom, 10));
+        } else {
+            mode(row, button.dataset.cropMode === 'move');
         }
     });
 

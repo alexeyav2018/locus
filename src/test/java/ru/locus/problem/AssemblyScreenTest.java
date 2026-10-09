@@ -6,16 +6,20 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -174,6 +178,36 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(admin.get("/problems/drafts/" + draft + "/pages/4").status()).isEqualTo(404);
         assertThat(admin.get("/problems/drafts/" + draft + "/pages/0").status()).isEqualTo(404);
         assertThat(admin.get("/problems/drafts/999999/pages/1").status()).isEqualTo(404);
+        assertThat(admin.get("/problems/drafts/" + draft + "/pages/4?large=true").status()).isEqualTo(404);
+    }
+
+    /** Сценарий «Крупный показ страницы»: A4 вдвое крупнее обычного по длинной стороне. */
+    @Test
+    void largePageIsTwiceTheUsualSize() throws IOException {
+        Browser admin = administrator();
+        String draft = draftOf(upload(admin, "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(3)));
+
+        Browser.Page page = admin.get("/problems/drafts/" + draft + "/pages/2?large=true");
+        byte[] usual = admin.getBytes("/problems/drafts/" + draft + "/pages/2");
+        byte[] large = admin.getBytes("/problems/drafts/" + draft + "/pages/2?large=true");
+
+        assertThat(page.status()).isEqualTo(200);
+        assertThat(page.contentType()).startsWith("image/jpeg");
+        // Отрисовка округляет каждую сторону: «вдвое» — с точностью до пикселя-двух.
+        assertThat(longSide(large)).isBetween(2 * longSide(usual) - 2, 2 * longSide(usual) + 2);
+    }
+
+    /** Крупный показ чужого черновика — тот же 404, что у несуществующего. */
+    @Test
+    void largePageOfAnotherAdministratorsDraftIsNotFound() throws IOException {
+        String draft = draftOf(upload(administrator(), "condition", "сборник.pdf", AssemblyDraftServiceTest.pdf(3)));
+
+        assertThat(administrator().get("/problems/drafts/" + draft + "/pages/1?large=true").status()).isEqualTo(404);
+    }
+
+    private static int longSide(byte[] jpeg) throws IOException {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(jpeg));
+        return Math.max(image.getWidth(), image.getHeight());
     }
 
     /** Сценарий «Задача из трёх картинок» — через форму. */
@@ -320,6 +354,22 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(row.body()).contains("name=\"conditionCrop\" value=\"\"")
                 .contains("data-preview-url=\"/problems/drafts/" + draft + "/pages/\"")
                 .contains("data-assembly=\"crop\"");
+    }
+
+
+    /**
+     * Сцену рамки строит скрипт (crop-frame-zoom): панель масштаба, режим
+     * «Рисовать | Двигать», восемь ручек и крупная картинка при увеличении;
+     * общий файл стилей задаёт им окно с прокруткой и поле касания ручки.
+     */
+    @Test
+    void scriptBuildsTheZoomPanelAndTheHandles() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String styles = Files.readString(Path.of("src/main/resources/static/css/locus.css"), StandardCharsets.UTF_8);
+
+        assertThat(script).contains("crop-toolbar", "crop-viewport", "crop-handle",
+                "data-crop-zoom", "data-crop-mode", "?large=true", "'nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'");
+        assertThat(styles).contains(".crop-viewport", ".crop-handle", ".crop-canvas.crop-moving { touch-action: pan-x pan-y");
     }
 
     /** Отказ формы возвращает рамку в поле: скрипт нарисует её заново. */

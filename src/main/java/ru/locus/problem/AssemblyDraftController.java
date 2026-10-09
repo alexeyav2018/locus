@@ -79,17 +79,21 @@ public class AssemblyDraftController {
     /**
      * Страница своего черновика картинкой JPEG — по ней скрипт формы рисует
      * рамку (ADR-0045). Чужой, несуществующий черновик и страница вне его —
-     * один ответ 404.
+     * один ответ 404. {@code large} — крупная картинка для увеличенного
+     * масштаба (crop-frame-zoom); у неё свой адрес, а значит и своя запись
+     * в кэше браузера.
      *
      * Содержимое черновика неизменно, поэтому браузер держит показанную
      * страницу час; {@code private} не даёт положить её в общий кэш.
      */
     @GetMapping(Addresses.PROBLEMS + "/drafts/{id}/pages/{page}")
-    public ResponseEntity<byte[]> page(@PathVariable long id, @PathVariable int page) {
+    public ResponseEntity<byte[]> page(@PathVariable long id, @PathVariable int page,
+                                       @RequestParam(defaultValue = "false") boolean large) {
         if (id <= 0) {
             return ResponseEntity.notFound().build();
         }
-        return drafts.preview(new AssemblyDraftId(id), page)
+        return drafts.preview(new AssemblyDraftId(id), page,
+                        large ? PdfAssembly.PreviewSize.LARGE : PdfAssembly.PreviewSize.NORMAL)
                 .map(content -> ResponseEntity.ok()
                         .contentType(MediaType.IMAGE_JPEG)
                         .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
