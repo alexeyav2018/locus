@@ -1,7 +1,13 @@
 package ru.locus;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.UUID;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.springframework.stereotype.Component;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicRepository;
@@ -118,6 +124,17 @@ public class TestLibrary {
         return materials.create(title, node, storedPdf(), null);
     }
 
+    /** Материал с приложенным файлом, который правда разбирается как PDF, — для страницы просмотра. */
+    public TheoryMaterialId material(TaxonomyNodeId node, String title, byte[] pdf) {
+        return materials.create(title, node, storage.put(pdf, FileType.PDF), null);
+    }
+
+    /** Задача, условие и решение которой — настоящие PDF из одной страницы A4. */
+    public ProblemId renderableProblem(TaxonomyNodeId topic) {
+        return problems.create(ExamPart.SECOND, stored(renderablePdf(1)), stored(renderablePdf(1)),
+                List.of(topic), List.of(method()), List.of());
+    }
+
     /** Материал-ссылка: содержимое бывает и таким. */
     public TheoryMaterialId linkedMaterial(TaxonomyNodeId node, String title) {
         return materials.create(title, node, null, "https://example.org/" + UUID.randomUUID());
@@ -135,6 +152,28 @@ public class TestLibrary {
      */
     public static byte[] pdf() {
         return ("%PDF-1.4 " + UUID.randomUUID()).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    public FileKey stored(byte[] pdf) {
+        return storage.put(pdf, FileType.PDF);
+    }
+
+    /**
+     * Настоящий PDF из пустых страниц A4 — там, где его разбирают:
+     * страница просмотра рисует страницы картинками (ADR-0052),
+     * и {@link #pdf()} у неё не разобрался бы.
+     */
+    public static byte[] renderablePdf(int pages) {
+        try (PDDocument document = new PDDocument()) {
+            for (int i = 0; i < pages; i++) {
+                document.addPage(new PDPage(PDRectangle.A4));
+            }
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public static String unique(String name) {

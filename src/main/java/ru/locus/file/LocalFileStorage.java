@@ -67,14 +67,11 @@ public class LocalFileStorage implements FileStorage {
     }
 
     /**
-     * Чтение содержимого — не часть {@link FileStorage}: наружу файл уходит
-     * только по подписанной ссылке. Этим методом пользуется контроллер,
-     * обслуживающий такую ссылку, и никто больше.
-     *
-     * Пустой результат означает «файла нет» — и не различает «никогда
-     * не существовал» и «удалён».
+     * Им же пользуется контроллер, обслуживающий подписанную ссылку этой
+     * реализации.
      */
-    Optional<byte[]> read(FileKey key) {
+    @Override
+    public Optional<byte[]> read(FileKey key) {
         try {
             return Optional.of(Files.readAllBytes(directory.resolve(key.value())));
         } catch (NoSuchFileException e) {

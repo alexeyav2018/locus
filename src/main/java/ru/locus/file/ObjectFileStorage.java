@@ -3,11 +3,13 @@ package ru.locus.file;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
+import java.util.Optional;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -69,6 +71,21 @@ public class ObjectFileStorage implements FileStorage {
             throw FileStorageUnavailableException.reported("Не подписать ссылку на объект в бакете " + bucket, e);
         } catch (URISyntaxException e) {
             throw new IllegalStateException("Хранилище вернуло неразбираемый адрес: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Optional<byte[]> read(FileKey key) {
+        try {
+            return Optional.of(client.getObjectAsBytes(GetObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key.value())
+                            .build())
+                    .asByteArray());
+        } catch (NoSuchKeyException e) {
+            return Optional.empty();
+        } catch (SdkException e) {
+            throw FileStorageUnavailableException.reported("Не прочитать объект из бакета " + bucket, e);
         }
     }
 

@@ -4,15 +4,17 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
 import ru.locus.Addresses;
-import ru.locus.file.FileView;
+import ru.locus.file.FilePages;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
 import ru.locus.dictionary.SolutionMethodId;
@@ -49,19 +51,22 @@ public class ProblemController {
     private final CharacteristicService characteristics;
     private final CurrentUser currentUser;
     private final AssemblyDraftService drafts;
+    private final FilePages filePages;
 
     public ProblemController(ProblemService problems,
                              TaxonomyService taxonomy,
                              SolutionMethodService methods,
                              CharacteristicService characteristics,
                              CurrentUser currentUser,
-                             AssemblyDraftService drafts) {
+                             AssemblyDraftService drafts,
+                             FilePages filePages) {
         this.problems = problems;
         this.taxonomy = taxonomy;
         this.methods = methods;
         this.characteristics = characteristics;
         this.currentUser = currentUser;
         this.drafts = drafts;
+        this.filePages = filePages;
     }
 
     /**
@@ -141,20 +146,32 @@ public class ProblemController {
     @GetMapping(Addresses.PROBLEMS + "/{id}/condition")
     public String viewCondition(@PathVariable long id, Model model) {
         Problem problem = problems.problem(new ProblemId(id));
-        model.addAttribute("view", FileView.of("Условие — Задача № " + problem.number(),
+        model.addAttribute("view", filePages.view("Условие — Задача № " + problem.number(),
                 problems.conditionLink(problem.id()).toString(), problem.conditionFile(),
-                Addresses.PROBLEMS + "/" + id));
+                Addresses.PROBLEMS + "/" + id + "/condition", Addresses.PROBLEMS + "/" + id));
         return "file/viewer";
+    }
+
+    /** Картинка страницы условия для страницы просмотра (ADR-0052). */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/condition/pages/{page}")
+    public ResponseEntity<byte[]> conditionPage(@PathVariable long id, @PathVariable int page, WebRequest request) {
+        return filePages.image(problems.problem(new ProblemId(id)).conditionFile(), page, request);
     }
 
     /** Просмотр PDF решения внутри системы. */
     @GetMapping(Addresses.PROBLEMS + "/{id}/solution")
     public String viewSolution(@PathVariable long id, Model model) {
         Problem problem = problems.problem(new ProblemId(id));
-        model.addAttribute("view", FileView.of("Решение — Задача № " + problem.number(),
+        model.addAttribute("view", filePages.view("Решение — Задача № " + problem.number(),
                 problems.solutionLink(problem.id()).toString(), problem.solutionFile(),
-                Addresses.PROBLEMS + "/" + id));
+                Addresses.PROBLEMS + "/" + id + "/solution", Addresses.PROBLEMS + "/" + id));
         return "file/viewer";
+    }
+
+    /** Картинка страницы решения для страницы просмотра. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/solution/pages/{page}")
+    public ResponseEntity<byte[]> solutionPage(@PathVariable long id, @PathVariable int page, WebRequest request) {
+        return filePages.image(problems.problem(new ProblemId(id)).solutionFile(), page, request);
     }
 
     /** Форма правки — та же, что и заведения, но с заполненной Задачей. */

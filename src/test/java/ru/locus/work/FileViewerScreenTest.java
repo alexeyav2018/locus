@@ -29,7 +29,8 @@ import ru.locus.user.Role;
 
 /**
  * Требование «Файлы просматриваются внутри системы» (interface-navigation):
- * снимок — картинкой, PDF — встроенным просмотром с запасной кнопкой,
+ * снимок — картинкой, PDF — картинками страниц с кнопкой «Открыть PDF»
+ * (подробно — {@code PdfPagesOnTheViewerTest}),
  * «Назад» ведёт по {@code from}; чужая Работа неотличима от несуществующей.
  */
 class FileViewerScreenTest extends IntegrationTest {
@@ -97,15 +98,17 @@ class FileViewerScreenTest extends IntegrationTest {
 
     /** Сценарий «PDF решения Задачи». */
     @Test
-    void aProblemPdfOpensEmbeddedWithTheFallbackButton() {
-        Browser.Page viewer = teacher.get("/problems/" + problem.value() + "/solution?from=/problems?part%3DFIRST");
+    void aProblemPdfOpensAsPageImagesWithTheOpenButton() {
+        ProblemId renderable = library.renderableProblem(topic);
+
+        Browser.Page viewer = teacher.get("/problems/" + renderable.value() + "/solution?from=/problems?part%3DFIRST");
 
         assertThat(viewer.status()).isEqualTo(200);
         assertThat(viewer.body())
-                .contains("<object type=\"application/pdf\"")
+                .contains("src=\"/problems/" + renderable.value() + "/solution/pages/1\"")
                 .contains("Открыть PDF")
                 .contains("<a href=\"/problems?part=FIRST\">← Назад</a>")
-                .doesNotContain("<img");
+                .doesNotContain("<object");
     }
 
     /** Сценарий «Чужой файл Работы». */
@@ -129,9 +132,9 @@ class FileViewerScreenTest extends IntegrationTest {
     }
 
     @Test
-    void headersAllowFramingFromTheSameOriginOnly() {
+    void headersForbidFramingAltogether() {
         Browser.Page page = teacher.get("/problems/" + problem.value());
 
-        assertThat(page.frameOptions()).contains("SAMEORIGIN");
+        assertThat(page.frameOptions()).contains("DENY");
     }
 }

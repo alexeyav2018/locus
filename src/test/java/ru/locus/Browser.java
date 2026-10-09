@@ -51,7 +51,8 @@ public final class Browser {
     }
 
     public record Page(int status, String contentType, String body, String location,
-                       java.util.Optional<String> frameOptions) {
+                       java.util.Optional<String> frameOptions, Optional<String> etag,
+                       Optional<String> cacheControl) {
 
         public boolean redirectsTo(String path) {
             return (status == 302 || status == 303) && location != null && location.endsWith(path);
@@ -60,6 +61,14 @@ public final class Browser {
 
     public Page get(String path) {
         return send(HttpRequest.newBuilder(URI.create(baseUrl + path)).header("Accept", ACCEPT).GET().build());
+    }
+
+    /** Повторный запрос с меткой из прошлого ответа — как браузер сверяет свой кэш. */
+    public Page getIfNoneMatch(String path, String etag) {
+        return send(HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .header("Accept", ACCEPT)
+                .header("If-None-Match", etag)
+                .GET().build());
     }
 
     /** Переходит по адресу и, если ответ — переадресация, идёт по ней. */
@@ -212,7 +221,9 @@ public final class Browser {
                     response.headers().firstValue("Content-Type").orElse(""),
                     response.body(),
                     response.headers().firstValue("Location").orElse(null),
-                    response.headers().firstValue("X-Frame-Options"));
+                    response.headers().firstValue("X-Frame-Options"),
+                    response.headers().firstValue("ETag"),
+                    response.headers().firstValue("Cache-Control"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         } catch (InterruptedException e) {
