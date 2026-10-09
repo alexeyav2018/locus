@@ -130,7 +130,7 @@
 | `versioning` | — | — | — | S | нет | не затрагивает | ✅ |
 | `deployment-decisions-cleanup` | Д | `versioning` | — | S | нет | не затрагивает | ✅ |
 | `pdf-served-as-txt` | Б | `file-storage` | — | S | нет | не затрагивает | ✅ |
-| `problem-slot-labels` | Т | `problem-single-file-field` | — | XS | нет | общее | |
+| `problem-slot-labels` | Т | `problem-single-file-field` | — | XS | нет | общее | ✅ |
 
 ## 4. Карточки
 
@@ -1525,6 +1525,12 @@ PDF теории, PDF в Работах; страница просмотра —
 ---
 
 ### `problem-slot-labels` · Т · XS · не ломает
+
+> ✅ Выполнено 09.10.2026. Change:
+> [2026-10-09-problem-slot-labels](changes/archive/2026-10-09-problem-slot-labels/).
+> Развилка решена как предпочтительная (а): «Условие»/«Решение», при замене
+> «Другое условие»/«Новое условие», подсказка «Условие и решение
+> обязательны». Без дельты спек, версия 3.0.2.
 
 **Симптом.** В форме «Новая Задача» поля файлов подписаны «PDF условия»
 и «PDF решения», хотя с `problem-pdf-assembly` в них кладут и картинки
