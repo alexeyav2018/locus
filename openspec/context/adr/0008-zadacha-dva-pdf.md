@@ -1,11 +1,11 @@
 ---
 id: 8
 title: Задача — два PDF; формулы не хранятся как данные
-status: Принято
+status: Заменено
 date: 2026-09-05
 area: модель
 supersedes: []
-superseded_by: []
+superseded_by: [55]
 ---
 
 # ADR-0008. Задача — два PDF; формулы не хранятся как данные
