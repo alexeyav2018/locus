@@ -1,9 +1,6 @@
 package ru.locus.assistant;
 
-import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
-import io.modelcontextprotocol.client.transport.HttpClientStreamableHttpTransport;
-import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -141,13 +138,7 @@ class TurnTokenGuardsTheServerTest extends IntegrationTest {
         }
     }
 
-    /** Клиент того же SDK — тест-двойник Помощника: токен в заголовке каждого запроса. */
     private McpSyncClient client(TurnToken token) {
-        var transport = HttpClientStreamableHttpTransport.builder("http://localhost:" + port)
-                .endpoint(Addresses.MCP)
-                .jsonMapper(new JacksonMcpJsonMapper(jsonMapper))
-                .requestBuilder(HttpRequest.newBuilder().header("Authorization", "Bearer " + token.value()))
-                .build();
-        return McpClient.sync(transport).requestTimeout(Duration.ofSeconds(10)).build();
+        return McpClients.withToken(port, token, jsonMapper);
     }
 }

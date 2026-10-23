@@ -141,18 +141,18 @@
 
 ## 5. Сторожевые тесты, документы и приёмка
 
-- [ ] 5.1 `ToolsAreThinTest`: `TaxonomyTools`, `DictionaryTools`,
+- [x] 5.1 `ToolsAreThinTest`: `TaxonomyTools`, `DictionaryTools`,
       `ProblemTools`, `AssemblyDraftTools` не держат и не получают
       репозиториев и `FileStorage` (по образцу `ProblemControllerIsThinTest`);
       `ToolRegistryTest` дополнен: реестр приложения — ровно десять
       названных имён (спека, «Инструментов личного контура и глаголов
       человека нет»)
-- [ ] 5.2 `EveryToolAnswersTheClientTest` (`IntegrationTest`): клиент SDK
+- [x] 5.2 `EveryToolAnswersTheClientTest` (`IntegrationTest`): клиент SDK
       с живым токеном Администратора перечисляет инструменты и зовёт
       каждый из реестра по HTTP с годными аргументами — ни одного
       `isError`; картинки приходят `ImageContent` с `image/jpeg`;
       инструмент реестра, не позванный тестом, роняет его
-- [ ] 5.3 `architecture.md`: «Общая форма» и «Права доступа» — сервер
+- [x] 5.3 `architecture.md`: «Общая форма» и «Права доступа» — сервер
       MCP построен (`/mcp`, без сессий, токен Реплики, вторая цепочка
       безопасности, перенос личности в поток обработчика), «Слои» —
       строка «Инструменты MCP» без пометки замысла; `glossary.md`:
@@ -162,6 +162,6 @@
       реестр и тонкость сторожатся тестами; `antipatterns.md`: «Инструмент
       MCP со своей проверкой прав или репозиторием» в разделе «Права
       и границы данных»
-- [ ] 5.4 `mvn clean package` зелёный
-- [ ] 5.5 Поднять версию в `pom.xml` до 3.3.0 и дописать в `CHANGELOG.md`
+- [x] 5.4 `mvn clean package` зелёный
+- [x] 5.5 Поднять версию в `pom.xml` до 3.3.0 и дописать в `CHANGELOG.md`
       строку из `proposal.md`, раздел «Версия»

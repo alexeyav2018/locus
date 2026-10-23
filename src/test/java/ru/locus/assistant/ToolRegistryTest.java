@@ -5,7 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.ClassUtils;
+import ru.locus.IntegrationTest;
 
 /**
  * Реестр инструментов — единственный список умений Помощника (ADR-0056).
@@ -75,5 +79,36 @@ class ToolRegistryTest {
         assertThat(properties.keySet()).containsExactly("draft", "page", "slot");
         assertThat(schema.get("required")).isEqualTo(List.of("draft", "page"));
         assertThatThrownBy(() -> Schema.object().required("nope")).hasMessageContaining("«nope»");
+    }
+
+    /**
+     * Реестр приложения — первая очередь (спека {@code assistant-tools},
+     * «Инструментов личного контура и глаголов человека нет»): ровно десять
+     * инструментов библиотеки и Черновиков сборки. Одиннадцатый — не ошибка
+     * сборки, а решение: инструменты личного контура идут отдельными
+     * элементами бэклога (ADR-0054), и этот список правится вместе со спекой.
+     */
+    @Nested
+    class OfTheApplication extends IntegrationTest {
+
+        @Autowired
+        private ToolRegistry registry;
+        @Autowired
+        private List<Tools> areas;
+
+        @Test
+        void firstQueueIsExactlyTenNamedTools() {
+            assertThat(registry.names()).containsExactlyInAnyOrder(
+                    "list_topics", "list_methods", "list_characteristics",
+                    "find_problems", "get_problem", "get_problem_page", "create_problem",
+                    "list_assembly_drafts", "get_assembly_draft_page", "crop_assembly_draft_page");
+        }
+
+        /** Каждая область инструментов стоит под сторожем тонкости {@code ToolsAreThinTest}. */
+        @Test
+        void everyAreaOfToolsIsGuardedByTheThinnessTest() {
+            assertThat(areas).<Class<?>>map(area -> ClassUtils.getUserClass(area))
+                    .containsExactlyInAnyOrderElementsOf(ToolsAreThinTest.TOOLS);
+        }
     }
 }
