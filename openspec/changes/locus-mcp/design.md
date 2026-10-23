@@ -176,7 +176,10 @@ Security с `Bearer`-ресурс-сервером — машинерия OAuth 
 Данные (списки, Задача, номер заведённой) возвращаются одним текстовым
 содержимым — JSON, собранным тем же `JsonMapper` приложения из записей
 с плоскими полями (`long`, `String`, списки): идентификаторы-обёртки
-проекта наружу не идут. Страница и кусок — `ImageContent` JPEG
+проекта наружу не идут. Имена полей в JSON — `snake_case`, как имена
+инструментов и аргументов (`condition_pages`, `methods_match`): стиль
+задаёт обёртка в `ru.locus.assistant`, а записи областей остаются
+обычными записями Java. Страница и кусок — `ImageContent` JPEG
 в base64. Отказ сервиса (`IllegalArgumentException`,
 `*NotFoundException`, `AccessDeniedException`, `NotATopicException`
 и прочие `RuntimeException` с текстом для человека) — `CallToolResult`

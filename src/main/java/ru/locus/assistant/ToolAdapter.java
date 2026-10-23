@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import tools.jackson.databind.PropertyNamingStrategies;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Base64;
@@ -21,7 +22,9 @@ import java.util.Map;
  *
  * <p>Переводит описание инструмента в схему SDK, аргументы вызова —
  * в {@link Arguments}, результат — в {@code CallToolResult}: данные —
- * JSON текстом, собранным тем же {@code JsonMapper}, что у приложения;
+ * JSON текстом, собранным {@code JsonMapper} приложения с именами полей
+ * в {@code snake_case} — как имена инструментов и аргументов, чтобы модель
+ * видела один стиль, а записи областей оставались обычными записями Java;
  * картинка — {@code ImageContent} JPEG в base64; отказ — результат
  * с признаком ошибки и текстом. Отказ не рвёт соединения: модель
  * читает его и действует дальше, как учитель читает красную строку.
@@ -57,7 +60,7 @@ final class ToolAdapter {
     private final JsonMapper json;
 
     ToolAdapter(JsonMapper json) {
-        this.json = json;
+        this.json = json.rebuild().propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build();
     }
 
     /** На потоке сервлета: личность вошедшего — в контекст транспорта. */

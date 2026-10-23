@@ -103,4 +103,22 @@ class ArgumentsTest {
         assertThat(frame.requireDouble("width")).isEqualTo(0.5);
         assertThatThrownBy(() -> frame.requireDouble("height")).hasMessageContaining("«height»");
     }
+
+    @Test
+    void enumIsReadByNameRegardlessOfCase() {
+        Arguments arguments = Arguments.of(Map.of("slot", "condition", "part", "SECOND", "mode", "every"));
+
+        assertThat(arguments.requireEnum("slot", Slot.class)).isEqualTo(Slot.CONDITION);
+        assertThat(arguments.optionalEnum("part", Part.class)).contains(Part.SECOND);
+        assertThat(arguments.optionalEnum("absent", Part.class)).isEmpty();
+        assertThatThrownBy(() -> arguments.requireEnum("mode", Slot.class))
+                .hasMessageContaining("«mode»")
+                .hasMessageContaining("CONDITION, SOLUTION")
+                .hasMessageContaining("«every»");
+        assertThatThrownBy(() -> arguments.requireEnum("absent", Slot.class)).hasMessageContaining("обязателен");
+    }
+
+    private enum Slot { CONDITION, SOLUTION }
+
+    private enum Part { FIRST, SECOND }
 }

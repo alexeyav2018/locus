@@ -67,7 +67,22 @@ public final class Schema {
         private final Map<String, Object> properties = new LinkedHashMap<>();
         private final List<String> required = new ArrayList<>();
 
+        private String description;
+
         private ObjectSchema() {
+        }
+
+        /**
+         * Описание объекта — для вложенного объекта (строка сборки, Рамка),
+         * у которого нет описания поля, где он стоит. Корневой схеме
+         * аргументов описание не нужно: его несёт сам инструмент.
+         */
+        public ObjectSchema description(String description) {
+            if (description == null || description.isBlank()) {
+                throw new IllegalArgumentException("Описание объекта в схеме пусто");
+            }
+            this.description = description;
+            return this;
         }
 
         public ObjectSchema property(String name, Map<String, Object> schema) {
@@ -90,6 +105,9 @@ public final class Schema {
         public Map<String, Object> build() {
             Map<String, Object> schema = new LinkedHashMap<>();
             schema.put("type", "object");
+            if (description != null) {
+                schema.put("description", description);
+            }
             schema.put("properties", Collections.unmodifiableMap(new LinkedHashMap<>(properties)));
             if (!required.isEmpty()) {
                 schema.put("required", List.copyOf(required));

@@ -1,8 +1,10 @@
 package ru.locus.assistant;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Аргументы вызова инструмента, как они пришли из JSON запроса: отображение
@@ -97,6 +99,30 @@ public final class Arguments {
             throw new IllegalArgumentException("Аргумент «" + name + "» должен быть строкой");
         }
         return string.isBlank() ? Optional.empty() : Optional.of(string);
+    }
+
+    /** Значение перечисления по имени; отсутствие — отказ. */
+    public <E extends Enum<E>> E requireEnum(String name, Class<E> type) {
+        return optionalEnum(name, type).orElseThrow(() -> missing(name));
+    }
+
+    /**
+     * Значение перечисления по имени, если оно передано. Регистр не важен:
+     * {@code all} и {@code ALL} — одно значение, схема инструмента вправе
+     * предлагать имена строчными; чужое имя — отказ, перечисляющий
+     * допустимые.
+     */
+    public <E extends Enum<E>> Optional<E> optionalEnum(String name, Class<E> type) {
+        return optionalString(name).map(value -> {
+            for (E constant : type.getEnumConstants()) {
+                if (constant.name().equalsIgnoreCase(value.strip())) {
+                    return constant;
+                }
+            }
+            throw new IllegalArgumentException("Аргумент «" + name + "» должен быть одним из "
+                    + Arrays.stream(type.getEnumConstants()).map(Enum::name).collect(Collectors.joining(", "))
+                    + ", а не «" + value + "»");
+        });
     }
 
     /** Вложенный объект; отсутствие — отказ. */

@@ -74,11 +74,11 @@
 
 ## 3. Инструменты библиотеки
 
-- [ ] 3.1 `TaxonomyTools implements Tools`: `list_topics` —
+- [x] 3.1 `TaxonomyTools implements Tools`: `list_topics` —
       `TaxonomyService.topicPaths()` → `[{id, path}]`
-- [ ] 3.2 `DictionaryTools implements Tools`: `list_methods`,
+- [x] 3.2 `DictionaryTools implements Tools`: `list_methods`,
       `list_characteristics` → `[{id, name}]`
-- [ ] 3.3 `ProblemTools implements Tools`: `find_problems` (аргументы
+- [x] 3.3 `ProblemTools implements Tools`: `find_problems` (аргументы
       `node`, `methods`, `methods_match` `all|any`, `characteristics`,
       `characteristics_match`, `part` `FIRST|SECOND` → `ProblemFilter`
       → `ProblemService.search` → `[{number, part, topics, methods,
@@ -92,7 +92,7 @@
       `frame` — `{left, top, width, height}` → `PdfAssemblyOrder` →
       `ProblemService.create` → `{number}`); описания инструментов
       по-русски, схемы через `Schema`
-- [ ] 3.4 `LibraryToolsTest` (`IntegrationTest`, через `ToolRegistry`
+- [x] 3.4 `LibraryToolsTest` (`IntegrationTest`, через `ToolRegistry`
       и `LoggedIn`, обстановка `TestLibrary`): `list_topics` отдаёт лист
       с полным путём и не отдаёт Раздел; словари целиком; `find_problems`
       по Разделу и Методу — Задачи поддерева; `get_problem` — разметка
@@ -100,13 +100,13 @@
       «не существует»; `get_problem_page` — JPEG, страница вне файла —
       отказ; два Учителя получают одинаковый `find_problems`
       (фильтра по владельцу нет)
-- [ ] 3.5 `CreateProblemToolTest`: Администратор с черновиком сборки
+- [x] 3.5 `CreateProblemToolTest`: Администратор с черновиком сборки
       (`AssemblyDraftService.upload`) заводит Задачу с Рамками — номер
       в ответе, PDF собраны, черновик удалён; без Метода — отказ
       с текстом сервиса; Раздел вместо Темы — отказ; Учитель без роли
       Администратора — отказ «нет прав» (`AccessDeniedException` →
       `isError`)
-- [ ] 3.6 `mvn test -Dtest='LibraryToolsTest,CreateProblemToolTest,ProblemServiceTest,ProblemSearchTest'`
+- [x] 3.6 `mvn test -Dtest='LibraryToolsTest,CreateProblemToolTest,ProblemServiceTest,ProblemSearchTest'`
       зелёный
 
 ## 4. Инструменты Черновиков сборки
