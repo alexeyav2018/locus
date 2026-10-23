@@ -287,7 +287,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 | собирать и систематизировать задачи | в первой версии |
 | вести учёт теоретических материалов | в первой версии |
 | выдавать задания и вести учёт ответов | в первой версии, но выдача и приём — вне системы |
-| выстраивать расписание учителя | горизонт редакции 2 стратегии ([ADR-0046](openspec/context/adr/0046-redakciya-2-strategii-raspisanie.md)): вехи 2 и 3 построены (`schedule`, `schedule-changes`) |
+| выстраивать расписание учителя | вехи 2 и 3 редакции 2 стратегии построены (`schedule`, `schedule-changes`, [ADR-0046](openspec/context/adr/0046-redakciya-2-strategii-raspisanie.md)); редакция 2 заменена редакцией 3, неделя учителя не сверялась, расписание доводится дефектами по отзывам |
+| заводить задачи с листа через помощника | горизонт редакции 3 стратегии ([ADR-0053](openspec/context/adr/0053-redakciya-3-strategii-pomoshchnik.md)): в очереди, первым идёт `agent-spike` — измерение предпосылки П7 до кода и вне батча |
 
 Смысловое ядро: учитель ведёт **общую библиотеку размеченных задач** и по
 каждому ученику знает, **какими методами в каких темах тот владеет**.
@@ -337,10 +338,10 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - Несколько учителей с первой версии, библиотека общая ([ADR-0004](openspec/context/adr/0004-mnogouchitelskaya-rabota.md)).
 - Роли Администратор и Учитель; вход один, функционал объединённый ([ADR-0005](openspec/context/adr/0005-roli-administrator-uchitel.md)).
 - Рубрикатор — дерево; задачи и отметки только на листьях ([ADR-0006](openspec/context/adr/0006-rubrikator-derevo.md)).
-- Задача — два PDF; формулы как данные не хранятся ([ADR-0008](openspec/context/adr/0008-zadacha-dva-pdf.md)).
+- Текст Задачи первичен, PDF — его отрисовка Локусом, снимок — улика; текст необязателен, Задачи с текстом и без сосуществуют, Локус текст не разбирает ([ADR-0055](openspec/context/adr/0055-tekst-zadachi-pervichen-pdf-otrisovka.md), заменяет [ADR-0008](openspec/context/adr/0008-zadacha-dva-pdf.md)).
 - Отметка владения — на паре «Тема × Метод», ставит только человек ([ADR-0011](openspec/context/adr/0011-otmetka-na-pare.md)).
 - Агрегат владения — распределение по статусам, не одно значение ([ADR-0013](openspec/context/adr/0013-agregaciya-raspredelenie.md)).
-- Автопроверки, уведомлений и фоновых процессов нет ([ADR-0014](openspec/context/adr/0014-proverka-bez-avtomatiki.md), [ADR-0017](openspec/context/adr/0017-net-uvedomlenij.md)).
+- Автопроверки, уведомлений и фоновых процессов нет ([ADR-0014](openspec/context/adr/0014-proverka-bez-avtomatiki.md), [ADR-0017](openspec/context/adr/0017-net-uvedomlenij.md)); единственное исключение — реплика помощника: её начинает учитель, она ограничена пределом времени и шагов и одна на учителя ([ADR-0054](openspec/context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md)).
 - Стек: Java 21, Spring, Thymeleaf, PostgreSQL, VPS ([ADR-0020](openspec/context/adr/0020-stek.md)).
 - Оснастка: Maven, Liquibase, Compose и Testcontainers; откатных скриптов нет ([ADR-0023](openspec/context/adr/0023-osnastka-sborki.md)).
 - Обновление идёт с остановкой, миграции не обязаны быть обратно совместимыми ([ADR-0024](openspec/context/adr/0024-obnovlenie-s-ostanovkoj.md)).
@@ -363,9 +364,12 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 - У слота Задачи одно поле файла; нетронутый единственный PDF ложится в слот байт в байт под пределом инструмента, без скрипта поле прикладывает готовый PDF ([ADR-0049](openspec/context/adr/0049-odno-pole-fajla-na-slot-zadachi.md)).
 - Задача различается только номером; Подписи у неё нет, колонка удалена вместе с данными ([ADR-0050](openspec/context/adr/0050-zadacha-razlichaetsya-tolko-nomerom.md)).
 - PDF на странице просмотра — картинки страниц, отрисованные на сервере, не больше двадцати, рядом «Открыть PDF»; встраивать в рамку нечего ([ADR-0052](openspec/context/adr/0052-pdf-na-stranice-prosmotra-kartinkami-stranic.md)).
-- Редакция 2 стратегии: горизонт — учитель ведёт свои занятия в Локусе и бросает параллельный календарь; `schedule` возвращён в очередь, начинается со сверки предпосылок с учителем ([ADR-0046](openspec/context/adr/0046-redakciya-2-strategii-raspisanie.md)).
+- Редакция 3 стратегии: горизонт — учитель заводит Задачи с листа через помощника и перестаёт обводить рамками и размечать руками; переход по решению владельца при не достигнутом горизонте редакции 2, третье условие истечения — «владелец сменил направление» ([ADR-0053](openspec/context/adr/0053-redakciya-3-strategii-pomoshchnik.md)).
 - Занятие — хранимое правило «разово или еженедельно» с одним Учеником или одной Группой; Встречи вычисляются, правка еженедельного действует с даты и делит Занятие; Группа уносит свои Занятия, Ученика Занятие держит ([ADR-0047](openspec/context/adr/0047-zanyatie-pravilo-vstrechi-vychislyayutsya.md)).
 - Перенос, отмена и неявка — Поправка на паре «Занятие × плановая дата», «как по правилу» — отсутствие строки; правка Занятия забирает свои Поправки, удаление уносит их каскадом ([ADR-0048](openspec/context/adr/0048-popravka-vstrechi-na-pare-zanyatie-data.md)).
+- Помощник — Claude Code на стенде по ключу API владельца, процесс на одну реплику, между репликами ничего не работает; сервер MCP внутри приложения ([ADR-0054](openspec/context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md)).
+- Помощник — второй клиент сервисного слоя под личностью учителя: инструменты MCP — тонкие обёртки без своей логики и проверки прав; истина о Черновике Задачи — в Локусе, у правимого двоими есть версия; вердикта Работы и отметки Владения у помощника нет ([ADR-0056](openspec/context/adr/0056-pomoshchnik-vtoroj-klient-servisnogo-sloya.md)).
+- Личность помощника — токен на реплику, клетка — только инструменты Локуса; навыки помощника — документы в репозитории, не спеки, признак готовности навыка — сеанс учителя ([ADR-0057](openspec/context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md)).
 
 ## Процесс: OpenSpec
 
@@ -562,7 +566,7 @@ python3 openspec/context/adr/build_index.py --check  # только провер
 ## Решения, которые ещё не приняты
 
 Пять вопросов, стоявших здесь раньше, закрыты: стек ([ADR-0020](openspec/context/adr/0020-stek.md)),
-представление формул ([ADR-0008](openspec/context/adr/0008-zadacha-dva-pdf.md)),
+представление формул ([ADR-0055](openspec/context/adr/0055-tekst-zadachi-pervichen-pdf-otrisovka.md) — текст с формулами LaTeX, заменила [ADR-0008](openspec/context/adr/0008-zadacha-dva-pdf.md)),
 модель данных ([domain-model.md](openspec/context/domain-model.md)),
 автопроверка ([ADR-0014](openspec/context/adr/0014-proverka-bez-avtomatiki.md)),
 ученик у нескольких учителей ([ADR-0004](openspec/context/adr/0004-mnogouchitelskaya-rabota.md) — нет, принадлежит одному).

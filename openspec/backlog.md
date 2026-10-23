@@ -1850,7 +1850,11 @@ MCP видна модели в неинтерактивном режиме; по
 
 **Основание.** [architecture.md](context/architecture.md), «Слои» и «Права
 доступа»; [ADR-0027](context/adr/0027-mehanizm-granicy-obshchego-i-lichnogo.md);
-запись «диалог — второй клиент» из `strategy-edition-3`.
+[ADR-0056](context/adr/0056-pomoshchnik-vtoroj-klient-servisnogo-sloya.md) —
+второй клиент сервисного слоя под личностью учителя;
+[ADR-0054](context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md) —
+сервер MCP внутри приложения; [ADR-0057](context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md) —
+токен на реплику.
 
 **Что входит.** Сервер MCP внутри приложения (Java SDK MCP), транспорт HTTP
 на loopback. Токен на реплику: выпускается `agent-runner`, предъявляется
@@ -1894,7 +1898,8 @@ MCP видна модели в неинтерактивном режиме; по
 анализировать. Без текста помощник умеет только резать картинку, что
 учитель делает и сам.
 
-**Основание.** Запись «текст Задачи» из `strategy-edition-3` (заменяет
+**Основание.** [ADR-0055](context/adr/0055-tekst-zadachi-pervichen-pdf-otrisovka.md) —
+текст Задачи первичен, PDF — отрисовка, снимок — улика (заменяет
 [ADR-0008](context/adr/0008-zadacha-dva-pdf.md));
 [ADR-0009](context/adr/0009-razmetka-zadachi.md) — разметка не меняется;
 [ADR-0052](context/adr/0052-pdf-na-stranice-prosmotra-kartinkami-stranic.md) —
@@ -1940,8 +1945,10 @@ PDF, улика в своём слоте; Задача без текста за�
 выполниться в клетке под его личностью и вернуться ответом — а между
 репликами на стенде не должно ничего работать.
 
-**Основание.** Записи «агент на стенде» и «личность и клетка» из
-`strategy-edition-3`; [ADR-0017](context/adr/0017-net-uvedomlenij.md)
+**Основание.** [ADR-0054](context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md) —
+Claude Code на стенде, процесс на реплику;
+[ADR-0057](context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md) —
+личность и клетка; [ADR-0017](context/adr/0017-net-uvedomlenij.md)
 в уточнённом виде; [ADR-0051](context/adr/0051-ekspluataciya-stenda-vne-repozitoriya.md) —
 установка Claude Code и ключ — у владельца, конфигурация агента —
 в репозитории.
@@ -1998,7 +2005,9 @@ PDF, улика в своём слоте; Задача без текста за�
 **Основание.** [ux-concept.md](context/ux-concept.md), «Правила для новых
 экранов»; [ADR-0041](context/adr/0041-edinaya-sistema-oformleniya.md);
 [ADR-0042](context/adr/0042-vtorichnoe-po-knopke-i-vozvrat.md) — внутренние
-ссылки с `from`; разбор формы диалога 22.10.2026.
+ссылки с `from`; [ADR-0054](context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md) —
+процесс на реплику, одна на учителя, недоступность с причиной; разбор формы
+диалога 22.10.2026.
 
 **Что входит.** Раздел «Помощник» в шапке, страница `/assistant` (личное):
 разговоры и реплики с владельцем — `assistant_conversation`,
@@ -2041,8 +2050,10 @@ refresh`, необязательный параметр у `shell :: head`), п�
 уликой, отрисовкой, разметкой — и так, чтобы страница и агент правили одно
 и то же без потерь.
 
-**Основание.** Записи «текст Задачи» и «диалог — второй клиент» из
-`strategy-edition-3`; [ADR-0044](context/adr/0044-sborka-pdf-zadachi.md) —
+**Основание.** [ADR-0055](context/adr/0055-tekst-zadachi-pervichen-pdf-otrisovka.md) —
+текст Задачи и улика; [ADR-0056](context/adr/0056-pomoshchnik-vtoroj-klient-servisnogo-sloya.md) —
+истина о Черновике в Локусе, версия у правимого двоими;
+[ADR-0044](context/adr/0044-sborka-pdf-zadachi.md) —
 черновики сборки; его отвергнутая альтернатива «Источник с многократной
 нарезкой» возвращается ограниченно: условие «один и тот же сборник
 прикладывают раз за разом» сработало; [ADR-0045](context/adr/0045-obrezka-kuska-stranicy.md) —
@@ -2097,7 +2108,8 @@ refresh`, необязательный параметр у `shell :: head`), п�
 вопросами; испортить ничего не может — это держат инструменты. Навык —
 вежливость, инструмент — замок.
 
-**Основание.** Запись «навыки как документы» из `strategy-edition-3`;
+**Основание.** [ADR-0057](context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md) —
+навыки как документы, признак готовности — сеанс учителя;
 [ADR-0023](context/adr/0023-osnastka-sborki.md) — непроверяемое требование
 в спеки не кладётся: поведение агента ничем, кроме живого учителя,
 не проверяется.
@@ -2132,8 +2144,10 @@ refresh`, необязательный параметр у `shell :: head`), п�
 **Зачем.** Старые Задачи без текста для анализа невидимы; дораспознать их
 выборочно тем же помощником дешевле, чем чем-либо ещё.
 
-**Основание.** Решение «текст необязателен, два вида сосуществуют»
-(22.10.2026): дораспознавание — отдельно и выборочно, а не миграцией.
+**Основание.** [ADR-0055](context/adr/0055-tekst-zadachi-pervichen-pdf-otrisovka.md) —
+текст необязателен, два вида сосуществуют, дораспознавание — отдельно
+и выборочно, а не миграцией; [ADR-0057](context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md) —
+навык как документ.
 
 **Что входит.** Инструмент `locus-mcp` «записать текст существующей Задаче»
 через Черновик Задачи от её PDF (страницы PDF картинкой уже отдаются) —
