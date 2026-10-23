@@ -36,20 +36,20 @@
 
 ## 2. Токен Реплики, цепочка безопасности и сервер MCP
 
-- [ ] 2.1 `TurnToken` (значение, не пароль: `toString` не раскрывает),
+- [x] 2.1 `TurnToken` (значение, не пароль: `toString` не раскрывает),
       `TurnTokens`: `issue(UserId, Duration)`, `resolve(String)`,
       `revoke(TurnToken)`; истёкший удаляется при разрешении; `Clock`
       приложения; javadoc — ADR-0057, design.md Р3
-- [ ] 2.2 `TurnTokenFilter` (`OncePerRequestFilter` на `Addresses.MCP`):
+- [x] 2.2 `TurnTokenFilter` (`OncePerRequestFilter` на `Addresses.MCP`):
       `Authorization: Bearer` → `TurnTokens.resolve` → `UserRepository.findById`
       → `UsernamePasswordAuthenticationToken.authenticated(login, null,
       ROLE_…)` в `SecurityContextHolder`; иначе `401` с
       `WWW-Authenticate: Bearer` и без перенаправления
-- [ ] 2.3 `McpSecurityConfiguration`: вторая `SecurityFilterChain`
+- [x] 2.3 `McpSecurityConfiguration`: вторая `SecurityFilterChain`
       с `@Order(1)`, `securityMatcher(Addresses.MCP)`, без CSRF, `STATELESS`,
       `anyRequest().authenticated()`, фильтр перед `AuthorizationFilter`,
       точка входа `401`; основная цепочка `SecurityConfig` не меняется
-- [ ] 2.4 `McpServerConfiguration`: `HttpServletStatelessServerTransport`
+- [x] 2.4 `McpServerConfiguration`: `HttpServletStatelessServerTransport`
       (`JacksonMcpJsonMapper` на `JsonMapper` приложения, `messageEndpoint`
       `/mcp`, `contextExtractor` кладёт `Authentication` из
       `SecurityContextHolder`), `ServletRegistrationBean` на `/mcp`,
@@ -60,16 +60,16 @@
       вызова, `ToolResult` → `CallToolResult`, отказ сервиса → `isError`
       с текстом, прочее → `isError` с общим текстом и записью в журнал
       (design.md Р5)
-- [ ] 2.5 `TurnTokensTest`: выпуск → разрешение; отзыв → пусто; истечение
+- [x] 2.5 `TurnTokensTest`: выпуск → разрешение; отзыв → пусто; истечение
       по `TestClock` → пусто; неизвестный → пусто
-- [ ] 2.6 `TurnTokenGuardsTheServerTest` (`IntegrationTest`, HTTP на
+- [x] 2.6 `TurnTokenGuardsTheServerTest` (`IntegrationTest`, HTTP на
       `/mcp`): без заголовка — `401`; отозванный — `401`; истёкший — `401`;
       живой токен Учителя — клиент SDK (`McpClient.sync` на
       `HttpClientStreamableHttpTransport` с заголовком) инициализируется
       и перечисляет инструменты; список совпадает с `ToolRegistry.names()`;
       страницы по-прежнему требуют входа формой (`/` без сеанса —
       перенаправление на `/login`, не `401`)
-- [ ] 2.7 `mvn test -Dtest='TurnTokensTest,TurnTokenGuardsTheServerTest,LoginTest,RoleAccessTest'`
+- [x] 2.7 `mvn test -Dtest='TurnTokensTest,TurnTokenGuardsTheServerTest,LoginTest,RoleAccessTest'`
       зелёный
 
 ## 3. Инструменты библиотеки
