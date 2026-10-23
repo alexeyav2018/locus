@@ -58,6 +58,16 @@ class AssemblyDraftRepositoryTest extends IntegrationTest {
         assertThat(drafts.findByIds(alice, List.of(alices))).hasSize(1);
     }
 
+    /** locus-mcp 4.1: список владельца — только его черновики, в порядке загрузки, а не идентификаторов. */
+    @Test
+    void ownerListsOnlyOwnDraftsInUploadOrder() {
+        AssemblyDraftId later = draft(alice, NOW);
+        AssemblyDraftId earlier = draft(alice, NOW.minus(1, ChronoUnit.HOURS));
+        draft(bob, NOW);
+
+        assertThat(drafts.findByOwner(alice)).extracting(AssemblyDraft::id).containsExactly(earlier, later);
+    }
+
     @Test
     void deletingByIdsReturnsTheFileNames() {
         String file = UUID.randomUUID().toString();

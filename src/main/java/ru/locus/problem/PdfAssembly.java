@@ -196,6 +196,31 @@ public class PdfAssembly {
         return jpeg(shown);
     }
 
+    /**
+     * Кусок страницы исходника по рамке — картинкой JPEG для Помощника
+     * (locus-mcp, design.md, Р7).
+     *
+     * <p>Страница отрисовывается крупно ({@link PreviewSize#LARGE}), из растра
+     * вырезается прямоугольник рамки — доли того же вида, что показывает
+     * {@link #preview}, — и кусок ужимается до обычного предела
+     * ({@link PreviewSize#NORMAL}), если крупнее. Так четверть страницы
+     * приходит модели в том же разрешении, что и целая, и мелкий почерк
+     * читается. Это не обрезка ADR-0045: кусок никуда не ложится, а только
+     * показывается, и режется коробка растра — содержимое не интерпретируется.
+     *
+     * @param page  номер страницы с единицы; у картинки страница одна
+     * @param frame рамка в долях показанной страницы
+     * @throws IllegalArgumentException если страницы с таким номером нет
+     *                                  или источник не разбирается
+     */
+    public byte[] previewPiece(Path file, String name, AssemblyDraft.Kind kind, int page, CropFrame frame) {
+        BufferedImage shown = switch (kind) {
+            case PDF -> pdfPreview(file, name, page, PreviewSize.LARGE);
+            case IMAGE -> imagePreview(file, name, page, PreviewSize.LARGE);
+        };
+        return jpeg(within(cut(shown, frame), PreviewSize.NORMAL));
+    }
+
     private static BufferedImage pdfPreview(Path file, String name, int page, PreviewSize size) {
         try (PDDocument document = open(file, name)) {
             if (page < 1 || page > document.getNumberOfPages()) {
@@ -214,16 +239,28 @@ public class PdfAssembly {
         if (page != 1) {
             throw new IllegalArgumentException("Источник «" + name + "» — картинка, страница у неё одна");
         }
+        BufferedImage upright;
         try {
-            BufferedImage upright = Thumbnails.of(file.toFile())
+            upright = Thumbnails.of(file.toFile())
                     .scale(1)
                     .useExifOrientation(true)
                     .asBufferedImage();
-            double scale = Math.min(1, (double) size.longSide
-                    / Math.max(upright.getWidth(), upright.getHeight()));
-            return scale == 1 ? upright : Thumbnails.of(upright).scale(scale).asBufferedImage();
         } catch (IOException e) {
             throw new IllegalArgumentException("Картинка «" + name + "» не разбирается", e);
+        }
+        return within(upright, size);
+    }
+
+    /** Картинка не крупнее предела размера по длинной стороне; меньшая не увеличивается. */
+    private static BufferedImage within(BufferedImage image, PreviewSize size) {
+        double scale = Math.min(1, (double) size.longSide / Math.max(image.getWidth(), image.getHeight()));
+        if (scale == 1) {
+            return image;
+        }
+        try {
+            return Thumbnails.of(image).scale(scale).asBufferedImage();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 

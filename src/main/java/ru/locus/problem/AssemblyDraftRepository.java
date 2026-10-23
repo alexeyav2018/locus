@@ -82,6 +82,18 @@ public class AssemblyDraftRepository {
     }
 
     /**
+     * Все черновики владельца в порядке загрузки — список Черновиков
+     * сборки для Помощника (locus-mcp, design.md, Р8). Чужих в нём нет:
+     * владелец — в SQL, как у всякого чтения личного (ADR-0027).
+     */
+    public List<AssemblyDraft> findByOwner(UserId owner) {
+        return database.sql("select " + COLUMNS + " from assembly_draft where user_id = ? order by created_at, id")
+                .param(owner.value())
+                .query(AssemblyDraftRepository::row)
+                .list();
+    }
+
+    /**
      * Удаляет черновики владельца из названных и возвращает имена их файлов;
      * чужие не трогаются.
      */

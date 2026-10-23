@@ -111,32 +111,32 @@
 
 ## 4. Инструменты Черновиков сборки
 
-- [ ] 4.1 `AssemblyDraftRepository.findByOwner(UserId)` — в порядке
+- [x] 4.1 `AssemblyDraftRepository.findByOwner(UserId)` — в порядке
       загрузки; `AssemblyDraftRepositoryTest` — чужие не возвращаются;
       `OwnerIsRequiredByDraftsTest` зелёный без правок
-- [ ] 4.2 `PdfAssembly.previewPiece(file, name, kind, page, frame)`:
+- [x] 4.2 `PdfAssembly.previewPiece(file, name, kind, page, frame)`:
       отрисовка `LARGE`, вырез по долям Рамки, ужатие до `NORMAL.longSide`
       при превышении; `PdfAssemblyTest` — пропорции куска соответствуют
       Рамке, кусок во всю страницу не крупнее 1600 px, Рамка вне
       страницы — отказ
-- [ ] 4.3 `AssemblyDraftService.own()` (Администратор, `sweep`, владелец
+- [x] 4.3 `AssemblyDraftService.own()` (Администратор, `sweep`, владелец
       из `CurrentUser`) и `previewPiece(id, page, frame)` (`Optional`,
       пусто для чужого, несуществующего и страницы вне черновика);
       `DraftsAreFilteredByOwnerTest` — чужой черновик не в `own()`,
       `previewPiece` чужого пуст
-- [ ] 4.4 `AssemblyDraftTools implements Tools`: `list_assembly_drafts`
+- [x] 4.4 `AssemblyDraftTools implements Tools`: `list_assembly_drafts`
       → `[{id, name, kind, pages}]`; `get_assembly_draft_page` (`draft`,
       `page` → `preview(NORMAL)` → JPEG); `crop_assembly_draft_page`
       (`draft`, `page`, `frame` → `previewPiece` → JPEG); пусто — отказ
       «черновика или страницы нет», одинаковый для чужого
       и несуществующего
-- [ ] 4.5 `AssemblyDraftToolsTest` (`IntegrationTest`, через `ToolRegistry`
+- [x] 4.5 `AssemblyDraftToolsTest` (`IntegrationTest`, через `ToolRegistry`
       и `LoggedIn`): список А без черновика Б; страница своего — JPEG;
       чужой и несуществующий — один и тот же текст отказа; кусок по Рамке
       левой верхней четверти — JPEG с пропорциями Рамки; Учитель без роли
       Администратора — отказ «нет прав»; без аргумента `page` — отказ,
       называющий аргумент
-- [ ] 4.6 `mvn test -Dtest='AssemblyDraftRepositoryTest,PdfAssemblyTest,DraftsAreFilteredByOwnerTest,AssemblyDraftToolsTest,OwnerIsRequiredByDraftsTest,AssemblyDraftServiceTest'`
+- [x] 4.6 `mvn test -Dtest='AssemblyDraftRepositoryTest,PdfAssemblyTest,DraftsAreFilteredByOwnerTest,AssemblyDraftToolsTest,OwnerIsRequiredByDraftsTest,AssemblyDraftServiceTest'`
       зелёный
 
 ## 5. Сторожевые тесты, документы и приёмка

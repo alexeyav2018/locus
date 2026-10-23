@@ -183,24 +183,16 @@ public class ProblemTools implements Tools {
         return Schema.oneOf("Часть ЕГЭ: FIRST — первая, SECOND — вторая", "FIRST", "SECOND");
     }
 
-    /** Строка порядка сборки — как строка формы Задачи (ADR-0044, ADR-0045). */
     private static Map<String, Object> line() {
         return Schema.object()
                 .description("строка сборки: диапазон целых страниц Черновика сборки либо, с Рамкой, "
-                        + "кусок одной его страницы — отдельной страницей результата")
+                        + "кусок одной его страницы — отдельной страницей результата; без Рамки "
+                        + "страницы берутся целиком")
                 .property("draft", Schema.integer("идентификатор Черновика сборки из list_assembly_drafts"))
                 .property("from", Schema.integer("первая страница диапазона, с единицы; у картинки — 1"))
                 .property("to", Schema.integer(
                         "последняя страница диапазона, с единицы; у картинки — 1; с Рамкой равна from"))
-                .property("frame", Schema.object()
-                        .description("Рамка — кусок страницы долями её ширины и высоты от левого верхнего "
-                                + "угла, как в crop_assembly_draft_page; без Рамки страницы берутся целиком")
-                        .property("left", Schema.number("отступ слева, доля ширины страницы от 0 до 1"))
-                        .property("top", Schema.number("отступ сверху, доля высоты страницы от 0 до 1"))
-                        .property("width", Schema.number("ширина куска, доля ширины страницы"))
-                        .property("height", Schema.number("высота куска, доля высоты страницы"))
-                        .required("left", "top", "width", "height")
-                        .build())
+                .property("frame", AssemblyDraftTools.frameSchema())
                 .required("draft", "from", "to")
                 .build();
     }
@@ -212,12 +204,7 @@ public class ProblemTools implements Tools {
     private static PdfAssemblyOrder.Line line(Arguments line) {
         return new PdfAssemblyOrder.Line(new AssemblyDraftId(line.requireLong("draft")),
                 line.requireInt("from"), line.requireInt("to"),
-                line.optionalObject("frame").map(ProblemTools::frame).orElse(null));
-    }
-
-    private static CropFrame frame(Arguments frame) {
-        return new CropFrame(frame.requireDouble("left"), frame.requireDouble("top"),
-                frame.requireDouble("width"), frame.requireDouble("height"));
+                line.optionalObject("frame").map(AssemblyDraftTools::frame).orElse(null));
     }
 
     private static List<SolutionMethodId> methodIds(Arguments arguments) {

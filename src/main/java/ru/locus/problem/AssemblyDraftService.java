@@ -220,6 +220,31 @@ public class AssemblyDraftService {
     }
 
     /**
+     * Черновики вошедшего в порядке загрузки — список для Помощника
+     * (locus-mcp, design.md, Р8). Список — открытие инструмента, поэтому,
+     * как и {@link #upload}, сначала уборка по сроку.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public List<AssemblyDraft> own() {
+        sweep();
+        return drafts.findByOwner(currentUser.id());
+    }
+
+    /**
+     * Кусок страницы своего черновика по рамке — картинкой для Помощника
+     * (locus-mcp, design.md, Р7). Чужой черновик, несуществующий и страница
+     * вне черновика дают одно и то же пустое, как {@link #preview}.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public Optional<byte[]> previewPiece(AssemblyDraftId id, int page, CropFrame frame) {
+        return drafts.findByIds(currentUser.id(), List.of(id)).stream()
+                .findFirst()
+                .filter(draft -> page >= 1 && page <= draft.pageCount())
+                .map(draft -> assembly.previewPiece(fileOf(draft.fileName()), draft.originalName(), draft.kind(),
+                        page, frame));
+    }
+
+    /**
      * Строки сборки для перерисовки формы после отказа: тот же порядок
      * с именами и числом страниц, чтобы сборник не загружать заново.
      *
