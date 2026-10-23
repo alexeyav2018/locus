@@ -713,6 +713,71 @@ class PdfAssemblyTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    // --- locus-mcp 4.2 Кусок страницы для Помощника -------------------------
+
+    /**
+     * Рамка 0,3 × 0,2 на A4: пропорции куска — пропорции рамки на странице,
+     * а высота — 0,2 от крупного показа (3200), а не от обычного (1600):
+     * кусок приходит в разрешении целой страницы.
+     */
+    @Test
+    void pieceKeepsTheFrameProportionsAtTheLargeResolution() throws IOException {
+        Path book = textBook(3);
+        CropFrame frame = new CropFrame(0.1, 0.2, 0.3, 0.2);
+
+        BufferedImage piece = shown(assembly.previewPiece(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 2, frame));
+
+        assertThat(piece.getHeight()).isEqualTo((int) Math.round(0.2 * 3200));
+        assertThat((double) piece.getWidth() / piece.getHeight())
+                .isCloseTo(0.3 * PDRectangle.A4.getWidth() / (0.2 * PDRectangle.A4.getHeight()), within(0.01));
+    }
+
+    /** Кусок во всю страницу — та же страница, но не крупнее обычного предела. */
+    @Test
+    void pieceOfTheWholePageIsNoLargerThanTheNormalPreview() throws IOException {
+        Path book = textBook(3);
+        CropFrame whole = new CropFrame(0, 0, 1, 1);
+
+        BufferedImage piece = shown(assembly.previewPiece(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 1, whole));
+
+        assertThat(piece.getHeight()).isEqualTo(1600);
+        assertThat(piece.getWidth()).isCloseTo((int) (PDRectangle.A4.getWidth() * 1600 / PDRectangle.A4.getHeight()),
+                within(1));
+    }
+
+    /** Правая половина широкой картинки: 4000 × 1000 показывается крупно как 3200 × 800, половина — 1600 × 800. */
+    @Test
+    void pieceOfAPictureIsCutFromItsLargePreview() throws IOException {
+        Path picture = png("широкая.png", 4000, 1000);
+        CropFrame rightHalf = new CropFrame(0.5, 0, 0.5, 1);
+
+        BufferedImage piece = shown(assembly.previewPiece(picture, "широкая.png", AssemblyDraft.Kind.IMAGE, 1, rightHalf));
+
+        assertThat(piece.getWidth()).isEqualTo(1600);
+        assertThat(piece.getHeight()).isEqualTo(800);
+    }
+
+    @Test
+    void pieceOfAPageBeyondTheBookIsRefused() throws IOException {
+        Path book = textBook(3);
+        CropFrame frame = new CropFrame(0, 0, 0.5, 0.5);
+
+        assertThatThrownBy(() -> assembly.previewPiece(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 4, frame))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("страницы 4");
+    }
+
+    /** Рамка вне страницы не доживает до отрисовки: её отклоняет сама рамка. */
+    @Test
+    void pieceByAFrameBeyondThePageIsRefused() throws IOException {
+        Path book = textBook(3);
+
+        assertThatThrownBy(() -> assembly.previewPiece(book, "сборник.pdf", AssemblyDraft.Kind.PDF, 1,
+                new CropFrame(0.8, 0.8, 0.5, 0.5)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("за пределы страницы");
+    }
+
     private static BufferedImage shown(byte[] jpeg) throws IOException {
         assertThat(PdfAssembly.isJpeg(jpeg)).isTrue();
         return ImageIO.read(new ByteArrayInputStream(jpeg));

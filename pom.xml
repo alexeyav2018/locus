@@ -13,7 +13,7 @@
 
     <groupId>ru.locus</groupId>
     <artifactId>locus</artifactId>
-    <version>3.2.0</version>
+    <version>3.3.0</version>
     <name>locus</name>
     <description>Платформа поддержки учителя математики</description>
 
@@ -28,6 +28,11 @@
         <awssdk.version>2.54.13</awssdk.version>
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <pdfbox.version>3.0.8</pdfbox.version>
+        <!--
+            Java SDK MCP Spring Boot тоже не управляет: его спецификация
+            согласует части SDK между собой.
+        -->
+        <mcp.version>2.1.0</mcp.version>
     </properties>
 
     <dependencyManagement>
@@ -36,6 +41,13 @@
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
                 <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.modelcontextprotocol.sdk</groupId>
+                <artifactId>mcp-bom</artifactId>
+                <version>${mcp.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -99,6 +111,18 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>${pdfbox.version}</version>
+        </dependency>
+
+        <!--
+            Сервер MCP внутри приложения (ADR-0054): через него Помощник
+            действует в Локусе под личностью учителя (ADR-0056). SDK виден
+            только пакету ru.locus.assistant; области объявляют инструменты
+            через его абстракцию и типов SDK не знают — как о S3 не знает
+            никто выше ru.locus.file.
+        -->
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp</artifactId>
         </dependency>
 
         <!-- Разработка: приложение само поднимает базу из compose.yaml -->

@@ -86,12 +86,38 @@ class DraftsAreFilteredByOwnerTest extends IntegrationTest {
         assertThat(service.preview(alicesDraft.id(), 1, NORMAL)).isPresent();
     }
 
-    /** Сценарий «Учитель запрашивает показ». */
+    /** locus-mcp, «Список своих черновиков»: в списке Б черновика А нет, в списке А — есть. */
+    @Test
+    void anotherAdministratorDoesNotListIt() {
+        assertThat(service.own()).extracting(AssemblyDraft::id).doesNotContain(alicesDraft.id());
+
+        LoggedIn.as(alice);
+        assertThat(service.own()).extracting(AssemblyDraft::id).contains(alicesDraft.id());
+    }
+
+    /** locus-mcp, «Чужой черновик неотличим от несуществующего» — кусок по рамке. */
+    @Test
+    void anotherAdministratorCannotCutItsPages() {
+        CropFrame quarter = new CropFrame(0, 0, 0.5, 0.5);
+        assertThat(service.previewPiece(alicesDraft.id(), 1, quarter)).isEmpty();
+        assertThat(service.previewPiece(new AssemblyDraftId(alicesDraft.id().value() + 1_000_000), 1, quarter))
+                .isEmpty();
+
+        LoggedIn.as(alice);
+        assertThat(service.previewPiece(alicesDraft.id(), 1, quarter)).isPresent();
+        assertThat(service.previewPiece(alicesDraft.id(), 4, quarter)).as("страницы 4 в трёх нет").isEmpty();
+    }
+
+    /** Сценарий «Учитель запрашивает показ» — и список, и кусок отвечают тем же отказом в правах. */
     @Test
     void teacherIsRefusedThePages() {
         LoggedIn.as(accounts.settled(Role.TEACHER));
 
         assertThatThrownBy(() -> service.preview(alicesDraft.id(), 1, NORMAL))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.previewPiece(alicesDraft.id(), 1, new CropFrame(0, 0, 0.5, 0.5)))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.own())
                 .isInstanceOf(AccessDeniedException.class);
     }
 

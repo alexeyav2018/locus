@@ -291,6 +291,21 @@ class AssemblyDraftServiceTest extends IntegrationTest {
         assertThat(fileOf(fresh)).exists();
     }
 
+    /** locus-mcp 4.3: список своих — в порядке загрузки, и открытие списком убирает брошенное по сроку. */
+    @Test
+    void ownListsDraftsInUploadOrderAndSweepsTheOld() throws IOException {
+        AssemblyDraft first = service.upload("первый.png", stream(png()));
+        AssemblyDraft second = service.upload("второй.pdf", stream(pdf(2)));
+        clock.shift(Duration.ofHours(-25));
+        AssemblyDraft old = service.upload("старый.png", stream(png()));
+        clock.reset();
+
+        List<AssemblyDraft> own = service.own();
+
+        assertThat(own).extracting(AssemblyDraft::id).containsExactly(first.id(), second.id());
+        assertThat(fileOf(old)).as("брошенный убран при открытии списка").doesNotExist();
+    }
+
     @Test
     void startupCleanupRemovesEveryDraftAndStrayFile() throws Exception {
         AssemblyDraft draft = service.upload("снимок.png", stream(png()));

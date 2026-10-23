@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения, экран Владения, выбытие Ученика, версия системы, сборка и обрезка PDF Задачи, расписание с переносами и отменами Встреч
+## Статус: есть каркас, вход, роли, хранилище файлов, перестраиваемый рубрикатор, словари, Задачи с поиском, Теория, Ученики и Группы, Задания, Работы, Отметки Владения, экран Владения, выбытие Ученика, версия системы, сборка и обрезка PDF Задачи, расписание с переносами и отменами Встреч, сервер MCP для помощника
 
 Построен каркас (`project-skeleton`): приложение на Java 21 и Spring Boot,
 Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainers. Поверх него
@@ -254,13 +254,38 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 и сторонах. Рамка по-прежнему хранится долями страницы, так что масштаб
 показа на результат не влияет.
 
+Затем `locus-mcp` — первая работа редакции 3 стратегии и новый пакет
+`ru.locus.assistant`: сервер MCP **внутри приложения** по адресу `/mcp`
+(Java SDK MCP, Streamable HTTP без сессий — между вызовами сервер ничего
+не держит), через который Помощник действует в Локусе под личностью
+учителя ([ADR-0054](openspec/context/adr/0054-pomoshchnik-claude-code-na-stende-process-na-repliku.md),
+[ADR-0056](openspec/context/adr/0056-pomoshchnik-vtoroj-klient-servisnogo-sloya.md)).
+Личность — токен Реплики (`TurnToken`, `TurnTokens`): выпускается
+на Пользователя со сроком, живёт только в памяти, предъявляется заголовком
+`Authorization: Bearer`; без живого токена `/mcp` отвечает `401` до
+обращения к инструменту — у него своя цепочка безопасности, страницы
+по-прежнему требуют входа формой ([ADR-0057](openspec/context/adr/0057-lichnost-i-kletka-pomoshchnika-navyki-dokumenty.md)).
+Инструмент — тонкая обёртка метода сервиса без своей логики, проверки
+прав и репозитория (`ToolsAreThinTest`); область объявляет свои
+реализацией `Tools` рядом с контроллером, `ToolRegistry` собирает их
+и сервер предлагает клиенту ровно реестр. Первая очередь — десять
+инструментов общей библиотеки и Черновиков сборки: `list_topics`,
+`list_methods`, `list_characteristics`, `find_problems`, `get_problem`,
+`get_problem_page`, `create_problem`, `list_assembly_drafts`,
+`get_assembly_draft_page`, `crop_assembly_draft_page`; страницы и куски
+по Рамке отдаются картинками JPEG, отказ сервиса — текстом с признаком
+ошибки, чужой черновик неотличим от несуществующего. Инструментов личного
+контура, вердикта и отметки Владения нет. Выпускать токен на настоящую
+Реплику будет `agent-runner`; тест-двойник — клиент того же SDK
+(`EveryToolAnswersTheClientTest` зовёт каждый инструмент реестра по HTTP).
+
 **Не считай, что что-то из описанного реализовано.** Документы контекста
 описывают замысел; что система действительно умеет — только `openspec/specs/`,
-а там пока шестнадцать возможностей: `application-startup`, `users-and-roles`,
+а там пока семнадцать возможностей: `application-startup`, `users-and-roles`,
 `file-storage`, `taxonomy`, `library-dictionaries`, `problem-catalog`,
 `library-search`, `theory-materials`, `students-groups`, `assignments`,
 `submission-review`, `mastery-marks`, `mastery-views`, `interface-navigation`,
-`problem-pdf-assembly` и `schedule`.
+`problem-pdf-assembly`, `schedule` и `assistant-tools`.
 
 ### Первый вход
 
@@ -288,7 +313,7 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 | вести учёт теоретических материалов | в первой версии |
 | выдавать задания и вести учёт ответов | в первой версии, но выдача и приём — вне системы |
 | выстраивать расписание учителя | вехи 2 и 3 редакции 2 стратегии построены (`schedule`, `schedule-changes`, [ADR-0046](openspec/context/adr/0046-redakciya-2-strategii-raspisanie.md)); редакция 2 заменена редакцией 3, неделя учителя не сверялась, расписание доводится дефектами по отзывам |
-| заводить задачи с листа через помощника | горизонт редакции 3 стратегии ([ADR-0053](openspec/context/adr/0053-redakciya-3-strategii-pomoshchnik.md)): в очереди, первым идёт `agent-spike` — измерение предпосылки П7 до кода и вне батча |
+| заводить задачи с листа через помощника | горизонт редакции 3 стратегии ([ADR-0053](openspec/context/adr/0053-redakciya-3-strategii-pomoshchnik.md)): построен `locus-mcp` — сервер MCP и первая очередь инструментов; `agent-spike` — измерение предпосылки П7 до кода и вне батча — ждёт условия, без него `problem-text` и `agent-runner` не берутся |
 
 Смысловое ядро: учитель ведёт **общую библиотеку размеченных задач** и по
 каждому ученику знает, **какими методами в каких темах тот владеет**.
