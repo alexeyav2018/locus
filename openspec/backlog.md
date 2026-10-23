@@ -133,7 +133,7 @@
 | `problem-slot-labels` | Т | `problem-single-file-field` | — | XS | нет | общее | ✅ |
 | `pdf-pages-as-images` | Б | `problem-pdf-crop` | — | M | нет | общее и личное | ✅ |
 | `crop-frame-zoom` | Т | `problem-pdf-crop` | — | M | нет | общее | ✅ |
-| `strategy-edition-3` | Д | — | — | M | нет | не затрагивает | |
+| `strategy-edition-3` | Д | — | — | M | нет | не затрагивает | ✅ |
 | `agent-spike` | — | — | — | S | нет | не затрагивает | ждёт условия |
 | `locus-mcp` | — | `strategy-edition-3` | — | M | нет | **задаёт** | |
 | `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | |
@@ -1730,6 +1730,9 @@ PDFBox `PDFRenderer`, длинная сторона 1600 px, не больше 1
 ---
 
 ### `strategy-edition-3` · Д · M · не ломает
+
+> ✅ Выполнено 23.10.2026. Change:
+> [2026-10-23-strategy-edition-3](changes/archive/2026-10-23-strategy-edition-3/).
 
 **Зачем.** Ввод задач стал для учителя острее расписания: лист с задачами
 заводится в Локус рамками и разметкой руками, и это узкое место. Замысел —
