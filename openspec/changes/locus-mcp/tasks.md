@@ -12,12 +12,12 @@
 
 ## 1. Зависимость, абстракция инструмента и реестр
 
-- [ ] 1.1 `pom.xml`: `mcp-bom` 2.1.0 в `dependencyManagement`, зависимость
+- [x] 1.1 `pom.xml`: `mcp-bom` 2.1.0 в `dependencyManagement`, зависимость
       `io.modelcontextprotocol.sdk:mcp` с комментарием (ADR-0054, видна
       только `ru.locus.assistant`); `mvn -q dependency:resolve` проходит
-- [ ] 1.2 `Addresses.MCP = "/mcp"` с javadoc: адрес сервера MCP, замок —
+- [x] 1.2 `Addresses.MCP = "/mcp"` с javadoc: адрес сервера MCP, замок —
       токен Реплики, не сеанс
-- [ ] 1.3 `ru.locus.assistant`: `Tool` (имя, описание, схема, обработчик),
+- [x] 1.3 `ru.locus.assistant`: `Tool` (имя, описание, схема, обработчик),
       `ToolResult` (`json`, `image`, `refusal`), `Arguments`
       (`requireLong`, `optionalLong`, `longs`, `requireString`,
       `optionalString`, `requireInt`, `optionalInt`, вложенные объекты
@@ -27,12 +27,12 @@
       `ToolRegistry` (собирает `List<Tools>`, отдаёт `tools()` и `names()`,
       при повторе имени падает при старте с внятным текстом); javadoc
       с ссылками на design.md Р6
-- [ ] 1.4 `ArgumentsTest`: число из JSON приходит `Integer`, `Long`
+- [x] 1.4 `ArgumentsTest`: число из JSON приходит `Integer`, `Long`
       и `Double` — все читаются; отсутствующий обязательный — отказ
       с именем; список чисел; вложенный объект; `ToolRegistryTest`
       (без Spring): два `Tools` с одинаковым именем — отказ; имена
       проверяются на латиницу и `snake_case`
-- [ ] 1.5 `mvn test -Dtest='ArgumentsTest,ToolRegistryTest'` зелёный
+- [x] 1.5 `mvn test -Dtest='ArgumentsTest,ToolRegistryTest'` зелёный
 
 ## 2. Токен Реплики, цепочка безопасности и сервер MCP
 
