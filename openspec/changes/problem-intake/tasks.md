@@ -136,17 +136,17 @@
 
 ## 5. Инструменты Помощника
 
-- [ ] 5.1 `ProblemDraftTools`: шесть инструментов design.md Р7,
+- [x] 5.1 `ProblemDraftTools`: шесть инструментов design.md Р7,
       ответ — плоский JSON `snake_case`, отказ — `ToolResult.refusal`
       с текстом сервиса; `ProblemTools.line` — пакетный для общего
       разбора строк; `editor` — `ASSISTANT`
-- [ ] 5.2 `DictionaryTools.create_method` — обёртка
+- [x] 5.2 `DictionaryTools.create_method` — обёртка
       `SolutionMethodService.create`
-- [ ] 5.3 `ToolsAreThinTest`: `ProblemDraftTools` в `TOOLS`,
+- [x] 5.3 `ToolsAreThinTest`: `ProblemDraftTools` в `TOOLS`,
       `ProblemDraftRepository` в `FORBIDDEN`; тест реестра — ровно
       семнадцать имён спеки; `AgentSkillsNameRegisteredToolsTest`
       зелёный
-- [ ] 5.4 Тесты по HTTP клиентом SDK (образец
+- [x] 5.4 Тесты по HTTP клиентом SDK (образец
       `EveryToolAnswersTheClientTest`): заведение и чтение; правка
       по старой версии после правки на странице — отказ, черновик
       учителя; правка одной части; чужой и несуществующий — один
@@ -154,7 +154,7 @@
       черновику сборки — отказ; `create_method` — новый и повтор
       в другом регистре; правка инструментом — «изменён Помощником»
       на странице
-- [ ] 5.5 `mvn test -Dtest='*Tools*Test,EveryToolAnswersTheClientTest,ToolRegistryTest'` зелёный
+- [x] 5.5 `mvn test -Dtest='*Tools*Test,EveryToolAnswersTheClientTest,ToolRegistryTest'` зелёный
 
 ## 6. Документы, бэклог и версия
 

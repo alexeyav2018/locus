@@ -101,6 +101,32 @@ public final class Arguments {
         return string.isBlank() ? Optional.empty() : Optional.of(string);
     }
 
+    /**
+     * Строка как есть, если она передана, — в том числе пустая. Нужна там,
+     * где пустая строка что-то значит: текст, который модель очищает,
+     * а не забыла передать.
+     */
+    public Optional<String> optionalText(String name) {
+        Object value = values.get(name);
+        if (value == null) {
+            return Optional.empty();
+        }
+        if (!(value instanceof String string)) {
+            throw new IllegalArgumentException("Аргумент «" + name + "» должен быть строкой");
+        }
+        return Optional.of(string);
+    }
+
+    /** Список строк; отсутствующий аргумент — пустой список. */
+    public List<String> strings(String name) {
+        return list(name).stream().map(item -> {
+            if (!(item instanceof String string)) {
+                throw new IllegalArgumentException("Аргумент «" + name + "» должен быть списком строк");
+            }
+            return string;
+        }).toList();
+    }
+
     /** Значение перечисления по имени; отсутствие — отказ. */
     public <E extends Enum<E>> E requireEnum(String name, Class<E> type) {
         return optionalEnum(name, type).orElseThrow(() -> missing(name));

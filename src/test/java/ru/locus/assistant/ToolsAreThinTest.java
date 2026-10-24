@@ -17,6 +17,8 @@ import ru.locus.lesson.MeetingAdjustmentRepository;
 import ru.locus.mastery.MasteryRepository;
 import ru.locus.problem.AssemblyDraftRepository;
 import ru.locus.problem.AssemblyDraftTools;
+import ru.locus.problem.ProblemDraftRepository;
+import ru.locus.problem.ProblemDraftTools;
 import ru.locus.problem.ProblemRepository;
 import ru.locus.problem.ProblemTools;
 import ru.locus.student.GroupRepository;
@@ -52,7 +54,8 @@ class ToolsAreThinTest {
             TaxonomyTools.class,
             DictionaryTools.class,
             ProblemTools.class,
-            AssemblyDraftTools.class);
+            AssemblyDraftTools.class,
+            ProblemDraftTools.class);
 
     /** Все репозитории системы и хранилище файлов — ни один не виден инструменту. */
     private static final List<Class<?>> FORBIDDEN = List.of(
@@ -61,6 +64,7 @@ class ToolsAreThinTest {
             CharacteristicRepository.class,
             ProblemRepository.class,
             AssemblyDraftRepository.class,
+            ProblemDraftRepository.class,
             TheoryMaterialRepository.class,
             UserRepository.class,
             StudentRepository.class,

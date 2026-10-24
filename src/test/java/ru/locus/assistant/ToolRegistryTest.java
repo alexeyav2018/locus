@@ -82,11 +82,12 @@ class ToolRegistryTest {
     }
 
     /**
-     * Реестр приложения — первая очередь (спека {@code assistant-tools},
-     * «Инструментов личного контура и глаголов человека нет»): ровно десять
-     * инструментов библиотеки и Черновиков сборки. Одиннадцатый — не ошибка
-     * сборки, а решение: инструменты личного контура идут отдельными
-     * элементами бэклога (ADR-0054), и этот список правится вместе со спекой.
+     * Реестр приложения (спека {@code assistant-tools}, «Инструментов личного
+     * контура и глаголов человека нет»): ровно семнадцать инструментов —
+     * библиотеки, Черновиков сборки, Черновиков Задачи и заведения Метода.
+     * Восемнадцатый — не ошибка сборки, а решение: инструменты личного
+     * контура идут отдельными элементами бэклога (ADR-0054), и этот список
+     * правится вместе со спекой.
      */
     @Nested
     class OfTheApplication extends IntegrationTest {
@@ -97,11 +98,13 @@ class ToolRegistryTest {
         private List<Tools> areas;
 
         @Test
-        void firstQueueIsExactlyTenNamedTools() {
+        void registryIsExactlySeventeenNamedTools() {
             assertThat(registry.names()).containsExactlyInAnyOrder(
-                    "list_topics", "list_methods", "list_characteristics",
+                    "list_topics", "list_methods", "create_method", "list_characteristics",
                     "find_problems", "get_problem", "get_problem_page", "create_problem",
-                    "list_assembly_drafts", "get_assembly_draft_page", "crop_assembly_draft_page");
+                    "list_assembly_drafts", "get_assembly_draft_page", "crop_assembly_draft_page",
+                    "list_problem_drafts", "create_problem_draft", "get_problem_draft",
+                    "update_problem_draft", "save_problem_draft", "delete_problem_draft");
         }
 
         /** Каждая область инструментов стоит под сторожем тонкости {@code ToolsAreThinTest}. */

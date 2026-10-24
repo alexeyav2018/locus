@@ -20,6 +20,10 @@ import ru.locus.TestLibrary;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.problem.AssemblyDraft;
 import ru.locus.problem.AssemblyDraftService;
+import ru.locus.problem.ExamPart;
+import ru.locus.problem.ProblemDraft;
+import ru.locus.problem.ProblemDraftContent;
+import ru.locus.problem.ProblemDraftService;
 import ru.locus.problem.ProblemId;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
@@ -39,8 +43,9 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>Инструмент реестра, которого этот тест не позвал, роняет его: новый
  * инструмент дописывается в {@link #calls} вместе с годными аргументами,
  * иначе его сквозной путь никто не проверит. Поведение каждого инструмента
- * в подробностях — {@code LibraryToolsTest}, {@code CreateProblemToolTest}
- * и {@code AssemblyDraftToolsTest}; здесь только то, что он отвечает модели.
+ * в подробностях — {@code LibraryToolsTest}, {@code CreateProblemToolTest},
+ * {@code AssemblyDraftToolsTest} и {@code ProblemDraftToolsTest}; здесь только
+ * то, что он отвечает модели.
  */
 class EveryToolAnswersTheClientTest extends IntegrationTest {
 
@@ -60,6 +65,8 @@ class EveryToolAnswersTheClientTest extends IntegrationTest {
     @Autowired
     private AssemblyDraftService drafts;
     @Autowired
+    private ProblemDraftService intake;
+    @Autowired
     private ToolRegistry registry;
     @Autowired
     private JsonMapper jsonMapper;
@@ -72,7 +79,12 @@ class EveryToolAnswersTheClientTest extends IntegrationTest {
         SolutionMethodId method = library.method();
         ProblemId problem = library.renderableProblem(topic);
         AssemblyDraft book = upload(administrator, "сборник.pdf", TestLibrary.renderablePdf(2));
+        ProblemDraft kept = draft(administrator, topic, method);
+        ProblemDraft saved = draft(administrator, topic, method);
+        ProblemDraft deleted = draft(administrator, topic, method);
         Map<String, Map<String, Object>> calls = calls(section, topic, method, problem, book);
+        calls.putAll(draftCalls(book, kept, saved, deleted));
+        calls.put("create_problem", calls.remove("create_problem"));
 
         TurnToken token = tokens.issue(administrator.id(), Duration.ofMinutes(5));
         try (McpSyncClient client = McpClients.withToken(port, token, jsonMapper)) {
@@ -129,6 +141,40 @@ class EveryToolAnswersTheClientTest extends IntegrationTest {
                         "frame", Map.of("left", 0.0, "top", 0.0, "width", 0.5, "height", 0.25))),
                 "solution", List.of(Map.of("draft", draft, "from", 2, "to", 2))));
         return calls;
+    }
+
+    /**
+     * Годные аргументы инструментов Черновика Задачи: у каждого действия
+     * с версией свой черновик, заведённый заранее, — ответ заведения
+     * инструментом здесь не читается. Перед {@code create_problem}: строка
+     * {@code create_problem_draft} держит черновик сборки, и заведение Задачи
+     * его не убирает.
+     */
+    private static Map<String, Map<String, Object>> draftCalls(AssemblyDraft book, ProblemDraft kept,
+                                                               ProblemDraft saved, ProblemDraft deleted) {
+        Map<String, Map<String, Object>> calls = new LinkedHashMap<>();
+        calls.put("create_method", Map.of("name", TestLibrary.unique("Метод Помощника")));
+        calls.put("list_problem_drafts", Map.of());
+        calls.put("create_problem_draft", Map.of(
+                "condition_text", "Найдите $x$, если $x^2 = ⟦4⟧$.",
+                "condition", List.of(Map.of("draft", book.id().value(), "from", 1, "to", 1)),
+                "doubts", List.of("четвёрка или девятка")));
+        calls.put("get_problem_draft", Map.of("id", kept.id().value()));
+        calls.put("update_problem_draft", Map.of("id", kept.id().value(), "version", kept.version(),
+                "solution_text", "$x = \\pm 2$"));
+        calls.put("save_problem_draft", Map.of("id", saved.id().value(), "version", saved.version()));
+        calls.put("delete_problem_draft", Map.of("id", deleted.id().value(), "version", deleted.version()));
+        return calls;
+    }
+
+    private ProblemDraft draft(TestAccounts.Account owner, TaxonomyNodeId topic, SolutionMethodId method) {
+        LoggedIn.as(owner);
+        try {
+            return intake.create(new ProblemDraftContent(ExamPart.SECOND, "Найдите $x$.", "$x = 1$.",
+                    null, null, null, List.of(topic), List.of(method), null, null), ProblemDraft.Editor.OWNER);
+        } finally {
+            LoggedIn.nobody();
+        }
     }
 
     private AssemblyDraft upload(TestAccounts.Account owner, String name, byte[] content) {
