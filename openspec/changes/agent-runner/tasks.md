@@ -83,16 +83,16 @@
 
 ## 3. Разбор `stream-json` и тест-двойник команды
 
-- [ ] 3.1 `StreamEvent` (`Init`, `ToolCall`, `Result`, `Other`)
+- [x] 3.1 `StreamEvent` (`Init`, `ToolCall`, `Result`, `Other`)
       и `StreamEvent.parse(String)` на Jackson приложения; аргументы
       вызова обрезаются до 500 знаков; токены входа — сумма трёх полей
       (design.md Р8)
-- [ ] 3.2 `src/test/resources/assistant/stream/` — строки, снятые
+- [x] 3.2 `src/test/resources/assistant/stream/` — строки, снятые
       с настоящего вывода Claude Code (init, ответ текстом, вызов
       инструмента, результат инструмента, `rate_limit_event`, итог
       `success`, итог `error_max_turns`); `StreamEventTest` разбирает
       каждую, неразбираемая строка — `Other`
-- [ ] 3.3 Тест-двойник `src/test/resources/assistant/claude-double`
+- [x] 3.3 Тест-двойник `src/test/resources/assistant/claude-double`
       (bash, исполняемый в git): `--version` печатает закреплённую
       версию; иначе читает запрос из stdin и по первому слову
       печатает заготовку: `ответ`, `вызовы` (два вызова инструментов
@@ -100,7 +100,7 @@
       и код 3), `шаги` (итог `error_max_turns`); пишет полученные
       аргументы, рабочий каталог и имена переменных окружения в файл
       рядом с рабочим местом для проверки тестами
-- [ ] 3.4 `mvn test -Dtest=StreamEventTest` зелёный
+- [x] 3.4 `mvn test -Dtest=StreamEventTest` зелёный
 
 ## 4. Исполнитель Реплики и доступность
 

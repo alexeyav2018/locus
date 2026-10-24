@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Тест-двойник команды Claude Code для исполнителя Реплики
+# (design.md agent-runner, Р4, Р8; tasks.md 3.3).
+#
+#   --version  печатает закреплённую версию, как настоящая команда;
+#   иначе      читает запрос из stdin и по его первому слову печатает
+#              заготовку stream-json из соседней папки stream/ — строки,
+#              снятые с настоящего вывода Claude Code 2.1.310:
+#                ответ       init, ответ текстом, итог success;
+#                вызовы      init, два вызова инструментов Локуса, ответ, итог;
+#                зависание   init и ожидание — до предела времени Реплики;
+#                падение     текст в stderr и код выхода 3, итога нет;
+#                шаги        init, вызов, итог error_max_turns;
+#              любое другое слово — как «ответ».
+#
+# Что получил, двойник пишет в claude-double.txt рядом с рабочим местом
+# (на уровень выше рабочего каталога): аргументы по строке, рабочий
+# каталог, имена переменных окружения (без значений) и запрос — для
+# проверок тестами.
+#
+# Вызывается из рабочего дерева, а не из target/test-classes: копия ресурса
+# теряет признак исполняемого файла.
+set -u
+
+if [ "${1:-}" = "--version" ]; then
+  echo "2.1.309 (Claude Code)"
+  exit 0
+fi
+
+STREAM="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stream"
+prompt="$(cat)"
+
+{
+  for arg in "$@"; do echo "arg=$arg"; done
+  echo "cwd=$PWD"
+  compgen -e | sort | sed 's/^/env=/'
+  echo "prompt:"
+  printf '%s\n' "$prompt"
+} > "../claude-double.txt"
+
+emit() { cat "$STREAM/$1.jsonl"; }
+call() { sed "s/mcp__spike__whoami/$1/" "$STREAM/tool-call.jsonl"; }
+
+word="${prompt%%[[:space:]]*}"
+case "$word" in
+  вызовы)
+    emit init
+    call mcp__locus__list_topics
+    emit tool-result
+    call mcp__locus__list_methods
+    emit tool-result
+    emit rate-limit
+    emit answer-text
+    emit result-success
+    ;;
+  зависание)
+    emit init
+    # exec: сигнал исполнителя достаётся самому ожиданию, а не оболочке,
+    # иначе осиротевший sleep держал бы stdout открытым
+    exec sleep 600
+    ;;
+  падение)
+    echo "двойник: падение по запросу" >&2
+    exit 3
+    ;;
+  шаги)
+    emit init
+    call mcp__locus__list_topics
+    emit tool-result
+    emit result-max-turns
+    ;;
+  *)
+    emit init
+    emit thinking-tokens
+    emit answer-text
+    emit result-success
+    ;;
+esac
