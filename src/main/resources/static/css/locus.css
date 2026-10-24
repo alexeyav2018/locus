@@ -564,6 +564,13 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .viewer-pages { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
 .viewer-pages img { display: block; box-shadow: 0 0 0 1px var(--border); border-radius: 0; }
 .viewer-fallback { padding: 1.25rem 0.5rem; }
+
+/* Предпросмотр текста Задачи: страницы отрисовки картинками в самой форме.
+   Вид «без текста» прячет поля текстов и кнопку предпросмотра без скрипта. */
+.text-preview { margin: 0.5rem 0 1rem; }
+.text-preview h2 { margin-top: 0.5rem; }
+.text-preview .viewer-pages img { max-width: 100%; height: auto; }
+form:has(input[name=kind][value=FILES]:checked) .problem-texts { display: none; }
 .error-page { text-align: center; padding: 2.5rem 0.5rem; }
 .error-page .code { font-size: 3.5rem; font-weight: 800; color: var(--border-strong); line-height: 1; }
 .error-page .row { justify-content: center; margin-top: 1rem; }

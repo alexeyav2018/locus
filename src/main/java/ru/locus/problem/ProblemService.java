@@ -243,6 +243,24 @@ public class ProblemService {
     }
 
     /**
+     * Временная ссылка на Улику слота — тем же правилом, что у PDF Задачи
+     * (design.md изменения {@code problem-text}, Р4): Улику читают все
+     * вошедшие, фильтра по владельцу нет.
+     *
+     * @throws IllegalArgumentException у Задачи нет текста или у слота нет Улики
+     */
+    public URI evidenceLink(ProblemId id, ProblemSlot slot) {
+        Problem problem = existing(id);
+        requireText(problem);
+        FileKey evidence = problem.text().evidenceOf(slot);
+        if (evidence == null) {
+            throw new IllegalArgumentException("У Задачи № " + problem.number()
+                    + " нет Улики слота «" + slot.title() + "»");
+        }
+        return storage.temporaryLink(evidence);
+    }
+
+    /**
      * Заводит Задачу: оба файла и разметка.
      *
      * <p>Порядок работы с хранилищем и базой выбран сознательно: сначала оба
@@ -490,6 +508,7 @@ public class ProblemService {
     public void replaceCondition(ProblemId id, ProblemPdf condition) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
+        refuseRenderedReplacement(problem);
         requireFile(condition, "условия");
         UploadedFile file = resolved(condition, "условия");
 
@@ -511,6 +530,7 @@ public class ProblemService {
     public void replaceSolution(ProblemId id, ProblemPdf solution) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
+        refuseRenderedReplacement(problem);
         requireFile(solution, "решения");
         UploadedFile file = resolved(solution, "решения");
 
@@ -674,6 +694,18 @@ public class ProblemService {
                 throw new ProblemInUseException("Задача № " + problem.number() + " уже используется ("
                         + used.get() + "): " + consequence);
             }
+        }
+    }
+
+    /**
+     * PDF Задачи с текстом — отрисовка текста, и рукой он не заменяется
+     * (инвариант 13, ADR-0055): заменённый файл разошёлся бы с текстом молча.
+     * Снимок листа ложится Уликой, исправление — правкой текста.
+     */
+    private static void refuseRenderedReplacement(Problem problem) {
+        if (problem.hasText()) {
+            throw new IllegalArgumentException("PDF Задачи № " + problem.number()
+                    + " отрисован из её текста и не заменяется: правьте текст, а снимок приложите Уликой");
         }
     }
 

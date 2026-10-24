@@ -18,6 +18,15 @@
         загрузки он берёт из data-assembly-url; строку рисует сервер фрагментом
         problem/assembly :: row.
 
+        Вид Задачи (design.md изменения problem-text, Р2, Р4) выбирается
+        при заведении явно: поля файлов у Задачи с текстом дают Улики,
+        у Задачи без текста — сами PDF. Поля текстов прячет при виде
+        «без текста» таблица стилей, а не скрипт. «Предпросмотр» — кнопка
+        той же формы с formaction на сервер (Р9): скрипт для него не нужен.
+        У Задачи с текстом файлы не заменяются — PDF отрисован из текста;
+        правится текст по слотам с версией (Р7), меняются Улики, текст
+        ходит файлом .md (Р8). Задаче без текста можно записать текст (Р5).
+
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
         разработчику и в выдачу попадать не должен.
     */-->
@@ -97,8 +106,29 @@
     </details>
 
     <fieldset th:unless="${problem}">
+        <legend>Вид Задачи</legend>
+        <label><input type="radio" name="kind" value="TEXT" th:checked="${form.withText}">
+            <span>С текстом — Локус отрисует оба PDF из текста</span></label>
+        <label><input type="radio" name="kind" value="FILES" th:checked="${not form.withText}">
+            <span>Без текста — готовые PDF</span></label>
+    </fieldset>
+
+    <fieldset class="problem-texts" th:unless="${problem}">
+        <legend>Текст</legend>
+        <p class="hint">Markdown; формулы LaTeX — строчные между <code>$…$</code>, выключные между
+            <code>$$…$$</code>; знак доллара — <code>\$</code>. Нужны оба текста.</p>
+        <label>Условие
+            <textarea name="conditionText" rows="8" th:text="${form.conditionText}"></textarea></label>
+        <label>Решение
+            <textarea name="solutionText" rows="12" th:text="${form.solutionText}"></textarea></label>
+        <th:block th:replace="~{problem/preview :: block(${preview})}"/>
+    </fieldset>
+
+    <fieldset th:unless="${problem}">
         <legend>Файлы</legend>
-        <p class="hint">Условие и решение обязательны: Задача без решения обнаружит свою
+        <p class="hint problem-texts">У Задачи с текстом поле слота даёт <b>Улику</b> — снимок, с которого
+            текст распознан; она необязательна.</p>
+        <p class="hint">У Задачи без текста условие и решение обязательны: Задача без решения обнаружит свою
             неполноту в момент проверки Работы, когда искать его будет поздно.</p>
         <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
         <label>Условие
@@ -117,12 +147,146 @@
 
     <div class="form-actions">
         <button type="submit" class="btn-primary" th:text="${problem} ? 'Сохранить' : 'Завести Задачу'">Завести Задачу</button>
+        <button type="submit" class="problem-texts" th:unless="${problem}"
+                th:formaction="@{/problems/preview(from=${shell.back})}">Предпросмотр</button>
         <a class="btn" th:if="${problem}" th:href="@{${shell.backOr('/problems/' + problem.id.value)}}">Отмена</a>
         <a class="btn" th:unless="${problem}" th:href="@{${shell.backOr('/taxonomy')}}">Отмена</a>
     </div>
+    <p class="hint problem-texts" th:unless="${problem}">Предпросмотр ничего не сохраняет. Готовый файл, выбранный
+        в поле без скрипта, после предпросмотра нужно выбрать снова.</p>
 </form>
 
-<div th:if="${problem}">
+<div th:if="${problem != null and problem.hasText()}">
+    <h2>Текст</h2>
+    <p class="hint">Markdown; формулы LaTeX — между <code>$…$</code> и <code>$$…$$</code>; знак доллара —
+        <code>\$</code>. Слот сохраняется отдельно и перерисовывается только он.</p>
+    <th:block th:replace="~{problem/preview :: block(${preview})}"/>
+    <form method="post" th:action="@{/problems/{id}/condition/text(id=${problem.id.value})}">
+        <input type="hidden" name="version" th:value="${form.version}">
+        <label>Условие
+            <textarea name="conditionText" rows="8" th:text="${form.conditionText}"></textarea></label>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Сохранить условие</button>
+            <button type="submit" th:formaction="@{/problems/{id}/text/preview(id=${problem.id.value})}">Предпросмотр</button>
+        </div>
+    </form>
+    <form method="post" th:action="@{/problems/{id}/solution/text(id=${problem.id.value})}">
+        <input type="hidden" name="version" th:value="${form.version}">
+        <label>Решение
+            <textarea name="solutionText" rows="12" th:text="${form.solutionText}"></textarea></label>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">Сохранить решение</button>
+            <button type="submit" th:formaction="@{/problems/{id}/text/preview(id=${problem.id.value})}">Предпросмотр</button>
+        </div>
+    </form>
+
+    <div class="folds">
+        <details class="more" th:attr="open=${shell.opened('.md')} ? 'open'">
+            <summary>Файлы .md</summary>
+            <div class="more-body">
+                <p class="hint">Текст слота можно скачать, поправить в своём редакторе и загрузить обратно.
+                    Если текст тем временем изменили, загрузка будет отклонена — перечитайте страницу.</p>
+                <div class="row">
+                    <a class="btn" th:href="@{/problems/{id}/condition.md(id=${problem.id.value})}">Скачать условие .md</a>
+                    <a class="btn" th:href="@{/problems/{id}/solution.md(id=${problem.id.value})}">Скачать решение .md</a>
+                </div>
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/condition.md(id=${problem.id.value})}">
+                    <input type="hidden" name="version" th:value="${form.version}">
+                    <label>Условие из файла
+                        <input type="file" name="file" accept=".md,text/markdown,text/plain"></label>
+                    <button type="submit">Загрузить условие</button>
+                </form>
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/solution.md(id=${problem.id.value})}">
+                    <input type="hidden" name="version" th:value="${form.version}">
+                    <label>Решение из файла
+                        <input type="file" name="file" accept=".md,text/markdown,text/plain"></label>
+                    <button type="submit">Загрузить решение</button>
+                </form>
+            </div>
+        </details>
+    </div>
+
+    <h2>Улики</h2>
+    <p class="hint">Снимок, с которого текст распознан. В Задание Улика не уходит.</p>
+    <div class="row">
+        <a class="btn" th:if="${problem.text.conditionEvidence}"
+           th:href="@{/problems/{id}/condition/evidence(id=${problem.id.value},from=${shell.here})}">Улика условия</a>
+        <span class="muted" th:unless="${problem.text.conditionEvidence}">У условия Улики нет.</span>
+        <a class="btn" th:if="${problem.text.solutionEvidence}"
+           th:href="@{/problems/{id}/solution/evidence(id=${problem.id.value},from=${shell.here})}">Улика решения</a>
+        <span class="muted" th:unless="${problem.text.solutionEvidence}">У решения Улики нет.</span>
+    </div>
+    <div class="folds">
+        <details class="more" name="replace-evidence" th:attr="open=${shell.opened('/condition/evidence')} ? 'open'">
+            <summary>Другая Улика условия</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/condition/evidence(id=${problem.id.value})}">
+                    <label>Новая Улика условия
+                        <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
+                    <ol class="assembly" data-slot="condition">
+                        <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+                    </ol>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить Улику условия</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+        <details class="more" name="replace-evidence" th:attr="open=${shell.opened('/solution/evidence')} ? 'open'">
+            <summary>Другая Улика решения</summary>
+            <div class="more-body">
+                <form method="post" enctype="multipart/form-data"
+                      th:action="@{/problems/{id}/solution/evidence(id=${problem.id.value})}">
+                    <label>Новая Улика решения
+                        <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                               accept="application/pdf,image/jpeg,image/png"></label>
+                    <p class="hint">PDF, картинки JPEG и PNG; выбранный PDF без изменений ляжет как есть, можно взять страницы, обвести кусок или добавить ещё файлы.</p>
+                    <ol class="assembly" data-slot="solution">
+                        <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+                    </ol>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Заменить Улику решения</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div th:if="${problem != null and not problem.hasText()}">
+    <h2>Текст</h2>
+    <div class="folds">
+        <details class="more" th:attr="open=${shell.opened('/text', '/text/preview')} ? 'open'">
+            <summary>Записать текст</summary>
+            <div class="more-body">
+                <p class="hint">Задача станет Задачей с текстом: оба PDF Локус отрисует из текстов, а нынешние
+                    файлы условия и решения станут Уликами своих слотов. Нужны оба текста; формулы LaTeX —
+                    между <code>$…$</code> и <code>$$…$$</code>.</p>
+                <form method="post" th:action="@{/problems/{id}/text(id=${problem.id.value})}">
+                    <label>Условие
+                        <textarea name="conditionText" rows="8" th:text="${form.conditionText}"></textarea></label>
+                    <label>Решение
+                        <textarea name="solutionText" rows="12" th:text="${form.solutionText}"></textarea></label>
+                    <th:block th:replace="~{problem/preview :: block(${preview})}"/>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Записать текст</button>
+                        <button type="submit" th:formaction="@{/problems/{id}/text/preview(id=${problem.id.value})}">Предпросмотр</button>
+                        <button type="button" data-close>Отмена</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div th:if="${problem != null and not problem.hasText()}">
     <h2>Замена файлов</h2>
     <div class="folds">
         <details class="more" name="replace-file" th:attr="open=${shell.opened('/condition')} ? 'open'">
