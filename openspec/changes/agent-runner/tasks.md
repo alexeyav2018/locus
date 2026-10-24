@@ -145,15 +145,15 @@
 
 ## 5. Страница `/assistant`
 
-- [ ] 5.1 `Addresses.ASSISTANT = "/assistant"`; `AssistantController`
+- [x] 5.1 `Addresses.ASSISTANT = "/assistant"`; `AssistantController`
       (тонкий) и `templates/assistant/page.html` на общем каркасе:
       «Помощник доступен» с версией либо «Помощник недоступен: причина»;
       пункта в шапке нет (design.md Р11)
-- [ ] 5.2 `AssistantPageTest`: с двойником — «доступен»; с командой
+- [x] 5.2 `AssistantPageTest`: с двойником — «доступен»; с командой
       по несуществующему пути (`@TestPropertySource`) Локус поднялся,
       страница называет «команда не найдена», остальные страницы
       работают; без входа — на форму входа
-- [ ] 5.3 `mvn test -Dtest=AssistantPageTest` зелёный
+- [x] 5.3 `mvn test -Dtest=AssistantPageTest` зелёный
 
 ## 6. Документы, бэклог и версия
 

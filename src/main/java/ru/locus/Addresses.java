@@ -46,6 +46,12 @@ public final class Addresses {
      */
     public static final String MCP = "/mcp";
 
+    /**
+     * Страница Помощника. Пока на ней только доступность (design.md
+     * agent-runner, Р11); разговор с Помощником принесёт {@code assistant-chat}.
+     */
+    public static final String ASSISTANT = "/assistant";
+
     private Addresses() {
     }
 }
