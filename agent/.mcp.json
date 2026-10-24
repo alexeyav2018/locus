@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "locus": {
+      "type": "http",
+      "url": "${LOCUS_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${LOCUS_TURN_TOKEN}"
+      }
+    }
+  }
+}

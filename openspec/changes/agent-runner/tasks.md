@@ -54,32 +54,32 @@
 
 ## 2. Рабочее место `agent/` и сторожевой тест навыков
 
-- [ ] 2.1 `agent/CLAUDE.md` — общие правила Помощника по-русски:
+- [x] 2.1 `agent/CLAUDE.md` — общие правила Помощника по-русски:
       действуешь только инструментами Локуса; перед правкой перечитывай;
       тронутое учителем не переписывай; Темы — только листья
       (`mcp__locus__list_topics`), Методы и Характеристики — только
       из словаря (`mcp__locus__list_methods`, `mcp__locus__list_characteristics`);
       отказ инструмента пересказывай учителю, не обходи; инструменты —
       полным именем (design.md Р12)
-- [ ] 2.2 `agent/.mcp.json`: сервер `locus`, `type: http`,
+- [x] 2.2 `agent/.mcp.json`: сервер `locus`, `type: http`,
       `url: ${LOCUS_MCP_URL}`, заголовок `Authorization: Bearer
       ${LOCUS_TURN_TOKEN}`; `agent/.claude/settings.json`:
       `enableAllProjectMcpServers: true`, `permissions.allow:
       ["mcp__locus__*"]`
-- [ ] 2.3 `pom.xml`: `agent/` ресурсом с `targetPath` `agent`
+- [x] 2.3 `pom.xml`: `agent/` ресурсом с `targetPath` `agent`
       (с точечными файлами); проверить, что `.mcp.json`
       и `.claude/settings.json` попали в `target/classes/agent`
-- [ ] 2.4 `AgentWorkspaces`: `prepare(UserId)` — очистить
+- [x] 2.4 `AgentWorkspaces`: `prepare(UserId)` — очистить
       `<workspaces>/<id>/work/`, скопировать `classpath:agent/**`,
       создать `<workspaces>/<id>/config/`; вернуть оба пути
       (design.md Р7); тест: два учителя — разные пути, повторная
       подготовка убирает лишний файл, `.mcp.json` на месте
-- [ ] 2.5 `AgentSkillsNameRegisteredToolsTest`: все файлы `agent/`
+- [x] 2.5 `AgentSkillsNameRegisteredToolsTest`: все файлы `agent/`
       рабочего дерева, имена `mcp__locus__[a-z0-9_]+`, каждое
       в `ToolRegistry.names()`; проверка выделена функцией и отдельно
       проверена на тексте с выдуманным `mcp__locus__invented_tool` —
       называет его; разрешения `settings.json` — ровно `mcp__locus__*`
-- [ ] 2.6 `mvn test -Dtest='AgentWorkspacesTest,AgentSkillsNameRegisteredToolsTest'` зелёный
+- [x] 2.6 `mvn test -Dtest='AgentWorkspacesTest,AgentSkillsNameRegisteredToolsTest'` зелёный
 
 ## 3. Разбор `stream-json` и тест-двойник команды
 
@@ -87,12 +87,12 @@
       и `StreamEvent.parse(String)` на Jackson приложения; аргументы
       вызова обрезаются до 500 знаков; токены входа — сумма трёх полей
       (design.md Р8)
-- [ ] 3.2 `src/test/resources/agent/stream/` — строки, снятые
+- [ ] 3.2 `src/test/resources/assistant/stream/` — строки, снятые
       с настоящего вывода Claude Code (init, ответ текстом, вызов
       инструмента, результат инструмента, `rate_limit_event`, итог
       `success`, итог `error_max_turns`); `StreamEventTest` разбирает
       каждую, неразбираемая строка — `Other`
-- [ ] 3.3 Тест-двойник `src/test/resources/agent/claude-double`
+- [ ] 3.3 Тест-двойник `src/test/resources/assistant/claude-double`
       (bash, исполняемый в git): `--version` печатает закреплённую
       версию; иначе читает запрос из stdin и по первому слову
       печатает заготовку: `ответ`, `вызовы` (два вызова инструментов
