@@ -1,6 +1,6 @@
 ## 1. Навык и общие правила
 
-- [ ] 1.1 `agent/.claude/skills/problem-intake/SKILL.md` — фронтматтер
+- [x] 1.1 `agent/.claude/skills/problem-intake/SKILL.md` — фронтматтер
       `name`/`description` и порядок разбора листа по proposal.md
       («What Changes») и design.md (Р3–Р6): когда срабатывает;
       исходники — строка «Загружен черновик сборки N …» либо
@@ -15,7 +15,7 @@
       к прочитанному; отказ — перечитать и сказать; `create_method`
       только после «да» и затем запись Метода в черновик; независимое —
       одним ходом; «продолжай» и новый Разговор — с `list_problem_drafts`
-- [ ] 1.2 `agent/CLAUDE.md`: импорт `@.claude/skills/problem-intake/SKILL.md`
+- [x] 1.2 `agent/CLAUDE.md`: импорт `@.claude/skills/problem-intake/SKILL.md`
       отдельной строкой; правило словаря — Метод заводится
       `create_method` после согласия учителя, Характеристика — только
       Администратором на странице словарей; Черновики Задачи среди
