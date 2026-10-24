@@ -102,6 +102,8 @@ public class ProblemSearchController {
             List<FoundProblem> found = problems.search(filter);
             model.addAttribute("found", found);
             model.addAttribute("foundCount", found.size());
+            model.addAttribute("textlessCount",
+                    found.stream().filter(problem -> !problem.hasText()).count());
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
         }

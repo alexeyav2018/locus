@@ -45,6 +45,7 @@
                         <a class="grow" th:href="@{/problems/{id}(id=${problem.id.value},from=${shell.here})}"
                            th:text="'№ ' + ${problem.number}">№ 12</a>
                         <span class="badge" th:text="${problem.part.title}">вторая часть</span>
+                        <span class="badge badge--warn" th:unless="${problem.hasText()}">без текста</span>
                     </li>
                 </ul>
                 <p th:if="${administrator}">
