@@ -78,6 +78,45 @@ class AssistantIsFilteredByOwnerTest extends IntegrationTest {
     }
 
     @Test
+    void foreignRunningTurnIsNotFound() {
+        AssistantTurnId turn = repository.startTurn(alice, alicesConversation, "привет", NOW);
+
+        assertThat(repository.findRunningTurn(alice)).map(AssistantTurn::id).contains(turn);
+        assertThat(repository.findRunningTurn(bob)).isEmpty();
+    }
+
+    @Test
+    void foreignConversationsAreNotListed() {
+        repository.startTurn(alice, alicesConversation, "привет", NOW);
+
+        assertThat(repository.conversationsOf(alice, 30)).extracting(ConversationSummary::id)
+                .containsExactly(alicesConversation);
+        assertThat(repository.conversationsOf(bob, 30)).isEmpty();
+        assertThat(repository.latestConversation(alice)).map(ConversationSummary::id).contains(alicesConversation);
+        assertThat(repository.latestConversation(bob)).isEmpty();
+    }
+
+    @Test
+    void conversationsAreListedByTheirLastTurnAndOnlyWithTurns() {
+        AssistantTurnId old = repository.startTurn(alice, alicesConversation, "первый разговор", NOW);
+        repository.finishTurn(alice, old,
+                new TurnOutcome(TurnState.DONE, "ответ", null, null, null, null, NOW.plusSeconds(1)));
+        AssistantConversationId later = repository.createConversation(alice, NOW.plusSeconds(10));
+        AssistantTurnId second = repository.startTurn(alice, later, "второй разговор", NOW.plusSeconds(10));
+        repository.finishTurn(alice, second,
+                new TurnOutcome(TurnState.DONE, "ответ", null, null, null, null, NOW.plusSeconds(11)));
+        repository.createConversation(alice, NOW.plusSeconds(20));
+        repository.startTurn(alice, alicesConversation, "продолжение первого", NOW.plusSeconds(30));
+
+        assertThat(repository.conversationsOf(alice, 30))
+                .extracting(ConversationSummary::id, ConversationSummary::firstPrompt)
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(alicesConversation, "первый разговор"),
+                        org.assertj.core.groups.Tuple.tuple(later, "второй разговор"));
+        assertThat(repository.conversationsOf(alice, 1)).hasSize(1);
+    }
+
+    @Test
     void stepsAreWrittenAndReadOnlyByTheOwner() {
         AssistantTurnId turn = repository.startTurn(alice, alicesConversation, "привет", NOW);
 

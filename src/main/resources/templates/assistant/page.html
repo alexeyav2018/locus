@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:replace="~{fragments/shell :: head}"/>
+    <th:block th:replace="~{fragments/shell :: head(refresh=${refresh})}"/>
     <title>Помощник — Locus</title>
     <!--/*
-        Страница Помощника (design.md agent-runner, Р11): только итог проверки
-        доступности при старте. Разговора здесь пока нет — его принесёт
-        assistant-chat, и тогда же появится пункт в шапке.
+        Страница разговора с Помощником (design.md assistant-chat).
+
+        Показанный Разговор и прежние читаются всегда — и у недоступного
+        Помощника (Р11). Форма запроса есть, только когда Помощник доступен
+        и у вошедшего не идёт Реплика: идущая в этом Разговоре — «Остановить»
+        и самообновление (Р2, Р4), идущая в другом — ссылка туда.
+
+        Ответ Помощника — готовый HTML от AnswerMarkdown (Р7): единственное
+        место th:utext на странице. Тон значка, время и итог готовит Java.
     */-->
 </head>
 <body>
@@ -15,16 +21,94 @@
 <div class="page-head">
     <div>
         <h1>Помощник</h1>
-        <p class="lead">Заводит Задачи с листа инструментами Локуса от имени вошедшего.</p>
+        <p class="lead">Ищет и заводит Задачи инструментами Локуса от имени вошедшего.</p>
+        <p class="muted small" th:if="${availability.available}"
+           th:text="'Помощник доступен: Claude Code ' + ${availability.version}">Помощник доступен: Claude Code 2.1.309</p>
     </div>
+    <span class="scope scope--personal">Мой кабинет</span>
 </div>
 
-<div class="alert alert--notice" role="status" th:if="${availability.available}">
-    <p th:text="'Помощник доступен: Claude Code ' + ${availability.version}">Помощник доступен: Claude Code 2.1.309</p>
-</div>
 <div class="alert" role="alert" th:unless="${availability.available}">
     <p th:text="'Помощник недоступен: ' + ${availability.cause}">Помощник недоступен: команда Claude Code не найдена</p>
 </div>
+
+<p class="row" th:if="${availability.available and conversation != null}">
+    <a class="btn btn-sm" th:href="@{/assistant(new=true)}">Новый разговор</a>
+</p>
+
+<ol class="turns" th:unless="${#lists.isEmpty(turns)}">
+    <li class="turn" th:each="view : ${turns}" th:id="'turn-' + ${view.turn.id.value}">
+        <div class="turn-prompt">
+            <p class="turn-meta">
+                <span class="muted small" th:text="${#temporals.format(view.startedAt, 'HH:mm')}">14:05</span>
+                <span class="badge" th:classappend="'badge--' + ${view.turn.state.tone()}"
+                      th:text="${view.turn.state.word()}">готово</span>
+            </p>
+            <p class="turn-request" th:text="${view.turn.prompt}">найди задачи на теорему Виета</p>
+        </div>
+        <div class="turn-reply">
+            <p class="turn-cause" th:if="${view.turn.cause != null}" th:text="${view.turn.cause}">Процесс Помощника завершился с кодом 3</p>
+            <p class="hint" th:if="${view.turn.state.name() == 'STEP_LIMIT'}">Помощник исчерпал предел шагов.
+                Напишите «продолжай», и он продолжит в этом разговоре.</p>
+            <div class="answer" th:if="${view.answer != null}" th:utext="${view.answer}"><p>Нашёл три Задачи.</p></div>
+            <details class="more turn-steps" th:unless="${#lists.isEmpty(view.steps)}">
+                <summary th:text="'Ход · вызовов: ' + ${#lists.size(view.steps)}">Ход · вызовов: 2</summary>
+                <div class="more-body">
+                    <ol class="steps">
+                        <li th:each="step : ${view.steps}">
+                            <span class="step-tool" th:text="${step.tool()}">find_problems</span>
+                            <code class="step-arguments" th:if="${step.arguments != null and not #strings.isEmpty(step.arguments)}"
+                                  th:text="${step.arguments}">{"topic":12}</code>
+                        </li>
+                    </ol>
+                </div>
+            </details>
+            <p class="muted small" th:if="${view.total != null}" th:text="${view.total}">6510 токенов входа, 100 выхода · $0.0014</p>
+            <form method="post" th:if="${view.turn.state.running()}"
+                  th:action="@{/assistant/turns/{id}/stop(id=${view.turn.id.value})}">
+                <button type="submit" class="btn-danger">Остановить</button>
+            </form>
+        </div>
+    </li>
+</ol>
+
+<div class="empty" th:if="${availability.available and conversation == null and running == null}">
+    <p>Напишите, что сделать, — например, «найди задачи на теорему Виета»<th:block
+            th:if="${shell.administrator}">; снимок листа можно приложить файлом</th:block>.</p>
+</div>
+
+<p class="alert alert--notice" role="status" th:if="${elsewhere != null}">
+    <span>Помощник отвечает в <a th:href="@{${elsewhere}}">другом разговоре</a>.</span>
+</p>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Запрос Помощнику пуст</p>
+
+<form class="turn-form" method="post" enctype="multipart/form-data" th:action="@{/assistant/turns}"
+      th:if="${availability.available and running == null}">
+    <input type="hidden" name="conversation" th:if="${conversation != null}" th:value="${conversation.id.value}">
+    <label>Запрос
+        <textarea name="prompt" rows="4" th:text="${prompt}"></textarea>
+    </label>
+    <label th:if="${shell.administrator}">Снимок листа или PDF
+        <input type="file" name="file" accept="image/jpeg,image/png,application/pdf">
+    </label>
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Отправить</button>
+    </div>
+</form>
+
+<details class="more" th:unless="${#lists.isEmpty(conversations)}">
+    <summary>Прежние разговоры</summary>
+    <div class="more-body">
+        <ul class="items">
+            <li class="item" th:each="earlier : ${conversations}">
+                <a class="grow" th:href="@{/assistant(conversation=${earlier.summary.id.value})}"
+                   th:text="${earlier.summary.opening()}">найди задачи на теорему Виета</a>
+                <span class="muted small" th:text="${#temporals.format(earlier.lastTurnAt, 'dd.MM.yyyy HH:mm')}">23.10.2026 18:40</span>
+            </li>
+        </ul>
+    </div>
+</details>
 </main>
 <th:block th:replace="~{fragments/shell :: footer}"/>
 </body>

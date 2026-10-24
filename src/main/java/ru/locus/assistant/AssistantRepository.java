@@ -124,6 +124,48 @@ public class AssistantRepository {
     }
 
     /**
+     * Идущая Реплика владельца — их не больше одной (частичный уникальный
+     * индекс); чужая не видна.
+     */
+    public Optional<AssistantTurn> findRunningTurn(UserId owner) {
+        return database.sql(TURN_COLUMNS + "where user_id = ? and state = 'RUNNING'")
+                .param(owner.value())
+                .query(AssistantRepository::turn)
+                .optional();
+    }
+
+    /**
+     * Разговоры владельца, в которых есть Реплики, — новые по последней
+     * Реплике сверху. Разговор без Реплик (первая отклонена) не попадает:
+     * показывать в нём нечего.
+     */
+    public List<ConversationSummary> conversationsOf(UserId owner, int limit) {
+        return database.sql("""
+                        select c.id, max(t.started_at) as last_turn_at,
+                               (select f.prompt from assistant_turn f
+                                where f.user_id = c.user_id and f.conversation_id = c.id
+                                order by f.id limit 1) as first_prompt
+                        from assistant_conversation c
+                        join assistant_turn t on t.conversation_id = c.id and t.user_id = c.user_id
+                        where c.user_id = ?
+                        group by c.id, c.user_id
+                        order by last_turn_at desc, c.id desc
+                        limit ?
+                        """)
+                .params(owner.value(), limit)
+                .query((rs, rowNum) -> new ConversationSummary(
+                        new AssistantConversationId(rs.getLong("id")),
+                        rs.getTimestamp("last_turn_at").toInstant(),
+                        rs.getString("first_prompt")))
+                .list();
+    }
+
+    /** Последний Разговор владельца с Репликами — тот, где говорили позже всего. */
+    public Optional<ConversationSummary> latestConversation(UserId owner) {
+        return conversationsOf(owner, 1).stream().findFirst();
+    }
+
+    /**
      * Дописывает строку хода в Реплику владельца следующим номером. Строки
      * пишет один поток Реплики, по очереди, поэтому номер считается выборкой,
      * а не последовательностью. Чужую Реплику база не примет.
