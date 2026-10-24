@@ -34,6 +34,8 @@ class ProblemHasNoCaptionTest extends IntegrationTest {
                         """)
                 .query(String.class)
                 .list())
-                .containsExactlyInAnyOrder("id", "exam_part", "condition_file_key", "solution_file_key");
+                .containsExactlyInAnyOrder("id", "exam_part", "condition_file_key", "solution_file_key",
+                        "condition_text", "solution_text", "condition_evidence_key", "solution_evidence_key",
+                        "text_version");
     }
 }

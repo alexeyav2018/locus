@@ -36,6 +36,17 @@ import ru.locus.taxonomy.TaxonomyNodeId;
 @Repository
 public class ProblemRepository {
 
+    /**
+     * Столбцы строки Задачи — одним списком на все чтения: разойдись списки
+     * у поиска и у одиночного чтения, одна и та же Задача оказалась бы
+     * в одном месте с текстом, а в другом без. Обычной строкой с пробелами
+     * по краям, а не текстовым блоком: текстовый блок отсекает пробел в конце
+     * строки, и {@code select} склеился бы с первым столбцом.
+     */
+    private static final String COLUMNS = " p.id, p.exam_part, p.condition_file_key, p.solution_file_key,"
+            + " p.condition_text, p.solution_text, p.condition_evidence_key, p.solution_evidence_key,"
+            + " p.text_version ";
+
     private final JdbcClient database;
 
     public ProblemRepository(JdbcClient database) {
@@ -56,12 +67,36 @@ public class ProblemRepository {
                             List<TaxonomyNodeId> topics,
                             List<SolutionMethodId> methods,
                             List<CharacteristicId> characteristics) {
+        return create(part, conditionFile, solutionFile, null, topics, methods, characteristics);
+    }
+
+    /**
+     * Заводит Задачу с текстом либо без — по тому, пришёл ли {@code text}.
+     *
+     * У Задачи с текстом {@code conditionFile} и {@code solutionFile} —
+     * уже положенные отрисовки, а Улики лежат в самом {@code text}. Версия
+     * текста новой Задачи — ноль, какой бы ни пришла в записи: счёт правок
+     * начинается с заведения.
+     */
+    public ProblemId create(ExamPart part,
+                            FileKey conditionFile,
+                            FileKey solutionFile,
+                            ProblemText text,
+                            List<TaxonomyNodeId> topics,
+                            List<SolutionMethodId> methods,
+                            List<CharacteristicId> characteristics) {
         Long id = database.sql("""
-                        insert into problem (exam_part, condition_file_key, solution_file_key)
-                        values (?, ?, ?)
+                        insert into problem (exam_part, condition_file_key, solution_file_key,
+                                             condition_text, solution_text,
+                                             condition_evidence_key, solution_evidence_key)
+                        values (?, ?, ?, ?, ?, ?, ?)
                         returning id
                         """)
-                .params(part.name(), conditionFile.value(), solutionFile.value())
+                .params(part.name(), conditionFile.value(), solutionFile.value(),
+                        text == null ? null : text.condition(),
+                        text == null ? null : text.solution(),
+                        keyOrNull(text == null ? null : text.conditionEvidence()),
+                        keyOrNull(text == null ? null : text.solutionEvidence()))
                 .query(Long.class)
                 .single();
         ProblemId problem = new ProblemId(id);
@@ -71,9 +106,9 @@ public class ProblemRepository {
 
     public Optional<Problem> findById(ProblemId id) {
         return database.sql("""
-                        select id, exam_part, condition_file_key, solution_file_key
-                        from problem
-                        where id = ?
+                        select """ + COLUMNS + """
+                        from problem p
+                        where p.id = ?
                         """)
                 .param(id.value())
                 .query(ProblemRepository::row)
@@ -90,7 +125,7 @@ public class ProblemRepository {
      */
     public List<Problem> findByTopic(TaxonomyNodeId topic) {
         List<Row> rows = database.sql("""
-                        select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
+                        select """ + COLUMNS + """
                         from problem p
                         join problem_topic pt on pt.problem_id = p.id
                         where pt.topic_id = ?
@@ -117,7 +152,7 @@ public class ProblemRepository {
             return List.of();
         }
         List<Row> rows = database.sql("""
-                        select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
+                        select """ + COLUMNS + """
                         from problem p
                         where p.id in (""" + placeholders(ids.size()) + """
                         )
@@ -175,7 +210,7 @@ public class ProblemRepository {
                     "Пустой список Тем: поддерево всегда содержит сам узел, значит вызов испорчен");
         }
         StringBuilder sql = new StringBuilder("""
-                select p.id, p.exam_part, p.condition_file_key, p.solution_file_key
+                select """ + COLUMNS + """
                 from problem p
                 where 1 = 1
                 """);
@@ -353,6 +388,100 @@ public class ProblemRepository {
     }
 
     /**
+     * Меняет текст одного слота Задачи с текстом вместе с его отрисовкой
+     * и поднимает версию текста (design.md изменения {@code problem-text},
+     * Р7, Р10). Второй слот не трогается.
+     *
+     * <p>Версия сверяется <b>в самом {@code UPDATE}</b>, а не чтением перед
+     * ним: между чтением и записью успела бы пройти чужая правка, и она
+     * исчезла бы молча. Ноль изменённых строк — значит, хранимая версия
+     * ушла вперёд.
+     *
+     * @param rendered уже положенная отрисовка нового текста
+     * @throws ProblemTextChangedException если версия не совпала или текста
+     *                                     у Задачи нет
+     */
+    public void changeText(ProblemId id, ProblemSlot slot, String text, FileKey rendered, int expectedVersion) {
+        String column = column(slot);
+        int changed = database.sql("""
+                        update problem
+                        set %1$s_text = ?, %1$s_file_key = ?, text_version = text_version + 1
+                        where id = ? and text_version = ? and condition_text is not null
+                        """.formatted(column))
+                .params(text, rendered.value(), id.value(), expectedVersion)
+                .update();
+        if (changed == 0) {
+            throw new ProblemTextChangedException();
+        }
+    }
+
+    /**
+     * Записывает текст Задаче без текста (design.md изменения
+     * {@code problem-text}, Р5): в слоты ложатся отрисовки, а прежние
+     * приложенные PDF становятся Уликами своих слотов — ключ переезжает
+     * в колонку Улики, файл не копируется.
+     *
+     * <p>Переезд идёт одним {@code UPDATE}: правые части присваиваний
+     * в PostgreSQL видят строку до изменения, поэтому Улика получает
+     * прежний ключ, а не только что записанную отрисовку.
+     *
+     * @throws ProblemTextChangedException если у Задачи успел появиться текст
+     *                                     или версия не совпала
+     */
+    public void writeText(ProblemId id,
+                          String condition,
+                          String solution,
+                          FileKey conditionRendered,
+                          FileKey solutionRendered,
+                          int expectedVersion) {
+        int changed = database.sql("""
+                        update problem
+                        set condition_evidence_key = condition_file_key,
+                            solution_evidence_key = solution_file_key,
+                            condition_file_key = ?,
+                            solution_file_key = ?,
+                            condition_text = ?,
+                            solution_text = ?,
+                            text_version = text_version + 1
+                        where id = ? and text_version = ? and condition_text is null
+                        """)
+                .params(conditionRendered.value(), solutionRendered.value(), condition, solution,
+                        id.value(), expectedVersion)
+                .update();
+        if (changed == 0) {
+            throw new ProblemTextChangedException();
+        }
+    }
+
+    /**
+     * Заменяет Улику слота Задачи с текстом. Версию текста не трогает:
+     * Улика — снимок рядом с текстом, а не сам текст (Р7).
+     *
+     * <p>Задаче без текста Улику не записать, и держит это не только сервис:
+     * запись отклонит ограничение базы «Улика только при тексте».
+     */
+    public void changeEvidence(ProblemId id, ProblemSlot slot, FileKey evidence) {
+        database.sql("update problem set %s_evidence_key = ? where id = ?".formatted(column(slot)))
+                .params(evidence.value(), id.value())
+                .update();
+    }
+
+    /**
+     * Имя слота в именах столбцов. В текст запроса подставляется только
+     * одно из двух известных слов, а не пришедшее значение.
+     */
+    private static String column(ProblemSlot slot) {
+        return switch (slot) {
+            case CONDITION -> "condition";
+            case SOLUTION -> "solution";
+        };
+    }
+
+    private static String keyOrNull(FileKey key) {
+        return key == null ? null : key.value();
+    }
+
+    /**
      * Заменяет разметку целиком: старые связи снимаются, новые пишутся.
      *
      * Именно замена, а не досыпание: правка разметки — это новый её состав,
@@ -479,6 +608,7 @@ public class ProblemRepository {
                 row.part(),
                 row.conditionFile(),
                 row.solutionFile(),
+                row.text(),
                 topicsOf(row.id()),
                 methodsOf(row.id()),
                 characteristicsOf(row.id()));
@@ -517,6 +647,7 @@ public class ProblemRepository {
                         row.part(),
                         row.conditionFile(),
                         row.solutionFile(),
+                        row.text(),
                         topics.getOrDefault(row.id().value(), List.of()),
                         methods.getOrDefault(row.id().value(), List.of()),
                         characteristics.getOrDefault(row.id().value(), List.of())))
@@ -597,14 +728,26 @@ public class ProblemRepository {
      * а подставленные заглушки означали бы, что Задача с выдуманной разметкой
      * может уйти наружу, если дочитать разметку однажды забудут.
      */
-    private record Row(ProblemId id, ExamPart part, FileKey conditionFile, FileKey solutionFile) {
+    private record Row(ProblemId id, ExamPart part, FileKey conditionFile, FileKey solutionFile, ProblemText text) {
     }
 
     private static Row row(ResultSet rs, int rowNum) throws SQLException {
+        String condition = rs.getString("condition_text");
+        ProblemText text = condition == null ? null : new ProblemText(
+                condition,
+                rs.getString("solution_text"),
+                keyOf(rs.getString("condition_evidence_key")),
+                keyOf(rs.getString("solution_evidence_key")),
+                rs.getInt("text_version"));
         return new Row(
                 new ProblemId(rs.getLong("id")),
                 ExamPart.valueOf(rs.getString("exam_part")),
                 new FileKey(rs.getString("condition_file_key")),
-                new FileKey(rs.getString("solution_file_key")));
+                new FileKey(rs.getString("solution_file_key")),
+                text);
+    }
+
+    private static FileKey keyOf(String value) {
+        return value == null ? null : new FileKey(value);
     }
 }

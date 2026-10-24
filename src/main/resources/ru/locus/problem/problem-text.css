@@ -1,0 +1,40 @@
+/*
+ * Страница отрисованного Текста Задачи (ProblemTextRendering, ADR-0058).
+ * Шрифт один — PT Serif из ресурсов приложения: у шрифтов движка
+ * по умолчанию нет кириллицы, поэтому он задан и коду.
+ */
+@page {
+    size: A4;
+    margin: 20mm;
+}
+body, code, pre, kbd, samp, tt {
+    font-family: 'PT Serif';
+}
+body {
+    font-size: 12pt;
+    line-height: 1.45;
+}
+p, ul, ol, pre, blockquote {
+    margin: 0 0 0.6em 0;
+}
+ul, ol {
+    padding-left: 1.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+    font-size: 12pt;
+    margin: 0.8em 0 0.4em 0;
+}
+h1 {
+    font-size: 15pt;
+}
+h2 {
+    font-size: 13.5pt;
+}
+blockquote {
+    padding-left: 1em;
+    border-left: 1pt solid #888;
+}
+img.display {
+    display: block;
+    margin: 0.4em auto;
+}

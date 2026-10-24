@@ -114,6 +114,13 @@
 
     <div th:unless="${#lists.isEmpty(found)}">
         <p class="muted" th:text="'Найдено Задач: ' + ${foundCount}">Найдено Задач: 3</p>
+        <!--/* Число Задач без текста называется всегда, и нулём тоже —
+               словами «ни одной»: от доли Задач с текстом зависит, что
+               учитель может с найденным сделать дальше (ADR-0055).
+               Считает контроллер по найденному. */-->
+        <p class="muted" th:if="${textlessCount == 0}">Из них без текста — ни одной.</p>
+        <p class="muted" th:unless="${textlessCount == 0}"
+           th:text="'Из них без текста — ' + ${textlessCount}">Из них без текста — 2</p>
         <ul class="results">
             <li th:each="problem : ${found}">
                 <!--/* Отметка для выдачи принадлежит форме «issue» ниже
@@ -126,6 +133,7 @@
                 <a th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
                    th:text="'№ ' + ${problem.number}">№ 12</a>
                 <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
+                <span class="badge badge--warn" th:unless="${problem.hasText()}">без текста</span>
                 <!--/* Каждая строка разметки — одним th:text, а не текстом
                        вперемешку с тегами: разорванный тегами текст видно
                        человеку слитно, а тесту — по кускам, и проверять его

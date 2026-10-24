@@ -17,6 +17,10 @@
 <div class="page-head">
     <div>
         <h1 th:text="'Задача № ' + ${problem.number}">Задача № 12</h1>
+        <!--/* «Без текста» — честная пометка, а не скрываемое состояние:
+               от неё зависит, можно ли править и обмениваться текстом
+               (ADR-0055). Признак — само отсутствие текста, не флаг. */-->
+        <span class="badge badge--warn" th:unless="${problem.hasText()}">без текста</span>
     </div>
     <span class="scope scope--shared">Общая библиотека</span>
 </div>
@@ -46,6 +50,17 @@
     <a class="btn" th:href="@{/problems/{id}/solution(id=${problem.id.value},from=${shell.here})}">PDF решения</a>
 </div>
 <p class="hint">Ссылки действуют ограниченное время; постоянного адреса у файла нет.</p>
+
+<!--/* Текст читают все вошедшие — он часть Задачи общей библиотеки,
+       фильтра по владельцу у него нет (ADR-0027). Правит только
+       Администратор, и только на странице правки. */-->
+<div th:if="${problem.hasText()}">
+    <h2>Текст</h2>
+    <div class="row">
+        <a class="btn" th:href="@{/problems/{id}/condition.md(id=${problem.id.value})}">Скачать условие .md</a>
+        <a class="btn" th:href="@{/problems/{id}/solution.md(id=${problem.id.value})}">Скачать решение .md</a>
+    </div>
+</div>
 
 <div th:if="${administrator}">
     <h2>Действия</h2>

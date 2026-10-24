@@ -169,7 +169,7 @@ class ProblemScreenTest extends IntegrationTest {
 
         assertThat(administrator().get("/problems/new?topic=" + topic.value()).body())
                 .as("форма заведения")
-                .contains("Условие", "Решение", "Условие и решение обязательны")
+                .contains("Условие", "Решение", "условие и решение обязательны")
                 .doesNotContain("PDF условия", "PDF решения", "Оба PDF");
         assertThat(administrator().get("/problems/" + problem.value() + "/edit").body())
                 .as("форма правки с заменой файлов")

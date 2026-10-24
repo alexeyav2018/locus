@@ -2,8 +2,16 @@ package ru.locus.problem;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,7 +21,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import ru.locus.Addresses;
+import ru.locus.file.FileKey;
 import ru.locus.file.FilePages;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
@@ -84,11 +94,20 @@ public class ProblemController {
         return "problem/form";
     }
 
+    /**
+     * Заводит Задачу. Вид выбран в форме явно (design.md изменения
+     * {@code problem-text}, Р2, Р4): у Задачи с текстом поля слотов дают
+     * Улики, у Задачи без текста — сами PDF. Запрос без вида — Задача без
+     * текста, как до появления текста: так его шлёт прежняя форма.
+     */
     @PostMapping(Addresses.PROBLEMS)
     public String create(@RequestParam(required = false) ExamPart part,
                          @RequestParam(required = false) List<Long> topics,
                          @RequestParam(required = false) List<Long> methodIds,
                          @RequestParam(required = false) List<Long> characteristicIds,
+                         @RequestParam(required = false) ProblemForm.Kind kind,
+                         @RequestParam(required = false) String conditionText,
+                         @RequestParam(required = false) String solutionText,
                          @RequestParam(required = false) MultipartFile condition,
                          @RequestParam(required = false) MultipartFile solution,
                          @RequestParam(required = false) List<Long> conditionDraft,
@@ -102,20 +121,74 @@ public class ProblemController {
                          Model model) {
         PdfAssemblyOrder conditionOrder = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
         PdfAssemblyOrder solutionOrder = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        ProblemForm.Kind chosen = kind == null ? ProblemForm.Kind.FILES : kind;
         try {
             requireFrames(conditionCrop);
             requireFrames(solutionCrop);
-            ProblemId created = problems.create(part,
-                    nodeIds(topics), methodIds(methodIds), characteristicIds(characteristicIds),
-                    slot(condition, conditionOrder, "условия"), slot(solution, solutionOrder, "решения"));
+            ProblemPdf conditionSlot = slot(condition, conditionOrder, "условия");
+            ProblemPdf solutionSlot = slot(solution, solutionOrder, "решения");
+            ProblemId created = chosen == ProblemForm.Kind.TEXT
+                    ? problems.create(part, nodeIds(topics), methodIds(methodIds),
+                            characteristicIds(characteristicIds), conditionText, solutionText,
+                            conditionSlot, solutionSlot)
+                    : problems.create(part, nodeIds(topics), methodIds(methodIds),
+                            characteristicIds(characteristicIds), conditionSlot, solutionSlot);
             return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
         } catch (NotATopicException | IllegalArgumentException refusal) {
             AssemblyRefusals.report(refusal);
-            fillMarkup(ProblemForm.sent(part, topics, methodIds, characteristicIds), model);
-            model.addAttribute("conditionRows", drafts.rows(conditionOrder));
-            model.addAttribute("solutionRows", drafts.rows(solutionOrder));
+            String page = sentForm(ProblemForm.sent(part, topics, methodIds, characteristicIds,
+                    chosen, conditionText, solutionText), conditionOrder, solutionOrder, model);
             model.addAttribute("error", refusal.getMessage());
-            return "problem/form";
+            return page;
+        }
+    }
+
+    /**
+     * Предпросмотр заведения (Р9): кнопка той же формы с {@code formaction},
+     * поэтому приходит всё, что в форме введено, и всё это возвращается
+     * в форму — тексты, разметка, строки сборки. Отрисовка — в памяти:
+     * ни Задачи, ни файлов. Готовый файл, выбранный в поле без скрипта,
+     * браузер в повторно показанную форму не вернёт — об этом подсказка
+     * у кнопки; черновики сборки живут сами и переживают предпросмотр.
+     */
+    @PostMapping(Addresses.PROBLEMS + "/preview")
+    public String preview(@RequestParam(required = false) ExamPart part,
+                          @RequestParam(required = false) List<Long> topics,
+                          @RequestParam(required = false) List<Long> methodIds,
+                          @RequestParam(required = false) List<Long> characteristicIds,
+                          @RequestParam(required = false) String conditionText,
+                          @RequestParam(required = false) String solutionText,
+                          @RequestParam(required = false) List<Long> conditionDraft,
+                          @RequestParam(required = false) List<Integer> conditionFrom,
+                          @RequestParam(required = false) List<Integer> conditionTo,
+                          @RequestParam(required = false) List<String> conditionCrop,
+                          @RequestParam(required = false) List<Long> solutionDraft,
+                          @RequestParam(required = false) List<Integer> solutionFrom,
+                          @RequestParam(required = false) List<Integer> solutionTo,
+                          @RequestParam(required = false) List<String> solutionCrop,
+                          Model model) {
+        String page = sentForm(ProblemForm.sent(part, topics, methodIds, characteristicIds,
+                        ProblemForm.Kind.TEXT, conditionText, solutionText),
+                order(conditionDraft, conditionFrom, conditionTo, conditionCrop),
+                order(solutionDraft, solutionFrom, solutionTo, solutionCrop), model);
+        model.addAttribute("preview", preview(conditionText, solutionText));
+        return page;
+    }
+
+    private String sentForm(ProblemForm form, PdfAssemblyOrder conditionOrder, PdfAssemblyOrder solutionOrder,
+                            Model model) {
+        fillMarkup(form, model);
+        model.addAttribute("conditionRows", drafts.rows(conditionOrder));
+        model.addAttribute("solutionRows", drafts.rows(solutionOrder));
+        return "problem/form";
+    }
+
+    /** Отрисовка в памяти или её отказ — на месте предпросмотра, а не наверху страницы. */
+    private TextPreview preview(String conditionText, String solutionText) {
+        try {
+            return TextPreview.of(problems.preview(conditionText, solutionText));
+        } catch (IllegalArgumentException refusal) {
+            return TextPreview.refused(refusal.getMessage());
         }
     }
 
@@ -243,6 +316,254 @@ public class ProblemController {
     }
 
     /**
+     * Правка текста условия (Р7): версия — та, с которой открыта страница.
+     * Перерисовывается только этот слот.
+     */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/condition/text")
+    public String editConditionText(@PathVariable long id,
+                                    @RequestParam(required = false) String conditionText,
+                                    @RequestParam(defaultValue = "0") int version,
+                                    Model model) {
+        return editText(id, ProblemSlot.CONDITION, conditionText, version, model);
+    }
+
+    /** Правка текста решения — тем же правилом. */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/solution/text")
+    public String editSolutionText(@PathVariable long id,
+                                   @RequestParam(required = false) String solutionText,
+                                   @RequestParam(defaultValue = "0") int version,
+                                   Model model) {
+        return editText(id, ProblemSlot.SOLUTION, solutionText, version, model);
+    }
+
+    private String editText(long id, ProblemSlot slot, String text, int version, Model model) {
+        try {
+            problems.editText(new ProblemId(id), slot, text, version);
+        } catch (ProblemInUseException | ProblemTextChangedException | IllegalArgumentException refusal) {
+            return refusedText(id, slot == ProblemSlot.CONDITION ? text : null,
+                    slot == ProblemSlot.SOLUTION ? text : null, version, refusal, model);
+        }
+        return "redirect:" + Addresses.PROBLEMS + "/" + id;
+    }
+
+    /**
+     * Записать текст Задаче без текста (Р5): оба текста сразу, прежние PDF
+     * становятся Уликами своих слотов.
+     */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/text")
+    public String writeText(@PathVariable long id,
+                            @RequestParam(required = false) String conditionText,
+                            @RequestParam(required = false) String solutionText,
+                            Model model) {
+        try {
+            problems.writeText(new ProblemId(id), conditionText, solutionText);
+        } catch (ProblemInUseException | ProblemTextChangedException | IllegalArgumentException refusal) {
+            return refusedText(id, conditionText, solutionText, 0, refusal, model);
+        }
+        return "redirect:" + Addresses.PROBLEMS + "/" + id;
+    }
+
+    /**
+     * Предпросмотр на странице правки (Р9) — и для правки слота, и для
+     * «Записать текст»: приходит тот текст, что был в отправленной форме,
+     * и только он отрисовывается. Версия возвращается в форму той же,
+     * с какой страница открыта: предпросмотр — не повод забыть, что текст
+     * могли изменить.
+     */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/text/preview")
+    public String previewText(@PathVariable long id,
+                              @RequestParam(required = false) String conditionText,
+                              @RequestParam(required = false) String solutionText,
+                              @RequestParam(defaultValue = "0") int version,
+                              Model model) {
+        Problem problem = problems.problem(new ProblemId(id));
+        String page = editForm(problem, ProblemForm.of(problem).withTexts(conditionText, solutionText, version),
+                model);
+        model.addAttribute("preview", preview(conditionText, solutionText));
+        return page;
+    }
+
+    /**
+     * Текст условия файлом {@code .md} (Р8): ровно как хранится, в UTF-8,
+     * с именем, называющим номер и слот. Читают все вошедшие; заморозка
+     * скачиванию не мешает. У Задачи без текста скачивать нечего — 404.
+     */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/condition.md")
+    public ResponseEntity<byte[]> conditionMarkdown(@PathVariable long id) {
+        return markdown(id, ProblemSlot.CONDITION);
+    }
+
+    /** Текст решения файлом {@code .md}. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/solution.md")
+    public ResponseEntity<byte[]> solutionMarkdown(@PathVariable long id) {
+        return markdown(id, ProblemSlot.SOLUTION);
+    }
+
+    /**
+     * Имя файла называет обработчик сам: без своего {@code Content-Disposition}
+     * браузер назвал бы файл по адресу (antipatterns.md, «Отдача файла без
+     * своего Content-Disposition»).
+     */
+    private ResponseEntity<byte[]> markdown(long id, ProblemSlot slot) {
+        Problem problem = problems.problem(new ProblemId(id));
+        if (!problem.hasText()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "markdown", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("Задача " + problem.number() + " — " + slot.title() + ".md", StandardCharsets.UTF_8)
+                        .build().toString())
+                .body(problem.text().of(slot).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Загрузка поправленного {@code .md} условия: заменяет текст своего слота
+     * по правилам правки в форме — с версией, пределом и перерисовкой только
+     * этого слота.
+     */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/condition.md")
+    public String uploadConditionMarkdown(@PathVariable long id,
+                                          @RequestParam(required = false) MultipartFile file,
+                                          @RequestParam(defaultValue = "0") int version,
+                                          Model model) {
+        return uploadMarkdown(id, ProblemSlot.CONDITION, file, version, model);
+    }
+
+    /** Загрузка поправленного {@code .md} решения. */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/solution.md")
+    public String uploadSolutionMarkdown(@PathVariable long id,
+                                         @RequestParam(required = false) MultipartFile file,
+                                         @RequestParam(defaultValue = "0") int version,
+                                         Model model) {
+        return uploadMarkdown(id, ProblemSlot.SOLUTION, file, version, model);
+    }
+
+    private String uploadMarkdown(long id, ProblemSlot slot, MultipartFile file, int version, Model model) {
+        try {
+            problems.editText(new ProblemId(id), slot, markdownOf(file), version);
+        } catch (ProblemInUseException | ProblemTextChangedException | IllegalArgumentException refusal) {
+            return refusedEdit(id, refusal, model);
+        }
+        return "redirect:" + Addresses.PROBLEMS + "/" + id;
+    }
+
+    /**
+     * Содержимое присланного {@code .md}: строго UTF-8, метка порядка байтов
+     * снимается — её ставят редакторы Windows, а в тексте Задачи она была бы
+     * невидимым знаком перед первым словом. Файл в другой кодировке
+     * не перекодируется наугад, а отклоняется.
+     */
+    private static String markdownOf(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Не выбран файл .md");
+        }
+        try {
+            String text = StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(file.getBytes()))
+                    .toString();
+            return text.startsWith("\uFEFF") ? text.substring(1) : text;
+        } catch (CharacterCodingException notUtf8) {
+            throw new IllegalArgumentException("Файл .md не в кодировке UTF-8 — сохраните его в UTF-8");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** Улика условия на странице просмотра (Р4): те же правила доступа, что у PDF Задачи. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/condition/evidence")
+    public String viewConditionEvidence(@PathVariable long id, Model model) {
+        return viewEvidence(id, ProblemSlot.CONDITION, model);
+    }
+
+    /** Картинка страницы Улики условия. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/condition/evidence/pages/{page}")
+    public ResponseEntity<byte[]> conditionEvidencePage(@PathVariable long id, @PathVariable int page,
+                                                        WebRequest request) {
+        return filePages.image(evidenceOf(id, ProblemSlot.CONDITION), page, request);
+    }
+
+    /** Улика решения на странице просмотра. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/solution/evidence")
+    public String viewSolutionEvidence(@PathVariable long id, Model model) {
+        return viewEvidence(id, ProblemSlot.SOLUTION, model);
+    }
+
+    /** Картинка страницы Улики решения. */
+    @GetMapping(Addresses.PROBLEMS + "/{id}/solution/evidence/pages/{page}")
+    public ResponseEntity<byte[]> solutionEvidencePage(@PathVariable long id, @PathVariable int page,
+                                                       WebRequest request) {
+        return filePages.image(evidenceOf(id, ProblemSlot.SOLUTION), page, request);
+    }
+
+    private String viewEvidence(long id, ProblemSlot slot, Model model) {
+        FileKey evidence = evidenceOf(id, slot);
+        String viewer = Addresses.PROBLEMS + "/" + id + "/" + slotPath(slot) + "/evidence";
+        model.addAttribute("view", filePages.view(
+                "Улика: " + slot.title() + " — Задача № " + id,
+                problems.evidenceLink(new ProblemId(id), slot).toString(), evidence,
+                viewer, Addresses.PROBLEMS + "/" + id + "/edit"));
+        return "file/viewer";
+    }
+
+    /** Ключ Улики слота; нет текста или Улики — 404, как у несуществующего файла. */
+    private FileKey evidenceOf(long id, ProblemSlot slot) {
+        Problem problem = problems.problem(new ProblemId(id));
+        if (!problem.hasText() || problem.text().evidenceOf(slot) == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return problem.text().evidenceOf(slot);
+    }
+
+    /** Замена Улики условия — готовым PDF или сборкой, как замена PDF у Задачи без текста. */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/condition/evidence")
+    public String replaceConditionEvidence(@PathVariable long id,
+                                           @RequestParam(required = false) MultipartFile condition,
+                                           @RequestParam(required = false) List<Long> conditionDraft,
+                                           @RequestParam(required = false) List<Integer> conditionFrom,
+                                           @RequestParam(required = false) List<Integer> conditionTo,
+                                           @RequestParam(required = false) List<String> conditionCrop,
+                                           Model model) {
+        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
+        try {
+            requireFrames(conditionCrop);
+            problems.replaceEvidence(new ProblemId(id), ProblemSlot.CONDITION, slot(condition, order, "условия"));
+        } catch (ProblemInUseException | IllegalArgumentException refusal) {
+            String page = refusedEdit(id, refusal, model);
+            model.addAttribute("conditionRows", drafts.rows(order));
+            return page;
+        }
+        return "redirect:" + Addresses.PROBLEMS + "/" + id + "/edit";
+    }
+
+    /** Замена Улики решения. */
+    @PostMapping(Addresses.PROBLEMS + "/{id}/solution/evidence")
+    public String replaceSolutionEvidence(@PathVariable long id,
+                                          @RequestParam(required = false) MultipartFile solution,
+                                          @RequestParam(required = false) List<Long> solutionDraft,
+                                          @RequestParam(required = false) List<Integer> solutionFrom,
+                                          @RequestParam(required = false) List<Integer> solutionTo,
+                                          @RequestParam(required = false) List<String> solutionCrop,
+                                          Model model) {
+        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        try {
+            requireFrames(solutionCrop);
+            problems.replaceEvidence(new ProblemId(id), ProblemSlot.SOLUTION, slot(solution, order, "решения"));
+        } catch (ProblemInUseException | IllegalArgumentException refusal) {
+            String page = refusedEdit(id, refusal, model);
+            model.addAttribute("solutionRows", drafts.rows(order));
+            return page;
+        }
+        return "redirect:" + Addresses.PROBLEMS + "/" + id + "/edit";
+    }
+
+    private static String slotPath(ProblemSlot slot) {
+        return slot == ProblemSlot.CONDITION ? "condition" : "solution";
+    }
+
+    /**
      * Снимает Задачу и возвращает на Тему, где она лежала: самой Задачи больше
      * нет, а место, где работал Администратор, теряться не должно.
      */
@@ -295,6 +616,20 @@ public class ProblemController {
         String message = refusal.getMessage();
         String page = edit(id, model);
         model.addAttribute("error", message);
+        return page;
+    }
+
+    /**
+     * Отказ правки текста: форма с присланным текстом и версией — человек
+     * не набирает текст заново, а версия остаётся прочитанной, чтобы
+     * отказ «перечитайте» не исчез на втором нажатии.
+     */
+    private String refusedText(long id, String conditionText, String solutionText, int version,
+                               RuntimeException refusal, Model model) {
+        Problem problem = problems.problem(new ProblemId(id));
+        String page = editForm(problem, ProblemForm.of(problem).withTexts(conditionText, solutionText, version),
+                model);
+        model.addAttribute("error", refusal.getMessage());
         return page;
     }
 

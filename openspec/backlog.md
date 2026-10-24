@@ -136,7 +136,7 @@
 | `strategy-edition-3` | Д | — | — | M | нет | не затрагивает | ✅ |
 | `agent-spike` | — | — | — | S | нет | не затрагивает | ✅ |
 | `locus-mcp` | — | `strategy-edition-3` | — | M | нет | **задаёт** | ✅ |
-| `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | |
+| `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | ✅ |
 | `agent-runner` | — | `locus-mcp`, `agent-spike` | — | M | нет | личное | |
 | `assistant-chat` | — | `agent-runner` | — | M | нет | личное | |
 | `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | |
@@ -1955,6 +1955,16 @@ LaTeX, сомнительные места в ⟦ ⟧ со списком при
 ---
 
 ### `problem-text` · L · не ломает
+
+> ✅ Выполнено 24.10.2026. Change:
+> [2026-10-24-problem-text](changes/archive/2026-10-24-problem-text/).
+> Развилка отрисовщика закрыта [ADR-0058](context/adr/0058-otrisovshchik-teksta-zadachi-v-steke.md):
+> внутри приложения — CommonMark, JLaTeXMath, openhtmltopdf на PDFBox,
+> шрифт PT Serif в ресурсах; Typst и TeX Live отвергнуты. Заморозка
+> держится и для текста: опечатка в выданной Задаче — новая Задача
+> по скачанному `.md`. Пункт признака «в Задание уходит отрисованный
+> PDF» обеспечен устройством, а не отдельным тестом: отрисовка лежит
+> в слоте Задачи, а Задание ссылается на Задачу.
 
 **Зачем.** Задача, заведённая помощником, — текст с формулами, а не
 картинка: его можно вычитать, поправить, отрисовать чисто и в будущем

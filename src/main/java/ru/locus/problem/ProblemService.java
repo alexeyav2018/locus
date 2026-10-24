@@ -243,6 +243,24 @@ public class ProblemService {
     }
 
     /**
+     * Временная ссылка на Улику слота — тем же правилом, что у PDF Задачи
+     * (design.md изменения {@code problem-text}, Р4): Улику читают все
+     * вошедшие, фильтра по владельцу нет.
+     *
+     * @throws IllegalArgumentException у Задачи нет текста или у слота нет Улики
+     */
+    public URI evidenceLink(ProblemId id, ProblemSlot slot) {
+        Problem problem = existing(id);
+        requireText(problem);
+        FileKey evidence = problem.text().evidenceOf(slot);
+        if (evidence == null) {
+            throw new IllegalArgumentException("У Задачи № " + problem.number()
+                    + " нет Улики слота «" + slot.title() + "»");
+        }
+        return storage.temporaryLink(evidence);
+    }
+
+    /**
      * Заводит Задачу: оба файла и разметка.
      *
      * <p>Порядок работы с хранилищем и базой выбран сознательно: сначала оба
@@ -293,6 +311,172 @@ public class ProblemService {
     }
 
     /**
+     * Заводит Задачу с текстом: оба текста, необязательные Улики слотов
+     * и разметка (design.md изменения {@code problem-text}, Р2, Р4, Р10).
+     *
+     * <p>Порядок тот же, что у {@link #create(ExamPart, List, List, List, ProblemPdf, ProblemPdf)},
+     * с одним шагом впереди: оба текста <b>отрисовываются до хранилища</b>,
+     * сразу после проверки разметки. Неразбираемая формула отказывает,
+     * не положив ни одного файла, и тем более не собрав Улику из черновиков.
+     *
+     * <p>Поле слота у Задачи с текстом даёт Улику, а не PDF слота: PDF слота —
+     * всегда отрисовка (Р4). Пустое поле — Улики нет: текст, набранный рукой,
+     * снимка не имеет.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public ProblemId create(ExamPart part,
+                            List<TaxonomyNodeId> topics,
+                            List<SolutionMethodId> methodIds,
+                            List<CharacteristicId> characteristicIds,
+                            String conditionText,
+                            String solutionText,
+                            ProblemPdf conditionEvidence,
+                            ProblemPdf solutionEvidence) {
+        Problem.requireMarkup(part, topics, methodIds);
+        requireExistingMarkup(topics, methodIds, characteristicIds);
+        ProblemText.requireTexts(conditionText, solutionText);
+        byte[] conditionRendered = ProblemTextRendering.render(conditionText);
+        byte[] solutionRendered = ProblemTextRendering.render(solutionText);
+        UploadedFile conditionProof = evidence(conditionEvidence, "условия");
+        UploadedFile solutionProof = evidence(solutionEvidence, "решения");
+
+        List<FileKey> put = new ArrayList<>();
+        try {
+            FileKey conditionKey = put(put, conditionRendered);
+            FileKey solutionKey = put(put, solutionRendered);
+            ProblemText text = new ProblemText(conditionText, solutionText,
+                    conditionProof == null ? null : put(put, conditionProof),
+                    solutionProof == null ? null : put(put, solutionProof),
+                    0);
+            ProblemId created = problems.create(part, conditionKey, solutionKey, text,
+                    topics, methodIds, characteristicIds);
+            discardDrafts(conditionEvidence, solutionEvidence);
+            return created;
+        } catch (RuntimeException failure) {
+            put.forEach(this::discard);
+            throw failure;
+        }
+    }
+
+    /**
+     * Отрисовка обоих текстов в памяти — для предпросмотра формы (Р9):
+     * ни Задачи, ни файлов в хранилище. Пустой текст слота не отрисовывается
+     * и даёт {@code null}: предпросмотр условия не должен ждать, пока
+     * набрано решение. Предел длины держится и здесь — он ограничивает
+     * время отрисовки, а не только хранение.
+     *
+     * <p>Только Администратору: предпросмотр живёт в форме правки
+     * библиотеки, а отрисовка — самая дорогая операция Задачи.
+     *
+     * @throws IllegalArgumentException формула не разбирается или текст
+     *                                  длиннее предела
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public RenderedText preview(String conditionText, String solutionText) {
+        return new RenderedText(previewOf(ProblemSlot.CONDITION, conditionText),
+                previewOf(ProblemSlot.SOLUTION, solutionText));
+    }
+
+    private static byte[] previewOf(ProblemSlot slot, String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        ProblemText.requireText(slot, text);
+        return ProblemTextRendering.render(text);
+    }
+
+    /**
+     * Меняет текст одного слота Задачи с текстом и перерисовывает только его
+     * (Р7, Р10): второй слот остаётся байт в байт.
+     *
+     * <p>Версия — та, с которой открыта страница правки или скачан {@code .md};
+     * ушедшая вперёд хранимая отклоняет правку целиком
+     * ({@link ProblemTextChangedException}), а не накатывает её поверх чужой.
+     * Сверка идёт в самом {@code UPDATE} репозитория, поэтому отрисовка,
+     * положенная перед ней, при отказе убирается.
+     *
+     * <p>Прежняя отрисовка слота удаляется после записи — как заменённый
+     * файл в {@link #replaceCondition}: потерять новый файл хуже, чем
+     * оставить прежний.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void editText(ProblemId id, ProblemSlot slot, String text, int version) {
+        Problem problem = existing(id);
+        refuseTextUnlessUnused(problem);
+        requireText(problem);
+        ProblemText.requireText(slot, text);
+        byte[] rendered = ProblemTextRendering.render(text);
+
+        FileKey replacement = storage.put(rendered, FileType.PDF);
+        try {
+            problems.changeText(problem.id(), slot, text, replacement, version);
+        } catch (RuntimeException failure) {
+            discard(replacement);
+            throw failure;
+        }
+        storage.delete(slot == ProblemSlot.CONDITION ? problem.conditionFile() : problem.solutionFile());
+    }
+
+    /**
+     * Записывает текст Задаче без текста (Р5): оба PDF отрисовываются
+     * из текстов, а прежние приложенные PDF становятся Уликами своих слотов —
+     * ключ переезжает, файл не копируется и не удаляется.
+     *
+     * <p>Версия текста у Задачи без текста — всегда ноль: текст не снимается
+     * (design.md, Non-Goals), а растёт версия только с записью текста.
+     * Гонку двух записей ловит репозиторий — условием «текста ещё нет»
+     * в самом {@code UPDATE}.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void writeText(ProblemId id, String conditionText, String solutionText) {
+        Problem problem = existing(id);
+        refuseTextUnlessUnused(problem);
+        if (problem.hasText()) {
+            throw new IllegalArgumentException("У Задачи № " + problem.number()
+                    + " текст уже есть — правьте его по слотам");
+        }
+        ProblemText.requireTexts(conditionText, solutionText);
+        byte[] conditionRendered = ProblemTextRendering.render(conditionText);
+        byte[] solutionRendered = ProblemTextRendering.render(solutionText);
+
+        List<FileKey> put = new ArrayList<>();
+        try {
+            problems.writeText(problem.id(), conditionText, solutionText,
+                    put(put, conditionRendered), put(put, solutionRendered), 0);
+        } catch (RuntimeException failure) {
+            put.forEach(this::discard);
+            throw failure;
+        }
+    }
+
+    /**
+     * Заменяет Улику слота Задачи с текстом — готовым PDF или сборкой (Р4).
+     * PDF слота и версия текста не меняются: Улика — снимок рядом с текстом,
+     * а не сам текст. Прежняя Улика, если была, удаляется после записи.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    @Transactional
+    public void replaceEvidence(ProblemId id, ProblemSlot slot, ProblemPdf pdf) {
+        Problem problem = existing(id);
+        refuseTextUnlessUnused(problem);
+        requireText(problem);
+        String what = slot == ProblemSlot.CONDITION ? "условия" : "решения";
+        requireFile(pdf, what);
+        UploadedFile file = resolved(pdf, what);
+
+        FileKey replacement = storage.put(file.content(), file.contentType());
+        problems.changeEvidence(problem.id(), slot, replacement);
+        FileKey previous = problem.text().evidenceOf(slot);
+        if (previous != null) {
+            storage.delete(previous);
+        }
+        discardDrafts(pdf);
+    }
+
+    /**
      * Меняет Часть и разметку Задачи. Номер при этом не меняется — он и есть
      * идентификатор Задачи и человеку обещан неизменным (ADR-0050).
      *
@@ -324,6 +508,7 @@ public class ProblemService {
     public void replaceCondition(ProblemId id, ProblemPdf condition) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
+        refuseRenderedReplacement(problem);
         requireFile(condition, "условия");
         UploadedFile file = resolved(condition, "условия");
 
@@ -345,6 +530,7 @@ public class ProblemService {
     public void replaceSolution(ProblemId id, ProblemPdf solution) {
         Problem problem = existing(id);
         refuseUnlessUnused(problem);
+        refuseRenderedReplacement(problem);
         requireFile(solution, "решения");
         UploadedFile file = resolved(solution, "решения");
 
@@ -370,6 +556,14 @@ public class ProblemService {
         problems.delete(problem.id());
         storage.delete(problem.conditionFile());
         storage.delete(problem.solutionFile());
+        if (problem.hasText()) {
+            for (ProblemSlot slot : ProblemSlot.values()) {
+                FileKey evidence = problem.text().evidenceOf(slot);
+                if (evidence != null) {
+                    storage.delete(evidence);
+                }
+            }
+        }
     }
 
     /**
@@ -478,12 +672,48 @@ public class ProblemService {
      * и уведомлений система не шлёт (ADR-0030, ADR-0017).
      */
     private void refuseUnlessUnused(Problem problem) {
+        refuseUnlessUnused(problem, "изменить и удалить её нельзя");
+    }
+
+    /**
+     * Та же проверка для текста и Улик — с другим окончанием отказа:
+     * опечатка в тексте выданной Задачи исправляется новой Задачей, и отказ
+     * называет этот путь (design.md изменения {@code problem-text}, Р6).
+     * Ученик держит прежний PDF, и правка текста разошлась бы с тем, что он
+     * решал.
+     */
+    private void refuseTextUnlessUnused(Problem problem) {
+        refuseUnlessUnused(problem, "её текст не правится — исправленный текст заводится новой Задачей:"
+                + " скачайте .md и заведите по нему новую");
+    }
+
+    private void refuseUnlessUnused(Problem problem, String consequence) {
         for (ProblemUsage usage : usages) {
             Optional<String> used = usage.of(problem.id());
             if (used.isPresent()) {
                 throw new ProblemInUseException("Задача № " + problem.number() + " уже используется ("
-                        + used.get() + "): изменить и удалить её нельзя");
+                        + used.get() + "): " + consequence);
             }
+        }
+    }
+
+    /**
+     * PDF Задачи с текстом — отрисовка текста, и рукой он не заменяется
+     * (инвариант 13, ADR-0055): заменённый файл разошёлся бы с текстом молча.
+     * Снимок листа ложится Уликой, исправление — правкой текста.
+     */
+    private static void refuseRenderedReplacement(Problem problem) {
+        if (problem.hasText()) {
+            throw new IllegalArgumentException("PDF Задачи № " + problem.number()
+                    + " отрисован из её текста и не заменяется: правьте текст, а снимок приложите Уликой");
+        }
+    }
+
+    /** Правка текста и Улик — только у Задачи с текстом; без текста — «Записать текст». */
+    private static void requireText(Problem problem) {
+        if (!problem.hasText()) {
+            throw new IllegalArgumentException("У Задачи № " + problem.number()
+                    + " нет текста — сначала запишите его");
         }
     }
 
@@ -538,6 +768,25 @@ public class ProblemService {
             case UploadedFile uploaded -> uploaded;
             case PdfAssemblyOrder order -> new UploadedFile(drafts.assemble(order), FileType.PDF);
         };
+    }
+
+    /**
+     * Поле слота Задачи с текстом — Улика (Р4); пустое поле — Улики нет.
+     * Готовый файл проверяется так же, как PDF слота.
+     */
+    private UploadedFile evidence(ProblemPdf file, String what) {
+        return file == null || file.isEmpty() ? null : resolved(file, "Улики " + what);
+    }
+
+    /** Кладёт файл и запоминает ключ — чтобы при сбое записи было что убрать. */
+    private FileKey put(List<FileKey> put, byte[] pdf) {
+        return put(put, new UploadedFile(pdf, FileType.PDF));
+    }
+
+    private FileKey put(List<FileKey> put, UploadedFile file) {
+        FileKey key = storage.put(file.content(), file.contentType());
+        put.add(key);
+        return key;
     }
 
     /**

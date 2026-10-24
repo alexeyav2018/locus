@@ -7,12 +7,17 @@ import ru.locus.file.FileKey;
 import ru.locus.taxonomy.TaxonomyNodeId;
 
 /**
- * Задача — единица общей библиотеки: два PDF и разметка (ADR-0008, ADR-0009).
+ * Задача — единица общей библиотеки: два PDF и разметка (ADR-0009).
  *
- * Текста Задачи система не знает и знать не должна: формулы живут внутри PDF,
- * система их не хранит и не разбирает. Поэтому разметка — единственный вход
- * в Задачу, а различает Задачи <b>номер</b> — он же идентификатор.
- * Подписи у Задачи нет (ADR-0050, заменяет ADR-0029).
+ * Задача бывает двух видов, живущих в одной библиотеке без срока (ADR-0055,
+ * заменяет ADR-0008): <b>с текстом</b> — у неё есть {@link ProblemText},
+ * и оба PDF Локус отрисовал из него сам; <b>без текста</b> — оба PDF
+ * приложены готовыми или собраны из Черновика сборки. Вид не хранится
+ * отдельно: «без текста» — это {@code text == null}. Текст Локус хранит
+ * и отрисовывает, но не разбирает, поэтому вход в Задачу для поиска
+ * по-прежнему разметка, а различает Задачи <b>номер</b> — он же
+ * идентификатор; текст не имя. Подписи у Задачи нет (ADR-0050, заменяет
+ * ADR-0029).
  *
  * Правила состава стоят в компактном конструкторе, а не в сервисе: запись,
  * собранная в обход правил, не должна существовать вообще — ни в памяти,
@@ -24,6 +29,9 @@ import ru.locus.taxonomy.TaxonomyNodeId;
  * Задача принадлежит общей библиотеке: владельца у неё нет и быть не должно
  * (ADR-0027).
  *
+ * @param conditionFile    PDF условия: у Задачи с текстом — отрисовка текста
+ * @param solutionFile     PDF решения: у Задачи с текстом — отрисовка текста
+ * @param text             текст и Улики; {@code null} — Задача без текста
  * @param topics           Темы разметки, 1..n, только листья дерева;
  *                         «лист» проверяется в сервисе — вид узла не хранится
  * @param methods          Методы разметки, 1..n
@@ -33,6 +41,7 @@ public record Problem(ProblemId id,
                       ExamPart part,
                       FileKey conditionFile,
                       FileKey solutionFile,
+                      ProblemText text,
                       List<TaxonomyNodeId> topics,
                       List<SolutionMethodId> methods,
                       List<CharacteristicId> characteristics) {
@@ -46,6 +55,17 @@ public record Problem(ProblemId id,
         topics = List.copyOf(topics);
         methods = List.copyOf(methods);
         characteristics = characteristics == null ? List.of() : List.copyOf(characteristics);
+    }
+
+    /** Задача без текста — та, у которой оба PDF приложены или собраны. */
+    public Problem(ProblemId id,
+                   ExamPart part,
+                   FileKey conditionFile,
+                   FileKey solutionFile,
+                   List<TaxonomyNodeId> topics,
+                   List<SolutionMethodId> methods,
+                   List<CharacteristicId> characteristics) {
+        this(id, part, conditionFile, solutionFile, null, topics, methods, characteristics);
     }
 
     /**
@@ -82,6 +102,11 @@ public record Problem(ProblemId id,
         if (solutionFile == null) {
             throw new IllegalArgumentException("У Задачи нет PDF решения");
         }
+    }
+
+    /** Есть ли у Задачи текст; «без текста» не хранится, а выводится отсюда. */
+    public boolean hasText() {
+        return text != null;
     }
 
     /** Номер Задачи — то, чем она названа человеку. */

@@ -52,7 +52,7 @@ public final class Browser {
 
     public record Page(int status, String contentType, String body, String location,
                        java.util.Optional<String> frameOptions, Optional<String> etag,
-                       Optional<String> cacheControl) {
+                       Optional<String> cacheControl, Optional<String> disposition) {
 
         public boolean redirectsTo(String path) {
             return (status == 302 || status == 303) && location != null && location.endsWith(path);
@@ -223,7 +223,8 @@ public final class Browser {
                     response.headers().firstValue("Location").orElse(null),
                     response.headers().firstValue("X-Frame-Options"),
                     response.headers().firstValue("ETag"),
-                    response.headers().firstValue("Cache-Control"));
+                    response.headers().firstValue("Cache-Control"),
+                    response.headers().firstValue("Content-Disposition"));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         } catch (InterruptedException e) {

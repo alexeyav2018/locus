@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+    Блок предпросмотра текста Задачи (design.md изменения problem-text, Р9):
+    страницы отрисовки картинками data: либо отказ отрисовки на этом же
+    месте, а не наверху страницы, — ошибка в формуле читается рядом
+    с текстом, где её править. Одна разметка для формы заведения и для
+    страницы правки.
+*/-->
+<section class="text-preview" th:fragment="block(preview)" th:if="${preview}" aria-label="Предпросмотр">
+    <h2>Предпросмотр</h2>
+    <p class="alert" role="alert" th:if="${preview.refusal}" th:text="${preview.refusal}">Формула не разбирается</p>
+    <th:block th:unless="${preview.refusal}">
+        <div th:unless="${#lists.isEmpty(preview.condition)}">
+            <h3>Условие</h3>
+            <div class="viewer-pages">
+                <img th:each="src, page : ${preview.condition}" th:src="${src}"
+                     th:alt="'Условие, страница ' + ${page.count}">
+            </div>
+        </div>
+        <div th:unless="${#lists.isEmpty(preview.solution)}">
+            <h3>Решение</h3>
+            <div class="viewer-pages">
+                <img th:each="src, page : ${preview.solution}" th:src="${src}"
+                     th:alt="'Решение, страница ' + ${page.count}">
+            </div>
+        </div>
+        <p class="hint" th:if="${#lists.isEmpty(preview.condition) and #lists.isEmpty(preview.solution)}">
+            Текст не введён — показывать нечего.</p>
+    </th:block>
+</section>
+</body>
+</html>

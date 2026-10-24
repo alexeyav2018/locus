@@ -41,6 +41,11 @@ public record FoundProblem(Problem problem,
         characteristicNames = List.copyOf(characteristicNames);
     }
 
+    /** Есть ли у Задачи текст — для пометки «без текста» в строке поиска. */
+    public boolean hasText() {
+        return problem.hasText();
+    }
+
     /** Номер Задачи — то, чем она названа человеку. */
     public long number() {
         return problem.number();
