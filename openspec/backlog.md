@@ -139,7 +139,7 @@
 | `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | ✅ |
 | `assistant-chat` | — | `agent-runner` | — | M | нет | личное | ✅ |
 | `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | ✅ |
-| `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | |
+| `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки
