@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title th:text="'Черновик Задачи № ' + ${draft.id.value} + ' — Locus'">Черновик Задачи № 3 — Locus</title>
+    <!--/*
+        Страница вычитки Черновика Задачи (problem-intake, design.md, Р6).
+
+        Наверху — Улика рядом с отрисовкой: слева PDF, собранные из строк
+        сборки слотов, справа отрисовка текстов без пометок ⟦…⟧ (Р5) или её
+        отказ на месте. Ниже — «Сомнительные места»: каждый помеченный
+        фрагмент с контекстом и причины списком.
+
+        Форма одна, кнопок три (formaction): все шлют введённое и скрытую
+        version — прочитанную версию черновика (ADR-0056). Строки сборки —
+        та же сцена рамок, что у формы Задачи (problem/assembly :: row);
+        поле файла без имени: файл уходит в Черновик сборки только скриптом,
+        без скрипта правятся тексты, диапазоны и разметка. Разметка —
+        фрагмент problem/markup :: fields, общий с формой Задачи. Удаление —
+        отдельная форма под раскрывающимся блоком (ADR-0042).
+
+        Черновик личный, хоть из него и заводится Задача общей библиотеки:
+        метка — «Мой кабинет».
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page">
+<p class="back"><a th:href="@{${shell.backOr('/problems/intake')}}">← К черновикам</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Черновик Задачи № ' + ${draft.id.value}">Черновик Задачи № 3</h1>
+        <p class="lead" th:text="(${draft.changedBy.name() == 'ASSISTANT'} ? 'изменён Помощником' : 'изменён вами')
+                + ', ' + ${#temporals.format(changedAt, 'dd.MM.yyyy HH:mm')}">изменён Помощником, 24.10.2026 18:40</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Задаче нужен хотя бы один Метод</p>
+
+<div class="intake-pages">
+    <section class="intake-column" aria-label="Улика">
+        <h2>Улика</h2>
+        <p class="alert" role="alert" th:if="${evidence.refusal}" th:text="${evidence.refusal}">Страница вне файла</p>
+        <th:block th:unless="${evidence.refusal}">
+            <h3>Условие</h3>
+            <div class="viewer-pages" th:unless="${#lists.isEmpty(evidence.condition)}">
+                <img th:each="src, page : ${evidence.condition}" th:src="${src}"
+                     th:alt="'Улика условия, страница ' + ${page.count}">
+            </div>
+            <p class="muted" th:if="${#lists.isEmpty(evidence.condition)}">Улики нет.</p>
+            <h3>Решение</h3>
+            <div class="viewer-pages" th:unless="${#lists.isEmpty(evidence.solution)}">
+                <img th:each="src, page : ${evidence.solution}" th:src="${src}"
+                     th:alt="'Улика решения, страница ' + ${page.count}">
+            </div>
+            <p class="muted" th:if="${#lists.isEmpty(evidence.solution)}">Улики нет.</p>
+        </th:block>
+    </section>
+    <section class="intake-column" aria-label="Отрисовка">
+        <h2>Отрисовка</h2>
+        <p class="alert" role="alert" th:if="${rendering.refusal}" th:text="${rendering.refusal}">Формула не разбирается</p>
+        <th:block th:unless="${rendering.refusal}">
+            <h3>Условие</h3>
+            <div class="viewer-pages" th:unless="${#lists.isEmpty(rendering.condition)}">
+                <img th:each="src, page : ${rendering.condition}" th:src="${src}"
+                     th:alt="'Условие, страница ' + ${page.count}">
+            </div>
+            <p class="muted" th:if="${#lists.isEmpty(rendering.condition)}">Текста нет.</p>
+            <h3>Решение</h3>
+            <div class="viewer-pages" th:unless="${#lists.isEmpty(rendering.solution)}">
+                <img th:each="src, page : ${rendering.solution}" th:src="${src}"
+                     th:alt="'Решение, страница ' + ${page.count}">
+            </div>
+            <p class="muted" th:if="${#lists.isEmpty(rendering.solution)}">Текста нет.</p>
+        </th:block>
+    </section>
+</div>
+
+<section class="doubts" aria-label="Сомнительные места"
+         th:if="${not #lists.isEmpty(conditionDoubts) or not #lists.isEmpty(solutionDoubts)
+                 or not #lists.isEmpty(draft.content.doubts)}">
+    <h2>Сомнительные места</h2>
+    <ul class="doubt-fragments">
+        <li th:each="fragment : ${conditionDoubts}">
+            <span class="muted">условие:</span>
+            …<span th:text="${fragment.before}">$\log_2 </span><mark th:text="${fragment.marked}">8</mark><span
+                th:text="${fragment.after}"> = 3$</span>…
+        </li>
+        <li th:each="fragment : ${solutionDoubts}">
+            <span class="muted">решение:</span>
+            …<span th:text="${fragment.before}">x = </span><mark th:text="${fragment.marked}">3</mark><span
+                th:text="${fragment.after}">.</span>…
+        </li>
+    </ul>
+    <th:block th:unless="${#lists.isEmpty(draft.content.doubts)}">
+        <h3>Причины</h3>
+        <ul>
+            <li th:each="doubt : ${draft.content.doubts}" th:text="${doubt}">8 похоже на 9</li>
+        </ul>
+    </th:block>
+</section>
+
+<form method="post" th:action="@{/problems/intake/{id}(id=${draft.id.value},from=${shell.back})}">
+    <input type="hidden" name="version" th:value="${draft.version}">
+
+    <fieldset>
+        <legend>Текст</legend>
+        <p class="hint">Markdown; формулы LaTeX — строчные между <code>$…$</code>, выключные между
+            <code>$$…$$</code>; знак доллара — <code>\$</code>. Сомнительное Помощник помечает
+            <code>⟦…⟧</code>: пометки в Задачу не попадают, их можно оставить.</p>
+        <label>Условие
+            <textarea name="conditionText" rows="8" th:text="${draft.content.conditionText}"></textarea></label>
+        <label>Решение
+            <textarea name="solutionText" rows="12" th:text="${draft.content.solutionText}"></textarea></label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Улики</legend>
+        <p class="hint">Куски листа, с которых распознан текст. Строки можно двигать, убирать
+            и обводить заново; добавить файл можно при работающем скрипте.</p>
+        <label>Условие
+            <input type="file" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
+        <ol class="assembly" data-slot="condition">
+            <th:block th:each="row : ${conditionRows}"><li th:replace="~{problem/assembly :: row('condition', ${row})}"></li></th:block>
+        </ol>
+        <label>Решение
+            <input type="file" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
+                   accept="application/pdf,image/jpeg,image/png"></label>
+        <ol class="assembly" data-slot="solution">
+            <th:block th:each="row : ${solutionRows}"><li th:replace="~{problem/assembly :: row('solution', ${row})}"></li></th:block>
+        </ol>
+    </fieldset>
+
+    <th:block th:replace="~{problem/markup :: fields}"/>
+
+    <section class="new-methods" aria-label="Новые Методы" th:unless="${#lists.isEmpty(draft.content.newMethods)}">
+        <h3>Новые Методы</h3>
+        <p class="hint">Помощник назвал Методы, которых в словаре нет. В словарь они не попадают сами:
+            заведите нужные <a th:href="@{/dictionaries(from=${shell.here})}">в словарях</a> или скажите
+            Помощнику «да».</p>
+        <ul>
+            <li th:each="name : ${draft.content.newMethods}" th:text="${name}">Метод интервалов</li>
+        </ul>
+    </section>
+
+    <div class="form-actions">
+        <!--/* «Сохранить черновик» — первой: её нажимает Enter в поле формы,
+               а Задачу случайным нажатием заводить нельзя. */-->
+        <button type="submit">Сохранить черновик</button>
+        <button type="submit" class="btn-primary"
+                th:formaction="@{/problems/intake/{id}/problem(id=${draft.id.value},from=${shell.back})}">Сохранить как Задачу</button>
+        <button type="submit"
+                th:formaction="@{/problems/intake/{id}/snapshot(id=${draft.id.value},from=${shell.back})}">Взять снимок как есть</button>
+        <a class="btn" th:href="@{${shell.backOr('/problems/intake')}}">Отмена</a>
+    </div>
+    <p class="hint">«Сохранить как Задачу» заводит Задачу с текстом, Улики — из строк. «Взять снимок как есть» —
+        Задачу без текста: PDF условия и решения собираются из тех же строк. Обе сначала сохраняют введённое.</p>
+</form>
+
+<div class="folds">
+    <details class="more" th:attr="open=${shell.opened('/delete')} ? 'open'">
+        <summary>Удалить черновик</summary>
+        <div class="more-body">
+            <p class="hint">Задача не заводится; Черновики сборки уйдут своей уборкой.</p>
+            <form method="post" th:action="@{/problems/intake/{id}/delete(id=${draft.id.value})}">
+                <input type="hidden" name="version" th:value="${draft.version}">
+                <div class="form-actions">
+                    <button type="submit" class="btn-danger">Удалить черновик</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

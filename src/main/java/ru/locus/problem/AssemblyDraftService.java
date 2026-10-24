@@ -148,12 +148,45 @@ public class AssemblyDraftService {
         if (order.lines().isEmpty()) {
             throw new IllegalArgumentException("Не указано ни одного источника: собирать нечего");
         }
-        Map<AssemblyDraftId, AssemblyDraft> own = drafts.findByIds(currentUser.id(), order.drafts()).stream()
-                .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
+        Map<AssemblyDraftId, AssemblyDraft> own = own(order);
         Optional<AssemblyDraft> untouched = untouchedPdf(order, own);
         if (untouched.isPresent()) {
             return contentOf(untouched.get());
         }
+        return assembly.assemble(parts(order, own));
+    }
+
+    /**
+     * Проверяет порядок сборки так же, как {@link #assemble}, но ничего
+     * не собирая: черновики свои и есть, страницы в пределах черновика,
+     * рамка стоит на одной странице. Тексты отказов те же. Так запись
+     * Черновика Задачи отклоняет негодную строку сразу, а не при его
+     * сохранении (problem-intake, design.md, Р3).
+     *
+     * <p>Пустой порядок допустим: у черновика слот без Улики — обычное дело,
+     * а собирать нечего проверяет уже сборка.
+     *
+     * @throws IllegalArgumentException если черновика нет, диапазон выходит
+     *                                  за его страницы или рамка стоит
+     *                                  на нескольких страницах
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public void check(PdfAssemblyOrder order) {
+        if (!order.isEmpty()) {
+            parts(order, own(order));
+        }
+    }
+
+    private Map<AssemblyDraftId, AssemblyDraft> own(PdfAssemblyOrder order) {
+        return drafts.findByIds(currentUser.id(), order.drafts()).stream()
+                .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
+    }
+
+    /**
+     * Куски сборки по строкам порядка — с проверками, которые не требуют
+     * открывать исходник: число страниц знает черновик.
+     */
+    private List<PdfAssemblyPart> parts(PdfAssemblyOrder order, Map<AssemblyDraftId, AssemblyDraft> own) {
         List<PdfAssemblyPart> parts = new ArrayList<>();
         for (PdfAssemblyOrder.Line line : order.lines()) {
             AssemblyDraft draft = own.get(line.draft());
@@ -168,14 +201,22 @@ public class AssemblyDraftService {
                         + "»: рамка ставится на одну страницу, а указаны страницы с " + line.from()
                         + " по " + line.to());
             }
-            parts.add(switch (draft.kind()) {
+            PdfAssemblyPart part = switch (draft.kind()) {
                 case IMAGE -> new PdfAssemblyPart.Image(file, draft.originalName(), frame);
                 case PDF -> frame == null
                         ? new PdfAssemblyPart.Pages(file, draft.originalName(), line.from(), line.to())
                         : new PdfAssemblyPart.Piece(file, draft.originalName(), line.from(), frame);
-            });
+            };
+            if (draft.kind() == AssemblyDraft.Kind.PDF && line.to() > draft.pageCount()) {
+                throw new IllegalArgumentException(frame == null
+                        ? "Источник «" + draft.originalName() + "»: указаны страницы с " + line.from() + " по "
+                                + line.to() + ", а в нём " + draft.pageCount() + " стр."
+                        : "Источник «" + draft.originalName() + "»: указана страница " + line.from()
+                                + ", а в нём " + draft.pageCount() + " стр.");
+            }
+            parts.add(part);
         }
-        return assembly.assemble(parts);
+        return parts;
     }
 
     /**

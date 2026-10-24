@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Черновики Задач — Locus</title>
+    <!--/*
+        Свои Черновики Задачи (problem-intake, design.md, Р6) — короткоживущая
+        очередь вычитки, а не раздел: пункта в шапке нет, сюда ведут страница
+        Помощника и ссылки из его ответов. Список уже отфильтрован
+        по владельцу, а открытие его попутно убирает брошенные черновики
+        (ADR-0059) — шаблон ни о том, ни о другом не знает.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/assistant')}}">← К Помощнику</a></p>
+<div class="page-head">
+    <div>
+        <h1>Черновики Задач</h1>
+        <p class="lead">Что распознал Помощник и что ждёт вычитки. Сохранённый Задачей черновик
+            отсюда уходит, брошенный — по сроку, все — при перезапуске Локуса.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<div class="empty" th:if="${#lists.isEmpty(drafts)}">
+    <p>Черновиков нет. Их заводит Помощник по присланному листу.</p>
+</div>
+
+<div class="table-wrap" th:unless="${#lists.isEmpty(drafts)}">
+<table>
+    <thead>
+    <tr>
+        <th>Черновик</th>
+        <th>Условие</th>
+        <th>Изменён</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="listed : ${drafts}" th:id="'draft-' + ${listed.draft.id.value}">
+        <td><a th:href="@{/problems/intake/{id}(id=${listed.draft.id.value},from=${shell.here})}"
+               th:text="'№ ' + ${listed.draft.id.value}">№ 3</a></td>
+        <td th:text="${#strings.isEmpty(listed.title)} ? 'текста нет' : ${listed.title}">Решите уравнение</td>
+        <td th:text="(${listed.draft.changedBy.name() == 'ASSISTANT'} ? 'Помощником' : 'вами') + ', '
+                     + ${#temporals.format(listed.changedAt, 'dd.MM.yyyy HH:mm')}">Помощником, 24.10.2026 18:40</td>
+    </tr>
+    </tbody>
+</table>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

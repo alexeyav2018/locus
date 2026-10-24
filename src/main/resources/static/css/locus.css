@@ -601,6 +601,20 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .text-preview h2 { margin-top: 0.5rem; }
 .text-preview .viewer-pages img { max-width: 100%; height: auto; }
 form:has(input[name=kind][value=FILES]:checked) .problem-texts { display: none; }
+
+/* Страница вычитки Черновика Задачи: Улика рядом с отрисовкой на широком экране,
+   столбцом на планшете и телефоне — картинка листа уже, чем полэкрана планшета, не читается. */
+.intake-pages { display: grid; grid-template-columns: 1fr; gap: 1.25rem; margin: 0 0 1rem; }
+.intake-column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; min-width: 0; }
+.intake-column h2 { margin-top: 0; }
+.intake-column .viewer-pages img { max-width: 100%; height: auto; }
+@media (min-width: 1100px) {
+    .intake-pages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.doubts { margin: 0 0 1rem; }
+.doubt-fragments { padding-left: 1.2rem; }
+.doubt-fragments li { overflow-wrap: anywhere; }
+.doubts mark { background: var(--warn-soft); color: var(--text); padding: 0 0.15rem; border-radius: 3px; box-shadow: 0 0 0 1px var(--warn); }
 .error-page { text-align: center; padding: 2.5rem 0.5rem; }
 .error-page .code { font-size: 3.5rem; font-weight: 800; color: var(--border-strong); line-height: 1; }
 .error-page .row { justify-content: center; margin-top: 1rem; }

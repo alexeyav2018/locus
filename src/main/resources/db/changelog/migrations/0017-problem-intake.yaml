@@ -1,0 +1,338 @@
+# Черновик Задачи (ADR-0059, элемент бэклога problem-intake).
+#
+# Распознанная Помощником, но не утверждённая Задача: тексты условия
+# и решения, строки сборки Улик по Черновикам сборки, сомнительные места,
+# предложенная разметка и названные Помощником новые Методы. Личный
+# у загрузившего: владелец — колонка user_id, как во всех таблицах личного
+# контура; без владельца — только две уборки (по сроку от последней правки
+# и при старте), как у Черновика сборки (ADR-0044).
+#
+# Шесть таблиц, а не одна с JSON: в схеме нет ни jsonb, ни массивов,
+# а ссылку строки сборки на Черновик сборки должна видеть база — на ней
+# держится то, что Черновик сборки не удаляется, пока на него ссылается
+# живой Черновик Задачи (design.md, Р1 и Р4).
+databaseChangeLog:
+  - changeSet:
+      id: 0017-assembly-draft-owner-key
+      author: locus
+      comment: Ключ (id, user_id) Черновика сборки — под составную ссылку строки Черновика Задачи
+      changes:
+        - addUniqueConstraint:
+            tableName: assembly_draft
+            columnNames: id, user_id
+            constraintName: uq_assembly_draft_id_user
+
+  - changeSet:
+      id: 0017-problem-draft
+      author: locus
+      comment: Черновик Задачи — распознанная, но не утверждённая Задача загрузившего
+      changes:
+        - createTable:
+            tableName: problem_draft
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_problem_draft
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Имя ExamPart; пусто — Часть ещё не предложена.
+              - column:
+                  name: exam_part
+                  type: VARCHAR(20)
+              # Тексты Markdown с формулами и пометками ⟦…⟧; пусто — ''.
+              - column:
+                  name: condition_text
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: solution_text
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              # Растёт с каждой записью: правка по старой версии
+              # отклоняется (ADR-0056).
+              - column:
+                  name: version
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # OWNER или ASSISTANT — имена ProblemDraft.Editor.
+              - column:
+                  name: changed_by
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              # От неё, а не от заведения, считается срок уборки:
+              # черновик, к которому вернулись, жив.
+              - column:
+                  name: changed_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_user
+        - addUniqueConstraint:
+            tableName: problem_draft
+            columnNames: id, user_id
+            constraintName: uq_problem_draft_id_user
+        # Уборка по сроку идёт по всем владельцам сразу.
+        - createIndex:
+            tableName: problem_draft
+            indexName: ix_problem_draft_changed_at
+            columns:
+              - column:
+                  name: changed_at
+
+  - changeSet:
+      id: 0017-problem-draft-line
+      author: locus
+      comment: Строка сборки Улики Черновика Задачи — ссылка на Черновик сборки того же владельца
+      changes:
+        - createTable:
+            tableName: problem_draft_line
+            columns:
+              - column:
+                  name: draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # CONDITION или SOLUTION — имена ProblemSlot.
+              - column:
+                  name: slot
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: assembly_draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: page_from
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: page_to
+                  type: INT
+                  constraints:
+                    nullable: false
+              # CropFrame.formValue(); пусто — страницы целиком.
+              - column:
+                  name: frame
+                  type: VARCHAR(100)
+        - addPrimaryKey:
+            tableName: problem_draft_line
+            columnNames: draft_id, slot, position
+            constraintName: pk_problem_draft_line
+        # Составной ключ: строка не может принадлежать чужому черновику.
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_line
+            baseColumnNames: draft_id, user_id
+            referencedTableName: problem_draft
+            referencedColumnNames: id, user_id
+            constraintName: fk_problem_draft_line_draft
+            onDelete: CASCADE
+        # Составной ключ: строка ссылается только на Черновик сборки своего
+        # владельца. Каскада нет намеренно: Черновик сборки, на который
+        # ссылаются, удалять нельзя (ADR-0059) — промах держания упадёт
+        # ошибкой базы, а не дырой в Улике.
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_line
+            baseColumnNames: assembly_draft_id, user_id
+            referencedTableName: assembly_draft
+            referencedColumnNames: id, user_id
+            constraintName: fk_problem_draft_line_assembly_draft
+        # Под NOT EXISTS уборки Черновиков сборки.
+        - createIndex:
+            tableName: problem_draft_line
+            indexName: ix_problem_draft_line_assembly_draft
+            columns:
+              - column:
+                  name: assembly_draft_id
+
+  - changeSet:
+      id: 0017-problem-draft-markup
+      author: locus
+      comment: >-
+        Предложенная разметка Черновика Задачи. Каскад от библиотеки
+        намеренный: разметка черновика — лишь предложение, удаление Темы
+        или Метода её сужает и удалению не мешает; проверяет разметку
+        заведение Задачи.
+      changes:
+        - createTable:
+            tableName: problem_draft_topic
+            columns:
+              - column:
+                  name: draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_draft_topic
+            columnNames: draft_id, topic_id
+            constraintName: pk_problem_draft_topic
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_topic
+            baseColumnNames: draft_id
+            referencedTableName: problem_draft
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_topic_draft
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_topic
+            baseColumnNames: topic_id
+            referencedTableName: taxonomy_node
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_topic_node
+            onDelete: CASCADE
+        - createTable:
+            tableName: problem_draft_method
+            columns:
+              - column:
+                  name: draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: solution_method_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_draft_method
+            columnNames: draft_id, solution_method_id
+            constraintName: pk_problem_draft_method
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_method
+            baseColumnNames: draft_id
+            referencedTableName: problem_draft
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_method_draft
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_method
+            baseColumnNames: solution_method_id
+            referencedTableName: solution_method
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_method_method
+            onDelete: CASCADE
+        - createTable:
+            tableName: problem_draft_characteristic
+            columns:
+              - column:
+                  name: draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: characteristic_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_draft_characteristic
+            columnNames: draft_id, characteristic_id
+            constraintName: pk_problem_draft_characteristic
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_characteristic
+            baseColumnNames: draft_id
+            referencedTableName: problem_draft
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_characteristic_draft
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_characteristic
+            baseColumnNames: characteristic_id
+            referencedTableName: characteristic
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_characteristic_characteristic
+            onDelete: CASCADE
+
+  - changeSet:
+      id: 0017-problem-draft-note
+      author: locus
+      comment: Списки строк Черновика Задачи — причины сомнений и названные новые Методы
+      changes:
+        - createTable:
+            tableName: problem_draft_note
+            columns:
+              - column:
+                  name: draft_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # DOUBT или NEW_METHOD — какой из двух списков.
+              - column:
+                  name: kind
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: text
+                  type: TEXT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: problem_draft_note
+            columnNames: draft_id, kind, position
+            constraintName: pk_problem_draft_note
+        - addForeignKeyConstraint:
+            baseTableName: problem_draft_note
+            baseColumnNames: draft_id
+            referencedTableName: problem_draft
+            referencedColumnNames: id
+            constraintName: fk_problem_draft_note_draft
+            onDelete: CASCADE

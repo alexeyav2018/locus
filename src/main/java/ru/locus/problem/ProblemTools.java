@@ -179,11 +179,12 @@ public class ProblemTools implements Tools {
                 });
     }
 
-    private static Map<String, Object> part() {
+    static Map<String, Object> part() {
         return Schema.oneOf("Часть ЕГЭ: FIRST — первая, SECOND — вторая", "FIRST", "SECOND");
     }
 
-    private static Map<String, Object> line() {
+    /** Схема строки сборки — одна здесь и у инструментов Черновика Задачи. */
+    static Map<String, Object> line() {
         return Schema.object()
                 .description("строка сборки: диапазон целых страниц Черновика сборки либо, с Рамкой, "
                         + "кусок одной его страницы — отдельной страницей результата; без Рамки "
@@ -197,7 +198,8 @@ public class ProblemTools implements Tools {
                 .build();
     }
 
-    private static PdfAssemblyOrder order(Arguments arguments, String slot) {
+    /** Порядок сборки слота из аргументов — общий разбор с инструментами Черновика Задачи. */
+    static PdfAssemblyOrder order(Arguments arguments, String slot) {
         return new PdfAssemblyOrder(arguments.objects(slot).stream().map(ProblemTools::line).toList());
     }
 
