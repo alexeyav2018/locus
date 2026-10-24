@@ -49,16 +49,16 @@
 
 ## 2. Ответ Markdown
 
-- [ ] 2.1 `AnswerMarkdown.html(markdown, back)` — CommonMark
+- [x] 2.1 `AnswerMarkdown.html(markdown, back)` — CommonMark
       `escapeHtml`, `sanitizeUrls`, перевод строки — `<br>`, ссылка
       внутренняя (`ReturnTo.safe`) — `<a href>` с заменённым `from`
       и сохранённым якорем, внешняя и `javascript:` — текст и адрес
       в скобках, картинка — подписью (design.md Р7)
-- [ ] 2.2 `AnswerMarkdownTest`: абзацы, список, код; `<script>` —
+- [x] 2.2 `AnswerMarkdownTest`: абзацы, список, код; `<script>` —
       текстом; `[Задачи](/problems)` — с `from`; ссылка с `from`
       и якорем; `[сайт](https://example.com)`, `//example.com`,
       `javascript:alert(1)` — без `<a`; картинка — подпись без `<img`
-- [ ] 2.3 `mvn test -Dtest=AnswerMarkdownTest` зелёный
+- [x] 2.3 `mvn test -Dtest=AnswerMarkdownTest` зелёный
 
 ## 3. Страница, шапка и оформление
 
