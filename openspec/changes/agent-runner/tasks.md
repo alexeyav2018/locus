@@ -16,7 +16,7 @@
 
 ## 1. Схема, записи и репозиторий
 
-- [ ] 1.1 Миграция `0016-agent-runner.yaml`: `assistant_conversation`
+- [x] 1.1 Миграция `0016-agent-runner.yaml`: `assistant_conversation`
       (`id`, `user_id` → `user_`, `session_id` текст, `created_at`;
       уникальность `(id, user_id)`), `assistant_turn` (`id`,
       `user_id`, `conversation_id`, составной ключ `(conversation_id,
@@ -24,14 +24,15 @@
       `cause`, `input_tokens`, `output_tokens`, `cost_usd` numeric,
       `started_at`, `finished_at`; частичный уникальный индекс
       `(user_id) where state = 'RUNNING'`), `assistant_turn_step`
-      (`turn_id` → реплика с каскадом, `position`, `tool_name`,
-      `arguments`; ключ `(turn_id, position)`); комментарий в шапке —
+      (`turn_id`, `user_id`, составной ключ `(turn_id, user_id)` →
+      реплика с каскадом, `position`, `tool_name`, `arguments`; ключ
+      `(turn_id, position)`); комментарий в шапке —
       личный контур, ADR-0054, design.md Р1, Р3
-- [ ] 1.2 `ru.locus.assistant`: `AssistantConversationId`,
+- [x] 1.2 `ru.locus.assistant`: `AssistantConversationId`,
       `AssistantTurnId`, `TurnState` (семь значений, `word()` по-русски,
       design.md Р2), записи `AssistantConversation`, `AssistantTurn`
       (состояние, ответ, причина, токены, стоимость, время), `TurnStep`
-- [ ] 1.3 `AssistantRepository` на `JdbcClient`: `createConversation(UserId,
+- [x] 1.3 `AssistantRepository` на `JdbcClient`: `createConversation(UserId,
       Instant)`, `findConversation(UserId, id)`, `recordSession(UserId,
       id, session)`, `startTurn(UserId, conversationId, prompt, Instant)`
       (нарушение частичного индекса → `AssistantBusyException`),
@@ -40,16 +41,16 @@
       id, Outcome)` с `where state = 'RUNNING'`, `stepsOf(UserId,
       turnId)`; исключение — `interruptRunning()` без владельца (уборка
       класса ADR-0036); javadoc с границей
-- [ ] 1.4 `OwnerIsRequiredByAssistantTest` (по образцу
+- [x] 1.4 `OwnerIsRequiredByAssistantTest` (по образцу
       `OwnerIsRequiredByLessonsTest`): у каждого публичного метода
       репозитория есть `UserId`, кроме поимённо названного
       `interruptRunning`
-- [ ] 1.5 `AssistantIsFilteredByOwnerTest` на базе: чужой Разговор
+- [x] 1.5 `AssistantIsFilteredByOwnerTest` на базе: чужой Разговор
       и чужая Реплика не находятся, Реплику не завести в чужом Разговоре
       (ключ базы), чужие строки хода не читаются, `finishTurn` чужой
       не трогает; вторая «работаю» того же учителя — `AssistantBusyException`,
       у другого учителя — заводится
-- [ ] 1.6 `mvn test -Dtest='OwnerIsRequiredByAssistantTest,AssistantIsFilteredByOwnerTest,MigrationsOnStartupTest'` зелёный
+- [x] 1.6 `mvn test -Dtest='OwnerIsRequiredByAssistantTest,AssistantIsFilteredByOwnerTest,MigrationsOnStartupTest'` зелёный
 
 ## 2. Рабочее место `agent/` и сторожевой тест навыков
 
