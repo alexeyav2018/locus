@@ -6,21 +6,24 @@
 
 ## 1. Отрисовщик текста
 
-- [ ] 1.1 `pom.xml`: `io.github.openhtmltopdf:openhtmltopdf-pdfbox` —
-      версия на PDFBox 3.0.8 проекта и не моложе двух недель (свойство
-      версии, как `pdfbox.version`); `org.commonmark:commonmark`;
+- [x] 1.1 `pom.xml`: `io.github.openhtmltopdf:openhtmltopdf-pdfbox` —
+      не моложе двух недель (1.1.97; стоит на PDFBox 3.0.7, прямая
+      зависимость проекта 3.0.8 главнее, `xmpbox` выровнен
+      в `dependencyManagement`); `org.commonmark:commonmark`;
       `org.scilab.forge:jlatexmath` и `jlatexmath-font-cyrillic` 1.0.7.
       `mvn dependency:tree` — второй копии PDFBox нет
-- [ ] 1.2 Шрифт PT Serif (обычный, полужирный, курсив, полужирный курсив;
+- [x] 1.2 Шрифт PT Serif (обычный, полужирный, курсив, полужирный курсив;
       OFL) в `src/main/resources/fonts/pt-serif/` вместе с `OFL.txt`
-- [ ] 1.3 Проверочный тест первым: формула через `FSObjectDrawer`
+- [x] 1.3 Проверочный тест первым: формула через `FSObjectDrawer`
       и `drawWithGraphics` ложится в PDF вектором (на странице нет
       картинок, есть контуры), строчная формула — на базовой линии
       текста (нижний край формулы без глубины совпадает с базовой линией
       с допуском), кириллица в `\text{}` и в тексте видна извлечением
       текста PDFBox. Не выходит — запасной путь через SVG
       (`openhtmltopdf-svg-support`), выбор записать в design.md, Р1
-- [ ] 1.4 `ProblemTextRendering.render(String) → byte[]` (design.md, Р1):
+      *(Объект рисуется не на месте; взят встроенный PDF формулы —
+      design.md, Р1, п. 4.)*
+- [x] 1.4 `ProblemTextRendering.render(String) → byte[]` (design.md, Р1):
       сканер формул до Markdown (`$$…$$`, `$…$`, `\$`, незакрытый `$` —
       отказ с номером строки), CommonMark с `escapeHtml(true)`, картинки —
       подписью, объект формулы с размерами и `vertical-align` по
@@ -28,7 +31,7 @@
       внешнему адресу; `ParseException` JLaTeXMath — отказ с формулой
       и причиной. Javadoc — почему формулы вынимаются до Markdown
       и почему наружу нельзя
-- [ ] 1.5 `ProblemTextRenderingTest`: текст с абзацами, списком, строчной
+- [x] 1.5 `ProblemTextRenderingTest`: текст с абзацами, списком, строчной
       и выключной формулой — PDF, текст страницы содержит русские слова;
       набор ЕГЭ (`\frac`, `\sqrt`, `\log_2`, `\begin{cases}`, `array`,
       степени и индексы) отрисовывается; `\foo{x}` — отказ с формулой;
@@ -37,7 +40,7 @@
       (проверить заглушкой распознавателя адресов); `<b>` — текстом;
       решение на страницу (≈3 000 знаков) отрисовывается
       за разумное время
-- [ ] 1.6 `mvn test -Dtest='ProblemTextRenderingTest'` зелёный
+- [x] 1.6 `mvn test -Dtest='ProblemTextRenderingTest'` зелёный
 
 ## 2. Схема и запись
 

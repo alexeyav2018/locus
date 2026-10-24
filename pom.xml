@@ -29,6 +29,14 @@
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <pdfbox.version>3.0.8</pdfbox.version>
         <!--
+            Отрисовка текста Задачи (ADR-0058). openhtmltopdf ставится не моложе
+            двух недель; свой PDFBox он тянет транзитивно, но прямая
+            зависимость pdfbox выше главнее — копия PDFBox в приложении одна.
+        -->
+        <openhtmltopdf.version>1.1.97</openhtmltopdf.version>
+        <commonmark.version>0.30.0</commonmark.version>
+        <jlatexmath.version>1.0.7</jlatexmath.version>
+        <!--
             Java SDK MCP Spring Boot тоже не управляет: его спецификация
             согласует части SDK между собой.
         -->
@@ -50,6 +58,15 @@
                 <version>${mcp.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!--
+                openhtmltopdf тянет xmpbox своей версии PDFBox; семейство
+                PDFBox держится одной версией — той, что у pdfbox.
+            -->
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>xmpbox</artifactId>
+                <version>${pdfbox.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -111,6 +128,34 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>${pdfbox.version}</version>
+        </dependency>
+
+        <!--
+            Отрисовка Текста Задачи в PDF внутри приложения (ADR-0058):
+            CommonMark переводит Markdown в разметку, openhtmltopdf вёрстает
+            страницу поверх того же PDFBox, JLaTeXMath рисует формулы
+            векторно. Ничего не загружают по адресам из текста — это держит
+            ProblemTextRendering.
+        -->
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scilab.forge</groupId>
+            <artifactId>jlatexmath</artifactId>
+            <version>${jlatexmath.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.scilab.forge</groupId>
+            <artifactId>jlatexmath-font-cyrillic</artifactId>
+            <version>${jlatexmath.version}</version>
         </dependency>
 
         <!--
