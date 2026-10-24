@@ -137,7 +137,7 @@
 | `agent-spike` | — | — | — | S | нет | не затрагивает | ✅ |
 | `locus-mcp` | — | `strategy-edition-3` | — | M | нет | **задаёт** | ✅ |
 | `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | ✅ |
-| `agent-runner` | — | `locus-mcp`, `agent-spike` | — | M | нет | личное | |
+| `agent-runner` | — | `locus-mcp`, `agent-spike` | — | M | нет | личное | ✅ |
 | `assistant-chat` | — | `agent-runner` | — | M | нет | личное | |
 | `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | |
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | |
