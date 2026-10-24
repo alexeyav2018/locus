@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -119,12 +118,14 @@ public class ProblemController {
                          @RequestParam(required = false) List<Integer> solutionTo,
                          @RequestParam(required = false) List<String> solutionCrop,
                          Model model) {
-        PdfAssemblyOrder conditionOrder = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
-        PdfAssemblyOrder solutionOrder = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        PdfAssemblyOrder conditionOrder =
+                AssemblyOrderForm.order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
+        PdfAssemblyOrder solutionOrder =
+                AssemblyOrderForm.order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
         ProblemForm.Kind chosen = kind == null ? ProblemForm.Kind.FILES : kind;
         try {
-            requireFrames(conditionCrop);
-            requireFrames(solutionCrop);
+            AssemblyOrderForm.requireFrames(conditionCrop);
+            AssemblyOrderForm.requireFrames(solutionCrop);
             ProblemPdf conditionSlot = slot(condition, conditionOrder, "условия");
             ProblemPdf solutionSlot = slot(solution, solutionOrder, "решения");
             ProblemId created = chosen == ProblemForm.Kind.TEXT
@@ -169,8 +170,8 @@ public class ProblemController {
                           Model model) {
         String page = sentForm(ProblemForm.sent(part, topics, methodIds, characteristicIds,
                         ProblemForm.Kind.TEXT, conditionText, solutionText),
-                order(conditionDraft, conditionFrom, conditionTo, conditionCrop),
-                order(solutionDraft, solutionFrom, solutionTo, solutionCrop), model);
+                AssemblyOrderForm.order(conditionDraft, conditionFrom, conditionTo, conditionCrop),
+                AssemblyOrderForm.order(solutionDraft, solutionFrom, solutionTo, solutionCrop), model);
         model.addAttribute("preview", preview(conditionText, solutionText));
         return page;
     }
@@ -283,9 +284,10 @@ public class ProblemController {
                                    @RequestParam(required = false) List<Integer> conditionTo,
                                    @RequestParam(required = false) List<String> conditionCrop,
                                    Model model) {
-        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
+        PdfAssemblyOrder order =
+                AssemblyOrderForm.order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
         try {
-            requireFrames(conditionCrop);
+            AssemblyOrderForm.requireFrames(conditionCrop);
             problems.replaceCondition(new ProblemId(id), slot(condition, order, "условия"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -303,9 +305,10 @@ public class ProblemController {
                                   @RequestParam(required = false) List<Integer> solutionTo,
                                   @RequestParam(required = false) List<String> solutionCrop,
                                   Model model) {
-        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        PdfAssemblyOrder order =
+                AssemblyOrderForm.order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
         try {
-            requireFrames(solutionCrop);
+            AssemblyOrderForm.requireFrames(solutionCrop);
             problems.replaceSolution(new ProblemId(id), slot(solution, order, "решения"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -526,9 +529,10 @@ public class ProblemController {
                                            @RequestParam(required = false) List<Integer> conditionTo,
                                            @RequestParam(required = false) List<String> conditionCrop,
                                            Model model) {
-        PdfAssemblyOrder order = order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
+        PdfAssemblyOrder order =
+                AssemblyOrderForm.order(conditionDraft, conditionFrom, conditionTo, conditionCrop);
         try {
-            requireFrames(conditionCrop);
+            AssemblyOrderForm.requireFrames(conditionCrop);
             problems.replaceEvidence(new ProblemId(id), ProblemSlot.CONDITION, slot(condition, order, "условия"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -547,9 +551,10 @@ public class ProblemController {
                                           @RequestParam(required = false) List<Integer> solutionTo,
                                           @RequestParam(required = false) List<String> solutionCrop,
                                           Model model) {
-        PdfAssemblyOrder order = order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        PdfAssemblyOrder order =
+                AssemblyOrderForm.order(solutionDraft, solutionFrom, solutionTo, solutionCrop);
         try {
-            requireFrames(solutionCrop);
+            AssemblyOrderForm.requireFrames(solutionCrop);
             problems.replaceEvidence(new ProblemId(id), ProblemSlot.SOLUTION, slot(solution, order, "решения"));
         } catch (ProblemInUseException | IllegalArgumentException refusal) {
             String page = refusedEdit(id, refusal, model);
@@ -666,55 +671,6 @@ public class ProblemController {
                     + ": приложен готовый файл и задана сборка — выберите один способ");
         }
         return ready != null ? ready : order.isEmpty() ? null : order;
-    }
-
-    /**
-     * Порядок сборки из повторяющихся полей строк: «черновик», «с», «по»,
-     * «рамка» идут в строках формы по одному, и i-е значения каждого списка —
-     * одна строка. Незаполненная страница — нуль: такой диапазон отклонит
-     * сборка, назвав источник и число его страниц, а не разбор формы безлико.
-     *
-     * <p>Рамка здесь разбирается снисходительно: испорченная считается
-     * отсутствующей, чтобы порядок можно было перерисовать в форме после
-     * отказа. Сам отказ испорченной рамке даёт {@link #requireFrames} внутри
-     * обработки — иначе вместо формы с текстом была бы страница ошибки.
-     */
-    private static PdfAssemblyOrder order(List<Long> draftIds, List<Integer> from, List<Integer> to,
-                                          List<String> crops) {
-        if (draftIds == null) {
-            return new PdfAssemblyOrder(List.of());
-        }
-        List<PdfAssemblyOrder.Line> lines = new ArrayList<>();
-        for (int i = 0; i < draftIds.size(); i++) {
-            if (draftIds.get(i) == null) {
-                continue;
-            }
-            lines.add(new PdfAssemblyOrder.Line(new AssemblyDraftId(draftIds.get(i)), page(from, i), page(to, i),
-                    frameOrNull(crops, i)));
-        }
-        return new PdfAssemblyOrder(lines);
-    }
-
-    private static CropFrame frameOrNull(List<String> crops, int i) {
-        if (crops == null || i >= crops.size()) {
-            return null;
-        }
-        try {
-            return CropFrame.parse(crops.get(i));
-        } catch (IllegalArgumentException broken) {
-            return null;
-        }
-    }
-
-    /** Отказ формы, если хоть одна присланная рамка испорчена или неверна. */
-    private static void requireFrames(List<String> crops) {
-        if (crops != null) {
-            crops.forEach(CropFrame::parse);
-        }
-    }
-
-    private static int page(List<Integer> pages, int i) {
-        return pages == null || i >= pages.size() || pages.get(i) == null ? 0 : pages.get(i);
     }
 
     private static List<TaxonomyNodeId> nodeIds(List<Long> values) {

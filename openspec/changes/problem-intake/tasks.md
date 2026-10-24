@@ -99,18 +99,18 @@
 
 ## 4. Страница вычитки
 
-- [ ] 4.1 Разбор строк формы вынести из `ProblemController.order`
+- [x] 4.1 Разбор строк формы вынести из `ProblemController.order`
       в пакетную `AssemblyOrderForm` (вместе с `frameOrNull`,
       `requireFrames`, `page`); `ProblemController` зовёт её;
       `ProblemScreenTest` и `AssemblyScreenTest` зелёные
-- [ ] 4.2 `Addresses.PROBLEM_INTAKE`; `ProblemDraftController`:
+- [x] 4.2 `Addresses.PROBLEM_INTAKE`; `ProblemDraftController`:
       адреса design.md Р6 — список с уборкой, страница (чужой — 404),
       «Сохранить черновик», «Сохранить как Задачу», «Взять снимок
       как есть» (сначала запись введённого, затем заведение отдельным
       вызовом), «Удалить черновик»; отказ версии — хранимый черновик
       с отказом; прочие отказы — хранимый с отказом; контроллер тонкий
       (добавить в `ProblemControllerIsThinTest` или его образец)
-- [ ] 4.3 `templates/problem/intake.html` и `intake-list.html`: метка
+- [x] 4.3 `templates/problem/intake.html` и `intake-list.html`: метка
       `scope--personal`; Улика и Отрисовка двумя колонками;
       «Сомнительные места» с `<mark>` и причинами; поля текстов;
       поле файла и строки `problem/assembly :: row` по слотам; Часть,
@@ -118,13 +118,13 @@
       Задачи; новые Методы со ссылкой на словари; «изменён Помощником /
       вами» и время; скрытая `version`; три кнопки `formaction`;
       удаление под `<details>`; `from` и «← назад»
-- [ ] 4.4 `locus.css`: две колонки на широком, столбец на планшете,
+- [x] 4.4 `locus.css`: две колонки на широком, столбец на планшете,
       подсветка сомнительного; проверить на 390 px и 1024 px;
       ссылка «Черновики Задач: N» на странице Помощника у
       Администратора (`AssistantController` спрашивает
       `ProblemDraftService` через вопрос в `ru.locus.assistant`,
       как `TurnAttachments`, — без зависимости от области Задач)
-- [ ] 4.5 `ProblemIntakeScreenTest` — признак готовности карточки:
+- [x] 4.5 `ProblemIntakeScreenTest` — признак готовности карточки:
       черновик с текстом и Рамками по двум фото показывает Улику
       рядом с отрисовкой; подсветка `⟦8⟧`; сохранение со старой
       версией — отказ «перечитайте», с текущей — Задача с текстом
@@ -132,7 +132,7 @@
       текста; отказ без Метода — правка текста сохранена; чужой — 404;
       Учитель без роли Администратора — 403; по второму черновику
       с того же фото — вторая Задача; отметка «изменён вами»
-- [ ] 4.6 `mvn test -Dtest='ProblemIntakeScreenTest,ProblemScreenTest,AssemblyScreenTest,EveryPageShowsTheVersionTest,ProblemControllerIsThinTest'` зелёный
+- [x] 4.6 `mvn test -Dtest='ProblemIntakeScreenTest,ProblemScreenTest,AssemblyScreenTest,EveryPageShowsTheVersionTest,ProblemControllerIsThinTest'` зелёный
 
 ## 5. Инструменты Помощника
 

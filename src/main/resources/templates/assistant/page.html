@@ -32,8 +32,14 @@
     <p th:text="'Помощник недоступен: ' + ${availability.cause}">Помощник недоступен: команда Claude Code не найдена</p>
 </div>
 
-<p class="row" th:if="${availability.available and conversation != null}">
-    <a class="btn btn-sm" th:href="@{/assistant(new=true)}">Новый разговор</a>
+<p class="row" th:if="${(availability.available and conversation != null) or awaiting != null}">
+    <a class="btn btn-sm" th:if="${availability.available and conversation != null}"
+       th:href="@{/assistant(new=true)}">Новый разговор</a>
+    <!--/* Очередь вычитки сделанного Помощником (problem-intake, Р6): вопрос
+           AwaitingReview, у Администратора — Черновики Задач. */-->
+    <a class="btn btn-sm" th:if="${awaiting != null}"
+       th:href="@{${awaiting.address}(from=${shell.here})}"
+       th:text="${awaiting.label} + ': ' + ${awaiting.count}">Черновики Задач: 2</a>
 </p>
 
 <ol class="turns" th:unless="${#lists.isEmpty(turns)}">

@@ -1,6 +1,7 @@
 package ru.locus.problem;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.OptionalLong;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -86,6 +87,20 @@ public class ProblemDraftService {
     public List<ProblemDraft> drafts() {
         sweep();
         return drafts.findByOwner(currentUser.id());
+    }
+
+    /**
+     * Сколько своих черновиков живо — для ссылки на очередь вычитки.
+     * Уборки здесь нет: ссылку показывает страница Помощника, а убирают
+     * список и заведение (Р4); брошенный, но ещё не убранный черновик
+     * не считается, чтобы число сошлось со списком.
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public int count() {
+        Instant alive = clock.instant().minus(properties.ttl());
+        return (int) drafts.findByOwner(currentUser.id()).stream()
+                .filter(draft -> !draft.changedAt().isBefore(alive))
+                .count();
     }
 
     /** Свой черновик; чужой и несуществующий — один отказ. */

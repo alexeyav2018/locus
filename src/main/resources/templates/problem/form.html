@@ -48,62 +48,7 @@
       enctype="multipart/form-data"
       th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
 
-    <fieldset>
-        <legend>Часть ЕГЭ</legend>
-        <label th:each="examPart : ${parts}">
-            <input type="radio" name="part" th:value="${examPart}"
-                   th:checked="${form.part == examPart}">
-            <span th:text="${examPart.title}">первая часть</span>
-        </label>
-    </fieldset>
-
-    <fieldset>
-        <legend>Темы</legend>
-        <p class="hint">Только Темы — листья дерева: Задач на Разделах не бывает.</p>
-        <select name="topics" multiple size="8">
-            <option th:each="path : ${topicPaths}"
-                    th:value="${path.id.value}"
-                    th:text="${path.path}"
-                    th:selected="${form.topics.contains(path.id.value)}">Алгебра / Уравнения</option>
-        </select>
-    </fieldset>
-
-    <fieldset>
-        <legend>Методы</legend>
-        <!--/* Методы Темы — первыми, полный словарь — отдельным списком
-               (ADR-0010). Выбор не ограничен ни тем, ни другим списком. */-->
-        <div th:if="${not #lists.isEmpty(topicMethods)}">
-            <p class="hint">Уже встречались в этой Теме:</p>
-            <select name="methodIds" multiple size="5">
-                <option th:each="method : ${topicMethods}"
-                        th:value="${method.id.value}"
-                        th:text="${method.name}"
-                        th:selected="${form.methods.contains(method.id.value)}">Замена переменной</option>
-            </select>
-        </div>
-        <p class="hint">Весь словарь Методов:</p>
-        <select name="methodIds" multiple size="8">
-            <option th:each="method : ${methods}"
-                    th:value="${method.id.value}"
-                    th:text="${method.name}"
-                    th:selected="${form.methods.contains(method.id.value)}">Разложение на множители</option>
-        </select>
-    </fieldset>
-
-    <!--/* Необязательное — под кнопкой; если Характеристики уже выбраны —
-           у Задачи или в присланном до отказа, — блок раскрыт, чтобы выбор
-           был виден. */-->
-    <details class="more" th:attr="open=${not #sets.isEmpty(form.characteristics)} ? 'open'">
-        <summary>Характеристики (необязательно)</summary>
-        <div class="more-body">
-            <select name="characteristicIds" multiple size="6">
-                <option th:each="characteristic : ${characteristics}"
-                        th:value="${characteristic.id.value}"
-                        th:text="${characteristic.name}"
-                        th:selected="${form.characteristics.contains(characteristic.id.value)}">Двойной угол</option>
-            </select>
-        </div>
-    </details>
+    <th:block th:replace="~{problem/markup :: fields}"/>
 
     <fieldset th:unless="${problem}">
         <legend>Вид Задачи</legend>

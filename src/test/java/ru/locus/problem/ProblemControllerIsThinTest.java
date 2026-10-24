@@ -27,13 +27,16 @@ import ru.locus.taxonomy.TaxonomyRepository;
  * прямо больше прочих — отбор он и так собирает из параметров запроса,
  * и мимо сервиса ушёл бы вместе с ним обход поддерева. У загрузки
  * черновиков сборки мимо сервиса ушёл бы владелец черновика (ADR-0044).
+ * У страницы вычитки — владелец Черновика Задачи и проверка его версии
+ * (problem-intake, design.md, Р3).
  */
 class ProblemControllerIsThinTest {
 
     private static final List<Class<?>> CONTROLLERS = List.of(
             ProblemController.class,
             ProblemSearchController.class,
-            AssemblyDraftController.class);
+            AssemblyDraftController.class,
+            ProblemDraftController.class);
 
     private static final List<Class<?>> FORBIDDEN = List.of(
             ProblemRepository.class,
@@ -41,6 +44,7 @@ class ProblemControllerIsThinTest {
             SolutionMethodRepository.class,
             CharacteristicRepository.class,
             AssemblyDraftRepository.class,
+            ProblemDraftRepository.class,
             FileStorage.class);
 
     @Test

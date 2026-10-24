@@ -18,6 +18,14 @@ public final class Addresses {
     public static final String THEORY = "/theory";
 
     /**
+     * Черновики Задачи и страница вычитки (problem-intake, design.md, Р6).
+     * Адрес под библиотекой, потому что из черновика заводится Задача,
+     * но сами черновики личные: разграничение — по роли на сервисе
+     * ({@code hasRole('ADMINISTRATOR')}) и по владельцу в репозитории.
+     */
+    public static final String PROBLEM_INTAKE = PROBLEMS + "/intake";
+
+    /**
      * Личный контур Учителя. Разграничение здесь не по адресу, а по роли
      * на сервисах ({@code hasRole('TEACHER')}) и по владельцу в репозитории
      * (ADR-0027): адрес одинаков для всех Учителей, а показывают они каждому

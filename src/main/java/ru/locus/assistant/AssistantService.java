@@ -39,12 +39,13 @@ public class AssistantService {
     private final TransactionTemplate transactions;
     private final Clock clock;
     private final ObjectProvider<TurnAttachments> attachments;
+    private final ObjectProvider<AwaitingReview> reviews;
 
     private volatile AssistantAvailability availability = AssistantAvailability.notChecked();
 
     public AssistantService(AssistantRepository repository, TurnRunner runner, RunningTurns running,
             CurrentUser currentUser, TransactionTemplate transactions, Clock clock,
-            ObjectProvider<TurnAttachments> attachments) {
+            ObjectProvider<TurnAttachments> attachments, ObjectProvider<AwaitingReview> reviews) {
         this.repository = repository;
         this.runner = runner;
         this.running = running;
@@ -52,6 +53,18 @@ public class AssistantService {
         this.transactions = transactions;
         this.clock = clock;
         this.attachments = attachments;
+        this.reviews = reviews;
+    }
+
+    /**
+     * Очередь вычитки сделанного Помощником у вошедшего — ссылка на странице
+     * разговора (problem-intake, design.md, Р6); пусто — ответчика нет или
+     * вошедшему очередь не положена.
+     */
+    @PreAuthorize("hasAnyRole('TEACHER', 'ADMINISTRATOR')")
+    public Optional<AwaitingReview.Queue> awaitingReview() {
+        AwaitingReview review = reviews.getIfUnique();
+        return review == null ? Optional.empty() : review.awaiting();
     }
 
     /** Доступен ли Помощник — итог проверки при старте. */
