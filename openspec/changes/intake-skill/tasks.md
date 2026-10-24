@@ -23,12 +23,12 @@
 
 ## 2. Сторож подгрузки
 
-- [ ] 2.1 `AgentSkillsNameRegisteredToolsTest`: чистые методы «навыки
+- [x] 2.1 `AgentSkillsNameRegisteredToolsTest`: чистые методы «навыки
       без импорта» и «импорты без файла» с тестами на выдуманных
       примерах; проверка рабочего дерева — каждый
       `agent/.claude/skills/*/SKILL.md` импортирован, каждый импорт
       ведёт к файлу внутри `agent/`, навыков хотя бы один
-- [ ] 2.2 `mvn test -Dtest=AgentSkillsNameRegisteredToolsTest` зелёный
+- [x] 2.2 `mvn test -Dtest=AgentSkillsNameRegisteredToolsTest` зелёный
       (сторож имён видит инструменты навыка)
 
 ## 3. Документы, бэклог и версия
