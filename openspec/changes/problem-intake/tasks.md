@@ -16,7 +16,7 @@
 
 ## 1. Схема, запись и репозиторий
 
-- [ ] 1.1 Миграция `0017-problem-intake.yaml` (подключить в
+- [x] 1.1 Миграция `0017-problem-intake.yaml` (подключить в
       `db.changelog-master`): `problem_draft` с `uq (id, user_id)`,
       `problem_draft_line` с составными ключами на `problem_draft`
       и `assembly_draft` (у `assembly_draft` добавить `uq (id, user_id)`,
@@ -24,13 +24,13 @@
       `problem_draft_characteristic` с каскадом от библиотеки,
       `problem_draft_note`; комментарии в духе `0011` (design.md Р1);
       проверка — `MigrationsOnStartupTest` зелёный
-- [ ] 1.2 Записи `ProblemDraftId`, `ProblemDraft` (поля Р1, `Editor`
+- [x] 1.2 Записи `ProblemDraftId`, `ProblemDraft` (поля Р1, `Editor`
       `OWNER`/`ASSISTANT`, `Note.Kind`), `ProblemDraftContent`
       (содержимое для заведения) и `ProblemDraftChange` (необязательные
       поля, `null` — не трогать); модульный тест `ProblemDraftTest` —
       копии списков, `ProblemDraftChange.applyTo` меняет только
       названное
-- [ ] 1.3 `ProblemDraftRepository` (JDBC, как `AssemblyDraftRepository`):
+- [x] 1.3 `ProblemDraftRepository` (JDBC, как `AssemblyDraftRepository`):
       `create(UserId, content, editor, now)`, `find(UserId, id)`,
       `findByOwner(UserId)`, `write(UserId, id, version, content,
       editor, now)` — `UPDATE … AND version = ?`, ноль строк — пусто;
@@ -38,11 +38,11 @@
       `deleteAll()`; `ProblemDraftRepositoryTest` — запись и чтение
       всех частей в порядке `position`, версия растёт, старая версия
       не пишет
-- [ ] 1.4 `OwnerIsRequiredByProblemDraftsTest` — `UserId` у каждого
+- [x] 1.4 `OwnerIsRequiredByProblemDraftsTest` — `UserId` у каждого
       метода, кроме `deleteChangedBefore` и `deleteAll` поимённо;
       база не даёт строке сослаться на черновик сборки другого
       владельца (составной ключ)
-- [ ] 1.5 `mvn test -Dtest='ProblemDraft*Test,OwnerIsRequiredByProblemDraftsTest,MigrationsOnStartupTest'` зелёный
+- [x] 1.5 `mvn test -Dtest='ProblemDraft*Test,OwnerIsRequiredByProblemDraftsTest,MigrationsOnStartupTest'` зелёный
 
 ## 2. Держание Черновиков сборки и уборка
 
