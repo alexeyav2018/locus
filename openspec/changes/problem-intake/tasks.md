@@ -46,25 +46,25 @@
 
 ## 2. Держание Черновиков сборки и уборка
 
-- [ ] 2.1 `AssemblyDraftRepository.deleteByIds` и `deleteCreatedBefore`:
+- [x] 2.1 `AssemblyDraftRepository.deleteByIds` и `deleteCreatedBefore`:
       `NOT EXISTS` по `problem_draft_line` (design.md Р4);
       `AssemblyDraftRepositoryTest` — держимый не удаляется ни тем,
       ни другим, свободный — удаляется
-- [ ] 2.2 `AssemblyDraftService.check(PdfAssemblyOrder)` — проверки
+- [x] 2.2 `AssemblyDraftService.check(PdfAssemblyOrder)` — проверки
       `assemble` без сборки, те же тексты отказов; `assemble` зовёт
       её же; `AssemblyDraftServiceTest` — чужой, вне страниц, Рамка
       на диапазоне
-- [ ] 2.3 Настройка `locus.problem.intake.ttl` (по умолчанию `7d`)
+- [x] 2.3 Настройка `locus.problem.intake.ttl` (по умолчанию `7d`)
       в `application.yaml` и записи свойств; старт —
       `AssemblyDraftConfiguration` зовёт `ProblemDraftService.clearAll()`
       (заводится в 3.1 — здесь заготовка метода с удалением всех
       черновиков Задачи и вызовом `AssemblyDraftService.clearAll()`)
-- [ ] 2.4 Тест на `TestClock`: Черновик сборки старше срока под живым
+- [x] 2.4 Тест на `TestClock`: Черновик сборки старше срока под живым
       Черновиком Задачи остаётся при `sweep`; Черновик Задачи старше
       своего срока от последней правки уходит, и тогда же — его
       Черновик сборки; правленый недавно — остаётся; `clearAll` —
       ни одного из обоих
-- [ ] 2.5 `mvn test -Dtest='AssemblyDraft*Test,DraftsAreFilteredByOwnerTest,OwnerIsRequiredByDraftsTest'` зелёный
+- [x] 2.5 `mvn test -Dtest='AssemblyDraft*Test,DraftsAreFilteredByOwnerTest,OwnerIsRequiredByDraftsTest'` зелёный
 
 ## 3. Сервис Черновика Задачи
 

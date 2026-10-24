@@ -27,10 +27,20 @@ import ru.locus.user.UserId;
  * снести их с диска, — ни одного черновика наружу они не показывают.
  * Перечислены поимённо в {@code OwnerIsRequiredByDraftsTest}.
  *
+ * Черновик, на который ссылается строка сборки живого Черновика Задачи,
+ * <b>держится</b>: ни удаление по номерам, ни уборка по сроку его не трогают
+ * (ADR-0059). Условие держания — в SQL обоих удалений, поэтому его не обойти
+ * ни одним путём: форма Задачи, {@code create_problem} и сохранение Черновика
+ * Задачи — все приходят в {@link #deleteByIds}.
+ *
  * Файлов репозиторий не знает: кладёт и сносит их {@link AssemblyDraftService}.
  */
 @Repository
 public class AssemblyDraftRepository {
+
+    /** Черновик не держится ни одной строкой сборки Черновика Задачи (ADR-0059). */
+    private static final String NOT_HELD =
+            " and not exists (select 1 from problem_draft_line l where l.assembly_draft_id = assembly_draft.id)";
 
     private static final String COLUMNS =
             "id, user_id, original_name, kind, content_type, page_count, file_name, created_at";
@@ -95,7 +105,7 @@ public class AssemblyDraftRepository {
 
     /**
      * Удаляет черновики владельца из названных и возвращает имена их файлов;
-     * чужие не трогаются.
+     * чужие и держимые Черновиком Задачи не трогаются.
      */
     public List<String> deleteByIds(UserId owner, Collection<AssemblyDraftId> ids) {
         if (ids.isEmpty()) {
@@ -105,7 +115,7 @@ public class AssemblyDraftRepository {
         params.add(owner.value());
         ids.forEach(id -> params.add(id.value()));
         return database.sql("delete from assembly_draft where user_id = ? and id in ("
-                        + placeholders(ids.size()) + ") returning file_name")
+                        + placeholders(ids.size()) + ")" + NOT_HELD + " returning file_name")
                 .params(params)
                 .query(String.class)
                 .list();
@@ -113,16 +123,20 @@ public class AssemblyDraftRepository {
 
     /**
      * Уборка по сроку — черновики <b>всех</b> владельцев, загруженные раньше
-     * момента. Возвращает только имена файлов.
+     * момента, кроме держимых Черновиком Задачи. Возвращает только имена файлов.
      */
     public List<String> deleteCreatedBefore(Instant moment) {
-        return database.sql("delete from assembly_draft where created_at < ? returning file_name")
+        return database.sql("delete from assembly_draft where created_at < ?" + NOT_HELD + " returning file_name")
                 .param(Timestamp.from(moment))
                 .query(String.class)
                 .list();
     }
 
-    /** Уборка при старте — все черновики. Возвращает только имена файлов. */
+    /**
+     * Уборка при старте — все черновики. Держимые она удалить не может:
+     * Черновики Задачи убираются раньше ({@code ProblemDraftService.clearAll}).
+     * Возвращает только имена файлов.
+     */
     public List<String> deleteAll() {
         return database.sql("delete from assembly_draft returning file_name")
                 .query(String.class)

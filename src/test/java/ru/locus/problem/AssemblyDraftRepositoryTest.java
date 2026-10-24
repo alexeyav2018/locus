@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,10 @@ import ru.locus.user.UserId;
  * Задача 2.2: хранение черновиков сборки — запись читается обратно, каждый
  * метод с владельцем отвечает только ему, а уборки удаляют черновики всех
  * и отдают одни имена файлов.
+ *
+ * Задача 2.1 problem-intake: черновик, на который ссылается строка сборки
+ * Черновика Задачи, держится — его не удаляет ни удаление по номерам,
+ * ни уборка по сроку.
  */
 class AssemblyDraftRepositoryTest extends IntegrationTest {
 
@@ -26,6 +31,9 @@ class AssemblyDraftRepositoryTest extends IntegrationTest {
 
     @Autowired
     private AssemblyDraftRepository drafts;
+
+    @Autowired
+    private ProblemDraftRepository problemDrafts;
 
     @Autowired
     private TestAccounts accounts;
@@ -37,6 +45,11 @@ class AssemblyDraftRepositoryTest extends IntegrationTest {
     void twoAdministrators() {
         alice = accounts.settled(Role.ADMINISTRATOR).id();
         bob = accounts.settled(Role.ADMINISTRATOR).id();
+    }
+
+    @AfterEach
+    void removeProblemDrafts() {
+        problemDrafts.deleteAll();
     }
 
     @Test
@@ -99,6 +112,46 @@ class AssemblyDraftRepositoryTest extends IntegrationTest {
 
         assertThat(drafts.findByIds(alice, List.of(alices))).isEmpty();
         assertThat(drafts.findByIds(bob, List.of(bobs))).isEmpty();
+    }
+
+    @Test
+    void draftHeldByAProblemDraftIsNotDeletedByIds() {
+        AssemblyDraftId held = draft(alice, NOW);
+        AssemblyDraftId free = draft(alice, NOW);
+        holdBy(alice, held);
+
+        drafts.deleteByIds(alice, List.of(held, free));
+
+        assertThat(drafts.findByIds(alice, List.of(held, free))).extracting(AssemblyDraft::id).containsExactly(held);
+    }
+
+    @Test
+    void draftHeldByAProblemDraftOutlivesTheSweepByAge() {
+        AssemblyDraftId held = draft(alice, NOW.minus(2, ChronoUnit.DAYS));
+        AssemblyDraftId free = draft(alice, NOW.minus(2, ChronoUnit.DAYS));
+        holdBy(alice, held);
+
+        drafts.deleteCreatedBefore(NOW.minus(1, ChronoUnit.DAYS));
+
+        assertThat(drafts.findByIds(alice, List.of(held, free))).extracting(AssemblyDraft::id).containsExactly(held);
+    }
+
+    @Test
+    void draftIsFreedOnceItsProblemDraftIsGone() {
+        AssemblyDraftId held = draft(alice, NOW.minus(2, ChronoUnit.DAYS));
+        holdBy(alice, held);
+        problemDrafts.deleteAll();
+
+        drafts.deleteCreatedBefore(NOW.minus(1, ChronoUnit.DAYS));
+
+        assertThat(drafts.findByIds(alice, List.of(held))).isEmpty();
+    }
+
+    private void holdBy(UserId owner, AssemblyDraftId draft) {
+        problemDrafts.create(owner, new ProblemDraftContent(null, "", "",
+                        new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(draft, 1, 1))),
+                        null, null, null, null, null, null),
+                ProblemDraft.Editor.ASSISTANT, NOW);
     }
 
     private AssemblyDraftId draft(UserId owner, Instant createdAt) {

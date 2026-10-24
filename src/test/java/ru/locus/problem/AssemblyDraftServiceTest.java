@@ -43,6 +43,9 @@ import ru.locus.user.Role;
  * Задачи 2.4–2.6: черновик сборки — загрузка с распознаванием исходника,
  * сборка только из своих черновиков, удаление после фиксации и уборка
  * по сроку и при старте (ADR-0044); нетронутый PDF — байт в байт (ADR-0049).
+ *
+ * Задача 2.2 problem-intake: проверка порядка без сборки отклоняет то же
+ * и теми же словами, что сборка.
  */
 class AssemblyDraftServiceTest extends IntegrationTest {
 
@@ -172,6 +175,57 @@ class AssemblyDraftServiceTest extends IntegrationTest {
 
         assertThat(refusal(new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(book.id(), 2, 3, frame)))))
                 .contains("сборник.pdf").contains("на одну страницу");
+    }
+
+    @Test
+    void checkRefusesAnotherOwnersDraftWithTheTextOfTheAssembly() throws IOException {
+        AssemblyDraft alices = service.upload("снимок.png", stream(png()));
+        LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
+        PdfAssemblyOrder foreign = new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(alices.id(), 1, 1)));
+        PdfAssemblyOrder missing = new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(new AssemblyDraftId(Long.MAX_VALUE), 1, 1)));
+
+        assertThat(checkRefusal(foreign)).isEqualTo(checkRefusal(missing)).isEqualTo(refusal(foreign));
+    }
+
+    @Test
+    void checkRefusesARangeBeyondThePagesWithTheTextOfTheAssembly() throws IOException {
+        AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
+        PdfAssemblyOrder range = new PdfAssemblyOrder(List.of(new PdfAssemblyOrder.Line(book.id(), 4, 7)));
+        PdfAssemblyOrder piece = new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(book.id(), 6, 6, new CropFrame(0.1, 0.1, 0.5, 0.5))));
+
+        assertThat(checkRefusal(range)).isEqualTo(refusal(range)).contains("сборник.pdf").contains("5 стр.");
+        assertThat(checkRefusal(piece)).isEqualTo(refusal(piece)).contains("страница 6");
+    }
+
+    @Test
+    void checkRefusesAFrameOnARangeWithTheTextOfTheAssembly() throws IOException {
+        AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
+        PdfAssemblyOrder order = new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(book.id(), 2, 3, new CropFrame(0.1, 0.1, 0.5, 0.5))));
+
+        assertThat(checkRefusal(order)).isEqualTo(refusal(order)).contains("на одну страницу");
+    }
+
+    @Test
+    void checkAcceptsAnEmptyOrderAndAGoodOne() throws IOException {
+        AssemblyDraft book = service.upload("сборник.pdf", stream(pdf(5)));
+        AssemblyDraft photo = service.upload("снимок.png", stream(png()));
+
+        service.check(new PdfAssemblyOrder(List.of()));
+        service.check(new PdfAssemblyOrder(List.of(
+                new PdfAssemblyOrder.Line(book.id(), 2, 5),
+                new PdfAssemblyOrder.Line(book.id(), 1, 1, new CropFrame(0.1, 0.1, 0.5, 0.5)),
+                new PdfAssemblyOrder.Line(photo.id(), 1, 1, new CropFrame(0, 0, 1, 0.5)))));
+    }
+
+    @Test
+    void teacherCannotCheck() {
+        LoggedIn.as(accounts.settled(Role.TEACHER));
+
+        assertThatThrownBy(() -> service.check(new PdfAssemblyOrder(List.of())))
+                .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
@@ -326,6 +380,15 @@ class AssemblyDraftServiceTest extends IntegrationTest {
             return refused.getMessage();
         }
         throw new AssertionError("сборка должна была быть отклонена");
+    }
+
+    private String checkRefusal(PdfAssemblyOrder order) {
+        try {
+            service.check(order);
+        } catch (IllegalArgumentException refused) {
+            return refused.getMessage();
+        }
+        throw new AssertionError("проверка должна была отклонить порядок");
     }
 
     private Path fileOf(AssemblyDraft draft) {

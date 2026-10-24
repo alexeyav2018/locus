@@ -11,13 +11,17 @@ import org.springframework.context.annotation.Configuration;
  * Черновик не переживает перезапуск: незавершённая форма перезапуска
  * тоже не переживает, а рабочая папка не должна копить исходники,
  * брошенные оборванной загрузкой или упавшим процессом.
+ *
+ * Не переживает перезапуск и Черновик Задачи, держащий Черновики сборки
+ * (ADR-0059): уборку при старте ведёт он, потому что держимые им исходники
+ * можно удалить только после него.
  */
 @Configuration
-@EnableConfigurationProperties(AssemblyDraftProperties.class)
+@EnableConfigurationProperties({AssemblyDraftProperties.class, ProblemDraftProperties.class})
 public class AssemblyDraftConfiguration {
 
     @Bean
-    public ApplicationRunner assemblyDraftsClearedOnStartup(AssemblyDraftService drafts) {
+    public ApplicationRunner assemblyDraftsClearedOnStartup(ProblemDraftService drafts) {
         return arguments -> drafts.clearAll();
     }
 }
