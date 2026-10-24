@@ -15,8 +15,10 @@
 #
 # Что получил, двойник пишет в claude-double.txt рядом с рабочим местом
 # (на уровень выше рабочего каталога): аргументы по строке, рабочий
-# каталог, имена переменных окружения (без значений) и запрос — для
-# проверок тестами.
+# каталог, имена переменных окружения (без значений), значения каталога
+# настроек, адреса сервера MCP, выключателя коннекторов claude.ai и токена
+# Реплики и запрос — для проверок
+# тестами.
 #
 # Вызывается из рабочего дерева, а не из target/test-classes: копия ресурса
 # теряет признак исполняемого файла.
@@ -34,9 +36,15 @@ prompt="$(cat)"
   for arg in "$@"; do echo "arg=$arg"; done
   echo "cwd=$PWD"
   compgen -e | sort | sed 's/^/env=/'
+  echo "config=${CLAUDE_CONFIG_DIR:-}"
+  echo "mcp=${LOCUS_MCP_URL:-}"
+  echo "claudeai=${ENABLE_CLAUDEAI_MCP_SERVERS:-}"
+  echo "token=${LOCUS_TURN_TOKEN:-}"
   echo "prompt:"
   printf '%s\n' "$prompt"
-} > "../claude-double.txt"
+} > "../claude-double.txt.part"
+# целиком и разом: тест читает запись, пока процесс ещё идёт
+mv "../claude-double.txt.part" "../claude-double.txt"
 
 emit() { cat "$STREAM/$1.jsonl"; }
 call() { sed "s/mcp__spike__whoami/$1/" "$STREAM/tool-call.jsonl"; }

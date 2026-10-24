@@ -18,7 +18,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = IntegrationTest.DRAFTS)
+        properties = {IntegrationTest.DRAFTS, IntegrationTest.AGENT_COMMAND, IntegrationTest.AGENT_TIME_LIMIT,
+                IntegrationTest.AGENT_WORKSPACES})
 public abstract class IntegrationTest {
 
     /**
@@ -27,6 +28,18 @@ public abstract class IntegrationTest {
      * теряла бы черновики запущенного рядом приложения.
      */
     public static final String DRAFTS = "locus.problem.draft.directory=target/test-assembly-drafts";
+
+    /**
+     * Помощник — тест-двойник команды Claude Code из рабочего дерева: копия
+     * в {@code target/test-classes} теряет признак исполняемого файла.
+     */
+    public static final String AGENT_COMMAND = "locus.agent.command=src/test/resources/assistant/claude-double";
+
+    /** Предел времени Реплики, чтобы зависание двойника проверялось за секунды. */
+    public static final String AGENT_TIME_LIMIT = "locus.agent.time-limit=3s";
+
+    /** Свои рабочие места Помощника, не те, что у {@code mvn spring-boot:run}. */
+    public static final String AGENT_WORKSPACES = "locus.agent.workspaces=target/test-agent-workspaces";
 
     @ServiceConnection
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(PostgresImage.fromComposeFile());

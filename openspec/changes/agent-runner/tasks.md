@@ -104,28 +104,28 @@
 
 ## 4. Исполнитель Реплики и доступность
 
-- [ ] 4.1 `AgentProperties` (`locus.agent`, design.md Р13)
+- [x] 4.1 `AgentProperties` (`locus.agent`, design.md Р13)
       и раздел `locus.agent` в `application.yaml` с комментариями;
       тестовые настройки: команда — двойник, предел времени — 3 с,
       рабочие места — во временной папке
-- [ ] 4.2 `AgentEnvironment` (бин, по умолчанию `System.getenv()`),
+- [x] 4.2 `AgentEnvironment` (бин, по умолчанию `System.getenv()`),
       `AssistantAvailability` — чистая проверка: команда, `--version`
       за 10 с, сравнение версии, ключ `ANTHROPIC_API_KEY` или
       `CLAUDE_CODE_OAUTH_TOKEN` (design.md Р6, Р10); `AssistantAvailabilityTest`
       без Spring: нет команды, чужая версия, нет ключа, всё на месте
-- [ ] 4.3 `TurnRunner`: команда и флаги (design.md Р4), белый список
+- [x] 4.3 `TurnRunner`: команда и флаги (design.md Р4), белый список
       окружения (Р5), запрос в stdin, чтение stdout и хвоста stderr
       виртуальными потоками, `waitFor(предел)` → `destroy()` →
       `destroyForcibly()`, исход по таблице Р8, токен на учителя
       со сроком «предел + минута» и отзыв в `finally`; `RunningTurns`
       для остановки и `@PreDestroy`
-- [ ] 4.4 `AssistantService`: `startTurn(conversationId | пусто, prompt)`
+- [x] 4.4 `AssistantService`: `startTurn(conversationId | пусто, prompt)`
       от `CurrentUser` — проверка доступности и запроса, новый Разговор
       при пустом, `--resume` с сеансом Разговора, строка «работаю»,
       передача исполнителю; `stop(turnId)`; `turn(turnId)`, `steps(turnId)`;
       `AgentStartup` (`ApplicationRunner`): `interruptRunning()`, затем
       доступность
-- [ ] 4.5 `TurnRunnerTest` с двойником: готово с ответом, токенами
+- [x] 4.5 `TurnRunnerTest` с двойником: готово с ответом, токенами
       и стоимостью; две строки хода; прервано по времени в пределе
       с запасом; не удалось с кодом и stderr; прервано по шагам;
       остановлено; вторая при идущей отклонена; у другого учителя идёт;
@@ -134,14 +134,14 @@
       переменной-секрета, заданной Локусу; разные рабочие места у двух
       учителей; после вызова `AgentStartup` строка «работаю» —
       «прервано перезапуском»; пустой и длинный запрос отклонены
-- [ ] 4.6 Живая сверка клетки на заглушке спайка
+- [x] 4.6 Живая сверка клетки на заглушке спайка
       (`~/projects/locus-spike/stub-mcp/server.py`) с установленным
       Claude Code: `--tools ""` оставляет инструменты MCP видимыми
       и вызываемыми, встроенных нет (`tools` в init), `.mcp.json`
       рабочего места подставляет переменные; итог — в design.md
       (Р4, строка «проверено на версии …»); не прошло — клетка
       `--disallowedTools` списком встроенных
-- [ ] 4.7 `mvn test -Dtest='AssistantAvailabilityTest,TurnRunnerTest'` зелёный
+- [x] 4.7 `mvn test -Dtest='AssistantAvailabilityTest,TurnRunnerTest'` зелёный
 
 ## 5. Страница `/assistant`
 
