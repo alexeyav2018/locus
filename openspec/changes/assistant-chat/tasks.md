@@ -14,23 +14,23 @@
 
 ## 1. Сервис и репозиторий
 
-- [ ] 1.1 `AssistantRepository`: `findRunningTurn(UserId)` (идущая
+- [x] 1.1 `AssistantRepository`: `findRunningTurn(UserId)` (идущая
       Реплика владельца), `conversationsOf(UserId, int limit)` —
       Разговоры с Репликами, новые по последней Реплике сверху,
       запись `ConversationSummary` (идентификатор, начало последней
       Реплики, первый запрос), `latestConversation(UserId)` — то же
       с пределом 1; все с `user_id` в SQL (design.md Р3, Р4, Р10)
-- [ ] 1.2 `OwnerIsRequiredByAssistantTest` — новые методы принимают
+- [x] 1.2 `OwnerIsRequiredByAssistantTest` — новые методы принимают
       `UserId`; `AssistantIsFilteredByOwnerTest` — чужие Разговоры
       не попадают в `conversationsOf`, `latestConversation`, чужая
       идущая Реплика — в `findRunningTurn`
-- [ ] 1.3 `TurnState.tone()` (`info`/`ok`/`warn`/`bad`, design.md Р8)
+- [x] 1.3 `TurnState.tone()` (`info`/`ok`/`warn`/`bad`, design.md Р8)
       и `TurnStep.tool()` — имя без `mcp__locus__`; модульные тесты
-- [ ] 1.4 Вопрос `TurnAttachments` и запись `TurnAttachment` (имя,
+- [x] 1.4 Вопрос `TurnAttachments` и запись `TurnAttachment` (имя,
       поток) в `ru.locus.assistant`; ответчик `AssemblyDraftAttachments`
       в `ru.locus.problem` — `AssemblyDraftService.upload`, строка
       «Загружен черновик сборки N «имя», страниц: K.» (design.md Р5)
-- [ ] 1.5 `AssistantService`: `startTurn(conversation, prompt,
+- [x] 1.5 `AssistantService`: `startTurn(conversation, prompt,
       Optional<TurnAttachment>)` — порядок проверок Р5, запрос — текст
       и строка о черновике через пустую строку; прежняя перегрузка
       без вложения остаётся для `TurnRunnerTest`; `runningTurn()`,
@@ -38,14 +38,14 @@
       Разговор по Р3 на `Clock`, `conversations()` — прежние
       (до 30), `turns(id)`; все под `hasAnyRole('TEACHER',
       'ADMINISTRATOR')`
-- [ ] 1.6 Тесты сервиса на `TestClock`: Разговор по умолчанию —
+- [x] 1.6 Тесты сервиса на `TestClock`: Разговор по умолчанию —
       с идущей Репликой, сегодняшний, вчерашний — пусто, `fresh` —
       пусто, Разговор без Реплик не показан; вложение — черновик
       Администратора заведён, запрос называет его номер; только файл —
       Реплика заведена; пустой запрос без файла и неподходящий файл —
       отказ, Реплики нет; идущая Реплика — отказ до загрузки,
       черновика нет
-- [ ] 1.7 `mvn test -Dtest='Assistant*Test,TurnRunnerTest,OwnerIsRequiredByAssistantTest'` зелёный
+- [x] 1.7 `mvn test -Dtest='Assistant*Test,TurnRunnerTest,OwnerIsRequiredByAssistantTest'` зелёный
 
 ## 2. Ответ Markdown
 

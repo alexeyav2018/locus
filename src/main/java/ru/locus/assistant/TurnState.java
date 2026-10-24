@@ -37,4 +37,19 @@ public enum TurnState {
     public boolean running() {
         return this == RUNNING;
     }
+
+    /**
+     * Тон значка состояния — окончание класса {@code badge--…} в
+     * {@code locus.css} (design.md assistant-chat, Р8): идёт — сведения,
+     * готово — удача, остановлено учителем и предел шагов — предупреждение
+     * (учителю есть что сделать), прочее — неудача.
+     */
+    public String tone() {
+        return switch (this) {
+            case RUNNING -> "info";
+            case DONE -> "ok";
+            case STOPPED, STEP_LIMIT -> "warn";
+            case FAILED, TIMED_OUT, INTERRUPTED -> "bad";
+        };
+    }
 }
