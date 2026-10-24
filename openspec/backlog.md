@@ -138,7 +138,7 @@
 | `locus-mcp` | — | `strategy-edition-3` | — | M | нет | **задаёт** | ✅ |
 | `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | ✅ |
 | `assistant-chat` | — | `agent-runner` | — | M | нет | личное | ✅ |
-| `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | |
+| `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | ✅ |
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
@@ -2133,6 +2133,17 @@ refresh`, необязательный параметр у `shell :: head`), п�
 черновик — 404; черновик сборки, на который ссылается Черновик Задачи,
 не убирается по сроку, пока тот жив; по второму Черновику Задачи с того же
 набора заводится вторая Задача.
+
+> ✅ Выполнено 24.10.2026. Change:
+> [2026-10-24-problem-intake](changes/archive/2026-10-24-problem-intake/).
+> Черновики Задачи — только у Администратора, как и Черновики сборки
+> (design.md Р2); держание Черновиков сборки — условием `NOT EXISTS`
+> в двух удалениях, при перезапуске уходят все Черновики обоих видов
+> ([ADR-0059](context/adr/0059-chernovik-zadachi-derzhit-chernoviki-sborki.md)).
+> Сомнительное — пометкой `⟦…⟧` в тексте, снимаемой при сохранении;
+> срок брошенного Черновика Задачи — `locus.problem.intake.ttl`, 7 дней
+> от последней правки. Сверх карточки — инструмент `create_method`.
+> Версия 3.7.0, уровень `MINOR` (Р9).
 
 ---
 
