@@ -62,27 +62,27 @@
 
 ## 3. Страница, шапка и оформление
 
-- [ ] 3.1 `fragments/shell.html`: параметр `refresh` у `head`
+- [x] 3.1 `fragments/shell.html`: параметр `refresh` у `head`
       (`<meta http-equiv="refresh" content="3">`, design.md Р2);
       группа «Кабинет» — учителю и Администратору, пункт «Помощник»
       обоим, прочие — учителю (Р9); `ShellAdvice.sectionOf` — раздел
       `assistant`; `Addresses.ASSISTANT` — комментарий
-- [ ] 3.2 `AssistantController`: GET `/assistant` (`conversation`,
+- [x] 3.2 `AssistantController`: GET `/assistant` (`conversation`,
       `new`), POST `/assistant/turns` (`@LargeUpload`, отказы —
       та же страница с текстом и запросом), POST
       `/assistant/turns/{id}/stop`; переадресация на
       `/assistant?conversation=N#turn-M`; HTML ответов — `AnswerMarkdown`
       с адресом Разговора; признак обновления (design.md Р1, Р2, Р4)
-- [ ] 3.3 `templates/assistant/page.html`: метка `scope--personal`;
+- [x] 3.3 `templates/assistant/page.html`: метка `scope--personal`;
       Реплики (запрос, состояние, причина, подсказка «прервано по
       шагам», ответ, ход, итог, время); форма — `textarea`, поле файла
       у Администратора, «Отправить»; «Остановить»; «Новый разговор»;
       «Помощник отвечает в другом разговоре»; «Прежние разговоры»;
       пустое состояние; недоступность без формы (Р8, Р10, Р11)
-- [ ] 3.4 `locus.css`: Разговор и Реплика (запрос учителя, ответ,
+- [x] 3.4 `locus.css`: Разговор и Реплика (запрос учителя, ответ,
       ход, итог), содержимое ответа (абзацы, списки, код, цитата);
       проверить на 390 px: поле во всю ширину, кнопки не вылезают
-- [ ] 3.5 Двойник команды: слово `ссылки` — ответ с внутренней
+- [x] 3.5 Двойник команды: слово `ссылки` — ответ с внутренней
       и внешней ссылкой (заготовка в `stream/`)
 
 ## 4. Тесты страницы

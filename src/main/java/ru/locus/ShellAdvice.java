@@ -228,6 +228,9 @@ public class ShellAdvice {
         if (path.startsWith(Addresses.USERS)) {
             return "users";
         }
+        if (path.startsWith(Addresses.ASSISTANT)) {
+            return "assistant";
+        }
         return "";
     }
 }

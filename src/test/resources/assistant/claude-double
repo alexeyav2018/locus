@@ -11,6 +11,8 @@
 #                зависание   init и ожидание — до предела времени Реплики;
 #                падение     текст в stderr и код выхода 3, итога нет;
 #                шаги        init, вызов, итог error_max_turns;
+#                ссылки      init, итог success с ответом, где ссылка внутрь
+#                            Локуса и ссылка наружу (assistant-chat, 3.5);
 #              любое другое слово — как «ответ».
 #
 # Что получил, двойник пишет в claude-double.txt рядом с рабочим местом
@@ -76,6 +78,10 @@ case "$word" in
     call mcp__locus__list_topics
     emit tool-result
     emit result-max-turns
+    ;;
+  ссылки)
+    emit init
+    emit result-links
     ;;
   *)
     emit init

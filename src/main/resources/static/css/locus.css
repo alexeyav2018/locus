@@ -558,6 +558,36 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .crop-handle[data-handle=e], .crop-handle[data-handle=w] { cursor: ew-resize; }
 .crop-whole { margin: 0.25rem 0 0; }
 
+/* Разговор с Помощником: Реплики столбцом; запрос учителя — полосой личного,
+   ответ — на поверхности. Поле запроса и всё содержимое ответа — во всю ширину
+   и не шире её: длинная строка кода прокручивается внутри, а не страница. */
+.turns { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.75rem; }
+.turn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); min-width: 0; overflow: hidden; }
+.turn-prompt { background: var(--personal-soft); border-left: 3px solid var(--personal); padding: 0.6rem 1rem; }
+.turn-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0 0 0.25rem; }
+.turn-request { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.turn-reply { padding: 0.6rem 1rem 0.25rem; min-width: 0; }
+.turn-reply > form { margin: 0.5rem 0 0.5rem; }
+.turn-cause { color: var(--bad); margin: 0 0 0.5rem; overflow-wrap: anywhere; }
+.turn-steps { margin: 0.5rem 0; }
+.steps { margin: 0; padding-left: 1.25rem; }
+.steps li { margin: 0 0 0.35rem; }
+.step-tool { font-weight: 600; }
+.step-arguments { display: block; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.turn-form textarea { max-width: none; }
+/* Содержимое ответа — только теги самого CommonMark (AnswerMarkdown). */
+.answer { overflow-wrap: anywhere; }
+.answer > :first-child { margin-top: 0; }
+.answer p, .answer ul, .answer ol, .answer blockquote, .answer pre { margin: 0 0 0.6rem; }
+.answer h1, .answer h2, .answer h3, .answer h4 { font-size: 1.05rem; margin: 0.75rem 0 0.4rem; }
+.answer ul, .answer ol { padding-left: 1.4rem; }
+.answer code, .step-arguments { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.answer code { font-size: 0.9em; background: var(--surface-2); padding: 0.05rem 0.3rem; border-radius: 4px; }
+.answer pre { background: var(--surface-2); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; overflow-x: auto; max-width: 100%; }
+.answer pre code { background: none; padding: 0; overflow-wrap: normal; }
+.answer blockquote { border-left: 3px solid var(--border-strong); padding-left: 0.8rem; color: var(--muted); }
+.answer hr { border: 0; border-top: 1px solid var(--border); margin: 0.75rem 0; }
+
 /* Просмотр файла и страница ошибки */
 .viewer { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin: 0 0 1rem; text-align: center; }
 .viewer img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }

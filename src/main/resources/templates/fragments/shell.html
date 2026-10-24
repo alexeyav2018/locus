@@ -6,10 +6,18 @@
         <head> <th:block th:replace="~{fragments/shell :: head}"/> <title>…</title> </head>
         <body> <th:block th:replace="~{fragments/shell :: header}"/> <main id="main" class="page">…</main>
 
+    Страница, которая перечитывает себя сама, пока идёт работа вне её
+    (Реплика Помощника, design.md assistant-chat, Р2), зовёт head с параметром:
+        <th:block th:replace="~{fragments/shell :: head(refresh=${refresh})}"/>
+    При истинном значении фрагмент рисует meta refresh на три секунды — без
+    скрипта (ADR-0041). Остальные страницы параметра не передают и не видят.
+
     Шапка делит разделы на «Библиотеку» (общее, под Администратором) и «Кабинет»
     (личное, у каждого Учителя) — той же границей, что проходит по данным
     (CLAUDE.md, «Доменный инвариант»). Данные берёт ShellAdvice; у посетителя
-    без входа шапки нет.
+    без входа шапки нет. «Кабинет» видят обе роли: Разговоры с Помощником
+    личные и есть у Администратора тоже, а прочие пункты кабинета — только
+    у Учителя (design.md assistant-chat, Р9).
 
     Подвал (fragment «footer») — версия сборки и короткий хеш коммита (ADR-0043).
     Подключается последним в <body> КАЖДОЙ страницы, в том числе формы входа и
@@ -26,6 +34,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
+    <meta http-equiv="refresh" content="3" th:if="${refresh}">
     <link rel="stylesheet" th:href="@{/css/locus.css}">
     <script th:src="@{/js/locus.js}" defer></script>
 </head>
@@ -45,8 +54,9 @@
                     <a class="navlink" th:href="@{/dictionaries}" th:classappend="${shell.section == 'dictionaries'} ? 'is-active'"
                        th:attr="aria-current=${shell.section == 'dictionaries'} ? 'page'">Словари</a>
                 </div>
-                <div class="navgroup navgroup--personal" th:if="${shell.teacher}">
+                <div class="navgroup navgroup--personal" th:if="${shell.teacher or shell.administrator}">
                     <span class="navgroup-label">Кабинет</span>
+                    <th:block th:if="${shell.teacher}">
                     <a class="navlink" th:href="@{/students}" th:classappend="${shell.section == 'students'} ? 'is-active'"
                        th:attr="aria-current=${shell.section == 'students'} ? 'page'">Ученики</a>
                     <a class="navlink" th:href="@{/groups}" th:classappend="${shell.section == 'groups'} ? 'is-active'"
@@ -55,6 +65,9 @@
                        th:attr="aria-current=${shell.section == 'assignments'} ? 'page'">Задания</a>
                     <a class="navlink" th:href="@{/schedule}" th:classappend="${shell.section == 'schedule'} ? 'is-active'"
                        th:attr="aria-current=${shell.section == 'schedule'} ? 'page'">Расписание</a>
+                    </th:block>
+                    <a class="navlink" th:href="@{/assistant}" th:classappend="${shell.section == 'assistant'} ? 'is-active'"
+                       th:attr="aria-current=${shell.section == 'assistant'} ? 'page'">Помощник</a>
                 </div>
                 <div class="navgroup navgroup--admin" th:if="${shell.administrator}">
                     <span class="navgroup-label">Админ</span>
