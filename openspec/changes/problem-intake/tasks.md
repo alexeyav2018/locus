@@ -68,13 +68,13 @@
 
 ## 3. Сервис Черновика Задачи
 
-- [ ] 3.1 `DoubtMarks`: `strip`, `fragments` с контекстом (design.md
+- [x] 3.1 `DoubtMarks`: `strip`, `fragments` с контекстом (design.md
       Р5); `DoubtMarksTest` — внутри формулы, несколько пометок,
       непарный знак
-- [ ] 3.2 `ProblemService.requireDraftMarkup(topics, methods,
+- [x] 3.2 `ProblemService.requireDraftMarkup(topics, methods,
       characteristics)` — пакетный, поверх `requireExistingMarkup`
       и проверки листа (Р3); пустые списки допустимы
-- [ ] 3.3 `ProblemDraftService` (все методы `hasRole('ADMINISTRATOR')`):
+- [x] 3.3 `ProblemDraftService` (все методы `hasRole('ADMINISTRATOR')`):
       `create(content, editor)` с уборкой, `drafts()` с уборкой,
       `draft(id)`, `write(id, version, change, editor)`,
       `save(id, version, Kind TEXT|SNAPSHOT)` — порядок Р4 (удалить
@@ -84,18 +84,18 @@
       с текстом «перечитайте»; `evidence(draft)` и `rendering(draft)`
       для страницы — картинки `data:` (`TextPreview` и сборка строк
       слота), отказ отрисовки на месте
-- [ ] 3.4 `ProblemDraftServiceTest`: запись проверяет Тему-лист, Метод,
+- [x] 3.4 `ProblemDraftServiceTest`: запись проверяет Тему-лист, Метод,
       строки; старая версия — отказ, черновик прежний; `save` TEXT —
       Задача с текстом без пометок и Уликами, черновика нет; `save`
       SNAPSHOT — Задача без текста; отказ `create` (нет Метода) —
       черновик на месте; два черновика по одному фото — оба
       сохраняются Задачами, после второго Черновика сборки нет;
       Учитель без роли Администратора — отказ
-- [ ] 3.5 `ProblemDraftsAreFilteredByOwnerTest`: Б не читает,
+- [x] 3.5 `ProblemDraftsAreFilteredByOwnerTest`: Б не читает,
       не пишет, не сохраняет, не удаляет черновик А — отказ тот же,
       что на несуществующий; строка по черновику сборки А в черновике
       Б — отказ сервиса
-- [ ] 3.6 `mvn test -Dtest='ProblemDraft*Test,DoubtMarksTest,ProblemServiceTest'` зелёный
+- [x] 3.6 `mvn test -Dtest='ProblemDraft*Test,DoubtMarksTest,ProblemServiceTest'` зелёный
 
 ## 4. Страница вычитки
 

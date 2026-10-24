@@ -718,6 +718,22 @@ public class ProblemService {
     }
 
     /**
+     * Проверка разметки Черновика Задачи при записи (problem-intake,
+     * design.md, Р3): Темы — листья, Методы и Характеристики есть в словарях.
+     * Правила состава Задачи — Часть, хотя бы одна Тема и один Метод —
+     * не проверяются: черновик ещё не Задача, их проверит её заведение.
+     * Пустые списки допустимы.
+     *
+     * <p>Пакетный и без {@code @PreAuthorize}: зовёт его только
+     * {@link ProblemDraftService}, у которого права уже проверены.
+     */
+    void requireDraftMarkup(List<TaxonomyNodeId> topics,
+                            List<SolutionMethodId> methodIds,
+                            List<CharacteristicId> characteristicIds) {
+        requireExistingMarkup(topics, methodIds, characteristicIds);
+    }
+
+    /**
      * Проверка инварианта 1: Задача висит только на Теме — листе дерева.
      *
      * Внешним ключом это не выражается: отдельной таблицы Тем нет и быть
