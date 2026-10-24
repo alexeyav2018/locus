@@ -44,29 +44,34 @@
 
 ## 2. Схема и запись
 
-- [ ] 2.1 Миграция `0015-problem-text.yaml` и строка в
+- [x] 2.1 Миграция `0015-problem-text.yaml` и строка в
       `db.changelog-master.yaml`: колонки `condition_text`, `solution_text`,
       `condition_evidence_key`, `solution_evidence_key`, `text_version`
       (`integer not null default 0`); ограничения «оба текста или ни
       одного» и «Улика только при тексте» (design.md, Р3)
-- [ ] 2.2 `ProblemText` (record: два текста, две Улики, версия; предел
+      *(Строка в `db.changelog-master.yaml` не нужна: он подхватывает
+      папку `migrations/` целиком через `includeAll`.)*
+- [x] 2.2 `ProblemText` (record: два текста, две Улики, версия; предел
       20 000 знаков константой) — правила состава в компактном
       конструкторе; `Problem` получает поле `text` (`null` — без текста)
       и `hasText()`; javadoc `Problem` переписать: ADR-0055 вместо
       «текста система не знает»
-- [ ] 2.3 `ProblemRepository`: чтение текста и Улик в `Problem`;
+- [x] 2.3 `ProblemRepository`: чтение текста и Улик в `Problem`;
       `create` с текстом; `changeText(id, slot, text, rendered, expectedVersion)`
       и запись текста Задаче без текста — версия сверяется в `UPDATE …
       WHERE text_version = ?`, ноль строк — отказ версии; замена Улики
       слота; `FoundProblem` и строка списка Темы получают `hasText`.
       Параметра `UserId` нигде нет
-- [ ] 2.4 `ProblemTextTest` (запись): один текст — отказ; пустой после
+      *(Слот — перечисление `ProblemSlot`; замена Улики —
+      `changeEvidence`, отказ версии — `ProblemTextChangedException`;
+      список Темы — это `List<Problem>`, ему хватает `Problem.hasText()`.)*
+- [x] 2.4 `ProblemTextTest` (запись): один текст — отказ; пустой после
       отсечения — отказ; длиннее предела — отказ с пределом; Улика без
       текста — отказ
-- [ ] 2.5 `TextlessIsNotStoredTest`: в таблице Задач нет колонки вида
+- [x] 2.5 `TextlessIsNotStoredTest`: в таблице Задач нет колонки вида
       (по `information_schema`); ограничение базы не даёт записать один
       текст или Улику без текста
-- [ ] 2.6 `MigrationsOnStartupTest` и тесты репозитория Задач зелёные;
+- [x] 2.6 `MigrationsOnStartupTest` и тесты репозитория Задач зелёные;
       `mvn test -Dtest='ProblemTextTest,TextlessIsNotStoredTest,MigrationsOnStartupTest,Problem*Test'`
 
 ## 3. Сервис

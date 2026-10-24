@@ -341,4 +341,118 @@ class ProblemRepositoryTest extends IntegrationTest {
     void unknownProblemIsSimplyAbsent() {
         assertThat(problems.findById(new ProblemId(Long.MAX_VALUE))).isEmpty();
     }
+
+    /** Задача с текстом читается обратно вместе с текстом и Уликами; версия новой — ноль. */
+    @Test
+    void problemWithTextIsReadBackWithItsTextEverywhere() {
+        TaxonomyNodeId topic = library.topic();
+        SolutionMethodId method = library.method();
+        FileKey evidence = library.storedPdf();
+
+        ProblemId id = problems.create(ExamPart.FIRST, library.storedPdf(), library.storedPdf(),
+                new ProblemText("Найдите $x$.", "$x = 2$.", evidence, null, 7),
+                List.of(topic), List.of(method), List.of());
+
+        Problem found = problems.findById(id).orElseThrow();
+        assertThat(found.hasText()).isTrue();
+        assertThat(found.text().condition()).isEqualTo("Найдите $x$.");
+        assertThat(found.text().solution()).isEqualTo("$x = 2$.");
+        assertThat(found.text().conditionEvidence()).isEqualTo(evidence);
+        assertThat(found.text().solutionEvidence()).isNull();
+        assertThat(found.text().version()).as("счёт правок начинается с заведения").isZero();
+
+        assertThat(problems.findByTopic(topic)).singleElement().satisfies(p -> assertThat(p.hasText()).isTrue());
+        assertThat(problems.findByIds(List.of(id))).singleElement().satisfies(p -> assertThat(p.hasText()).isTrue());
+        assertThat(problems.search(List.of(topic), List.of(), MatchMode.ANY, List.of(), MatchMode.ANY, null))
+                .singleElement().satisfies(p -> assertThat(p.hasText()).isTrue());
+    }
+
+    @Test
+    void problemWithoutTextHasNoText() {
+        Problem found = problems.findById(library.problem(library.topic())).orElseThrow();
+
+        assertThat(found.hasText()).isFalse();
+        assertThat(found.text()).isNull();
+    }
+
+    /** Правка решения: условие и его PDF не тронуты, версия выросла. */
+    @Test
+    void changingTheTextOfOneSlotLeavesTheOtherAndRaisesTheVersion() {
+        FileKey condition = library.storedPdf();
+        ProblemId id = problemWithText(condition);
+        FileKey rendered = library.storedPdf();
+
+        problems.changeText(id, ProblemSlot.SOLUTION, "$x = 3$.", rendered, 0);
+
+        Problem found = problems.findById(id).orElseThrow();
+        assertThat(found.text().solution()).isEqualTo("$x = 3$.");
+        assertThat(found.solutionFile()).isEqualTo(rendered);
+        assertThat(found.text().condition()).isEqualTo("Найдите $x$.");
+        assertThat(found.conditionFile()).isEqualTo(condition);
+        assertThat(found.text().version()).isEqualTo(1);
+    }
+
+    @Test
+    void changingTheTextWithAStaleVersionIsRefusedAndKeepsTheLastText() {
+        ProblemId id = problemWithText(library.storedPdf());
+        problems.changeText(id, ProblemSlot.CONDITION, "Найдите $y$.", library.storedPdf(), 0);
+
+        assertThatThrownBy(() -> problems.changeText(id, ProblemSlot.CONDITION, "Найдите $z$.",
+                library.storedPdf(), 0))
+                .isInstanceOf(ProblemTextChangedException.class)
+                .hasMessageContaining("перечитайте");
+
+        Problem found = problems.findById(id).orElseThrow();
+        assertThat(found.text().condition()).isEqualTo("Найдите $y$.");
+        assertThat(found.text().version()).isEqualTo(1);
+    }
+
+    /** Запись текста Задаче без текста: прежние PDF переезжают в Улики своих слотов. */
+    @Test
+    void writingTextToATextlessProblemTurnsItsPdfsIntoEvidence() {
+        FileKey condition = library.storedPdf();
+        FileKey solution = library.storedPdf();
+        ProblemId id = problems.create(ExamPart.FIRST, condition, solution,
+                List.of(library.topic()), List.of(library.method()), List.of());
+        FileKey conditionRendered = library.storedPdf();
+        FileKey solutionRendered = library.storedPdf();
+
+        problems.writeText(id, "Найдите $x$.", "$x = 2$.", conditionRendered, solutionRendered, 0);
+
+        Problem found = problems.findById(id).orElseThrow();
+        assertThat(found.conditionFile()).isEqualTo(conditionRendered);
+        assertThat(found.solutionFile()).isEqualTo(solutionRendered);
+        assertThat(found.text().conditionEvidence()).isEqualTo(condition);
+        assertThat(found.text().solutionEvidence()).isEqualTo(solution);
+        assertThat(found.text().version()).isEqualTo(1);
+    }
+
+    @Test
+    void writingTextToAProblemThatAlreadyHasTextIsRefused() {
+        ProblemId id = problemWithText(library.storedPdf());
+
+        assertThatThrownBy(() -> problems.writeText(id, "Найдите $y$.", "$y = 1$.",
+                library.storedPdf(), library.storedPdf(), 0))
+                .isInstanceOf(ProblemTextChangedException.class);
+    }
+
+    /** Улика — снимок рядом с текстом, а не текст: версия не растёт. */
+    @Test
+    void changingTheEvidenceKeepsTheVersion() {
+        ProblemId id = problemWithText(library.storedPdf());
+        FileKey evidence = library.storedPdf();
+
+        problems.changeEvidence(id, ProblemSlot.SOLUTION, evidence);
+
+        Problem found = problems.findById(id).orElseThrow();
+        assertThat(found.text().solutionEvidence()).isEqualTo(evidence);
+        assertThat(found.text().conditionEvidence()).isNull();
+        assertThat(found.text().version()).isZero();
+    }
+
+    private ProblemId problemWithText(FileKey condition) {
+        return problems.create(ExamPart.FIRST, condition, library.storedPdf(),
+                new ProblemText("Найдите $x$.", "$x = 2$.", null, null, 0),
+                List.of(library.topic()), List.of(library.method()), List.of());
+    }
 }

@@ -1,0 +1,69 @@
+# Текст Задачи первичен, PDF — его отрисовка Локусом, снимок — Улика
+# (ADR-0055, ADR-0058; design.md изменения problem-text, Р3).
+#
+# Отдельной таблицы нет: текст — часть Задачи один к одному. У Задачи
+# с текстом в condition_file_key и solution_file_key лежат отрисовки,
+# у Задачи без текста — приложенные PDF, как прежде; обязательность обоих
+# PDF поэтому не меняется.
+#
+# «Без текста» НЕ хранится — ни флага, ни колонки вида: состояние есть
+# отсутствие текста, тот же приём, что «не сдано» у Задания и «неизвестно»
+# у отметки. Сторожит TextlessIsNotStoredTest.
+#
+# Два ограничения — второй рубеж за ProblemText, потому что вход в таблицу
+# не один (заведение, правка текста слота, запись текста Задаче без текста):
+#   - оба текста NULL либо оба нет — половинчатой Задачи нет (Р2);
+#   - Улика только при тексте — у Задачи без текста снимком служит сам PDF.
+# Пустой текст NULL'ом не становится сам: пустой запись не пропускает.
+#
+# text_version — счётчик правок текста (Р7): существующие Задачи получают 0.
+# Данных миграция не меняет, откатного скрипта нет (ADR-0023).
+databaseChangeLog:
+  - changeSet:
+      id: 0015-problem-text
+      author: locus
+      comment: Текст условия и решения, Улики слотов и версия текста Задачи
+      changes:
+        - addColumn:
+            tableName: problem
+            columns:
+              - column:
+                  name: condition_text
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: solution_text
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: condition_evidence_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: solution_evidence_key
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: text_version
+                  type: INTEGER
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 0015-problem-text-checks
+      author: locus
+      comment: Оба текста или ни одного; Улика только при тексте
+      changes:
+        - sql:
+            sql: >-
+              alter table problem
+              add constraint ck_problem_both_texts
+              check ((condition_text is null) = (solution_text is null)),
+              add constraint ck_problem_evidence_with_text
+              check (condition_text is not null
+                     or (condition_evidence_key is null and solution_evidence_key is null))
