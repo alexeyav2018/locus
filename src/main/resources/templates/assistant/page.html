@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Помощник — Locus</title>
+    <!--/*
+        Страница Помощника (design.md agent-runner, Р11): только итог проверки
+        доступности при старте. Разговора здесь пока нет — его принесёт
+        assistant-chat, и тогда же появится пункт в шапке.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<div class="page-head">
+    <div>
+        <h1>Помощник</h1>
+        <p class="lead">Заводит Задачи с листа инструментами Локуса от имени вошедшего.</p>
+    </div>
+</div>
+
+<div class="alert alert--notice" role="status" th:if="${availability.available}">
+    <p th:text="'Помощник доступен: Claude Code ' + ${availability.version}">Помощник доступен: Claude Code 2.1.309</p>
+</div>
+<div class="alert" role="alert" th:unless="${availability.available}">
+    <p th:text="'Помощник недоступен: ' + ${availability.cause}">Помощник недоступен: команда Claude Code не найдена</p>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

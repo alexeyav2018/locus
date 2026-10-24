@@ -1,0 +1,192 @@
+# Разговор и Реплика Помощника — ЛИЧНЫЙ контур учителя (ADR-0054, ADR-0057;
+# design.md agent-runner, Р1–Р3).
+#
+# Разговор хранит идентификатор сеанса Claude Code: историю для модели держит
+# сам Claude Code, Локус — только свои записи Реплик и строки хода (вызовы
+# инструментов). Сеанс пуст, пока первая Реплика не получила его от процесса.
+#
+# Все три таблицы несут user_id, а ключи между ними составные, на
+# (id, user_id), как у group_student (0006) и lesson (0012): база сама не даст
+# привязать Реплику к чужому Разговору, а строку хода — к чужой Реплике.
+# Каскады — вниз по цепочке: Разговор уносит свои Реплики, Реплика — свои
+# строки хода.
+#
+# Одна Реплика на учителя одновременно — частичный уникальный индекс по
+# user_id среди строк в состоянии RUNNING: вторую «работаю» отклонит база,
+# и гонка двух запросов решается в одном месте (design.md, Р3).
+databaseChangeLog:
+  - changeSet:
+      id: 0016-assistant-conversation
+      author: locus
+      comment: Разговор учителя с Помощником и сеанс Claude Code
+      changes:
+        - createTable:
+            tableName: assistant_conversation
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assistant_conversation
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: TEXT
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: assistant_conversation
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_assistant_conversation_user
+        - addUniqueConstraint:
+            tableName: assistant_conversation
+            columnNames: id, user_id
+            constraintName: uq_assistant_conversation_id_user
+
+  - changeSet:
+      id: 0016-assistant-turn
+      author: locus
+      comment: Реплика — запрос учителя, исход процесса Помощника, токены и стоимость
+      changes:
+        - createTable:
+            tableName: assistant_turn
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assistant_turn
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conversation_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: prompt
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: state
+                  type: VARCHAR(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: answer
+                  type: TEXT
+              - column:
+                  name: cause
+                  type: TEXT
+              - column:
+                  name: input_tokens
+                  type: BIGINT
+              - column:
+                  name: output_tokens
+                  type: BIGINT
+              - column:
+                  name: cost_usd
+                  type: NUMERIC(12, 6)
+              - column:
+                  name: started_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: finished_at
+                  type: TIMESTAMP WITH TIME ZONE
+        - addForeignKeyConstraint:
+            baseTableName: assistant_turn
+            baseColumnNames: conversation_id, user_id
+            referencedTableName: assistant_conversation
+            referencedColumnNames: id, user_id
+            constraintName: fk_assistant_turn_conversation
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: assistant_turn
+            columnNames: id, user_id
+            constraintName: uq_assistant_turn_id_user
+        - createIndex:
+            tableName: assistant_turn
+            indexName: ix_assistant_turn_conversation
+            columns:
+              - column:
+                  name: conversation_id
+
+  - changeSet:
+      id: 0016-assistant-turn-checks
+      author: locus
+      comment: >-
+        Состояние — одно из семи (design.md, Р2), и одна Реплика «работаю»
+        на учителя (Р3). Частичный индекс и проверочное ограничение выражаются
+        только сырым SQL; отката у changeset'а нет (ADR-0023).
+      changes:
+        - sql:
+            sql: >-
+              alter table assistant_turn
+              add constraint ck_assistant_turn_state
+              check (state in ('RUNNING', 'DONE', 'FAILED', 'STOPPED', 'TIMED_OUT', 'STEP_LIMIT', 'INTERRUPTED'));
+              create unique index uq_assistant_turn_one_running
+              on assistant_turn (user_id) where state = 'RUNNING'
+
+  - changeSet:
+      id: 0016-assistant-turn-step
+      author: locus
+      comment: Строка хода — вызов инструмента Помощником в Реплике
+      changes:
+        - createTable:
+            tableName: assistant_turn_step
+            columns:
+              - column:
+                  name: turn_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tool_name
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: arguments
+                  type: TEXT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: assistant_turn_step
+            columnNames: turn_id, position
+            constraintName: pk_assistant_turn_step
+        - addForeignKeyConstraint:
+            baseTableName: assistant_turn_step
+            baseColumnNames: turn_id, user_id
+            referencedTableName: assistant_turn
+            referencedColumnNames: id, user_id
+            constraintName: fk_assistant_turn_step_turn
+            onDelete: CASCADE

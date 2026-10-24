@@ -13,7 +13,7 @@
 
     <groupId>ru.locus</groupId>
     <artifactId>locus</artifactId>
-    <version>3.4.0</version>
+    <version>3.5.0</version>
     <name>locus</name>
     <description>Платформа поддержки учителя математики</description>
 
@@ -216,6 +216,21 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!--
+                Рабочее место Помощника — classpath:agent/** (design.md agent-runner, Р7):
+                Локус разворачивает его учителю перед каждой Репликой. Лежит в корне
+                репозитория, а не в ресурсах: это документы Помощника, а не настройки
+                приложения (ADR-0057). Точечные файлы .mcp.json и .claude/ входят.
+            -->
+            <resource>
+                <directory>agent</directory>
+                <targetPath>agent</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

@@ -15,3 +15,6 @@ target/
 
 # Черновики сборки PDF Задачи (locus.problem.draft.directory)
 .locus-drafts/
+
+# Рабочие места Помощника учителей (locus.agent.workspaces)
+.locus-agent/
