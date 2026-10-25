@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -217,6 +221,51 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         assertThat(saved.location()).contains("/problems/");
     }
 
+    /**
+     * Уход с несохранённым (intake-unsaved-warning, design.md, решения 2, 5):
+     * скрипт следит за формой правки по {@code data-unsaved}; форма удаления
+     * не помечена. Прочитанная страница — значение {@code read}: несохранённое
+     * скрипт найдёт сравнением полей со снимком.
+     */
+    @Test
+    void editFormIsWatchedForUnsavedChanges() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+
+        String body = browser(administrator).get(address(draft)).body();
+
+        assertThat(count(body, "data-unsaved=")).as("помечена одна форма — правки").isEqualTo(1);
+        assertThat(body).contains("data-unsaved=\"read\"");
+        assertThat(body.substring(body.indexOf("data-unsaved=")))
+                .as("форма удаления идёт после формы правки и не помечена")
+                .contains("/delete");
+    }
+
+    /** Отказ разметкой (Раздел вместо Темы) показал присланное: страница несохранена сразу, без новой правки. */
+    @Test
+    void pageRefusedWithTheSentFieldsIsUnsavedAtOnce() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+
+        List<Map.Entry<String, String>> sent = new ArrayList<>(fields(draft, "Набранное учителем", true));
+        sent.add(Map.entry("topics", String.valueOf(library.section().value())));
+
+        Browser.Page refused = browser(administrator).postForm(address(draft), sent);
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("Набранное учителем").contains("data-unsaved=\"sent\"");
+    }
+
+    /**
+     * Скрипт спрашивает при уходе по формам {@code data-unsaved}: снимок полей
+     * против текущих, {@code sent} — несохранено сразу, отправка снимает вопрос.
+     */
+    @Test
+    void scriptAsksBeforeLeavingWithUnsavedChanges() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+
+        assertThat(script).contains("form[data-unsaved]", "addEventListener('beforeunload'",
+                "=== 'sent'", "event.returnValue = ''", "submitted = true");
+    }
+
     @Test
     void deleteRemovesTheDraft() throws IOException {
         ProblemDraft draft = assistantDraft(photo(), photo());
@@ -259,6 +308,10 @@ class ProblemIntakeScreenTest extends IntegrationTest {
                 .contains("draft-" + draft.id().value())
                 .contains("Найдите $x$, если $\\log_2 8 = x$.");
         assertThat(admin.get("/assistant").body()).contains("Вычитать черновики: 1");
+    }
+
+    private static int count(String body, String text) {
+        return body.split(Pattern.quote(text), -1).length - 1;
     }
 
     private ProblemDraft assistantDraft(AssemblyDraft conditionPhoto, AssemblyDraft solutionPhoto) {

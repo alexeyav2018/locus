@@ -230,6 +230,9 @@ public class ProblemDraftController {
         ProblemDraft stored = intake.draft(id);
         String page = page(stored, sent.change().applyTo(stored.content()), model);
         model.addAttribute("error", refusal.getMessage());
+        // В полях не хранимое: уход со страницы теряет его и без новой правки
+        // (intake-unsaved-warning, design.md, решение 2).
+        model.addAttribute("sent", true);
         return page;
     }
 
