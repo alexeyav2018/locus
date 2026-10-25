@@ -1,18 +1,18 @@
 ## 1. Отрисовка ответа и подпись счётчика
 
-- [ ] 1.1 `AnswerMarkdownTest`: фрагмент кода `/problems/intake/1` —
+- [x] 1.1 `AnswerMarkdownTest`: фрагмент кода `/problems/intake/1` —
       ссылка с `from` на Разговор и текстом адреса; фрагменты
       `find_problems`, `https://example.com`, `/`, `/2`,
       `/problems и т.д.` — код без ссылки; фрагмент кода внутри
       Markdown-ссылки — код внутри одной ссылки (design.md, Р2, Р3)
-- [ ] 1.2 `AnswerMarkdown`: отрисовщик узла `Code` — адрес по Р2
+- [x] 1.2 `AnswerMarkdown`: отрисовщик узла `Code` — адрес по Р2
       (`ReturnTo.safe`, без пробелов, вторая буква латинская) и не внутри
       `Link` выводится ссылкой через `withReturn`, прочее — штатным `<code>`;
       javadoc класса дописан
-- [ ] 1.3 `ProblemDraftQueue`: подпись «Вычитать черновики» (Р4);
+- [x] 1.3 `ProblemDraftQueue`: подпись «Вычитать черновики» (Р4);
       `ProblemIntakeScreenTest` и пример в `assistant/page.html` —
       по новой подписи
-- [ ] 1.4 `mvn test -Dtest='AnswerMarkdownTest,ProblemIntakeScreenTest,AssistantPageTest'` зелёный
+- [x] 1.4 `mvn test -Dtest='AnswerMarkdownTest,ProblemIntakeScreenTest,AssistantPageTest'` зелёный
 
 ## 2. Правила Помощника
 
