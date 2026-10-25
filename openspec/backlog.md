@@ -142,7 +142,7 @@
 | `intake-answer-links` | Т | `assistant-chat`, `problem-intake` | `backfill-skill` | S | нет | не затрагивает | ждёт условия |
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
 | `session-lifetime` | Т | `auth-roles` | — | S | нет | не затрагивает | ✅ |
-| `intake-unsaved-warning` | Т | `problem-intake` | `intake-tabs` | S | нет | не затрагивает | |
+| `intake-unsaved-warning` | Т | `problem-intake` | `intake-tabs` | S | нет | не затрагивает | ✅ |
 | `back-link-gaps` | Т | `interface-focus` | — | S | нет | не затрагивает | |
 | `intake-tabs` | Т | `problem-intake`, `back-link-gaps` | — | M | нет | общее и личное | |
 | `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | |
