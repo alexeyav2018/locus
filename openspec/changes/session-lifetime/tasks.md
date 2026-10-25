@@ -7,13 +7,13 @@
 
 ## 1. Срок сессии входа
 
-- [ ] 1.1 Задать `server.servlet.session.timeout: 2h` в `src/main/resources/application.yaml`
+- [x] 1.1 Задать `server.servlet.session.timeout: 2h` в `src/main/resources/application.yaml`
   с комментарием о причине (вычитка листа дольше получаса без запросов; рабочий день отклонён —
   забытая вкладка); проверка — тест 1.2
-- [ ] 1.2 Тест в `src/test/java/ru/locus/security/` на `IntegrationTest`: срок сессии контекста
+- [x] 1.2 Тест в `src/test/java/ru/locus/security/` на `IntegrationTest`: срок сессии контекста
   встроенного Tomcat работающего сервера — 120 минут (design.md, решение 2); проверка —
   `mvn test -Dtest=<тест>` зелёный, а без строки 1.1 — красный
-- [ ] 1.3 Дописать в `openspec/context/architecture.md`, раздел «Права доступа», срок сессии
+- [x] 1.3 Дописать в `openspec/context/architecture.md`, раздел «Права доступа», срок сессии
   входа — 2 часа бездействия, в `application.yaml`; проверка — абзац на месте, ссылки целы
 
 ## 2. Надпись об отказе на сцене рамки и версия
