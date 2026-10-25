@@ -19,7 +19,9 @@
 - Ещё две страницы, куда ведут ссылки с `from`, но где его не видно:
   поиск Задач `/problems` (из перечня пробелов Владения «Подобрать задачи»)
   и список Заданий `/assignments` (с карточки Ученика) — показывают
-  «← Назад» и сохраняют `from` при смене условий.
+  «← Назад» и сохраняют `from` при смене условий. Период срока в отборе
+  Заданий переименован в `dueFrom` и `dueTo`: имя `from` было занято
+  датой, и плитка «Задания Ученика» с карточки отвечала 400 (design.md, Р9).
 - Страница Черновика Задачи после «Сохранить черновик» и после отказа
   сохраняет свой `from`.
 - «Сохранить как Задачу» и «Взять снимок как есть» ведут в список черновиков
@@ -61,6 +63,7 @@
   любому вошедшему.
 - Код: `ReturnTo` (дописать `from` к адресу и выдать сам `from` для
   переадресации), `DictionaryController`, `TaxonomyController`,
+  `AssignmentController` (имена параметров периода),
   `ProblemDraftController`, шаблоны `dictionary/dictionaries.html`,
   `taxonomy/tree.html`, `taxonomy/branches.html`, `problem/search.html`,
   `assignment/list.html`, `problem/intake.html`, `problem/intake-list.html`.

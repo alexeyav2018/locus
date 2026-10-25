@@ -328,6 +328,38 @@ class ProblemSearchScreenTest extends IntegrationTest {
     }
 
     /**
+     * Сценарий «Подбор задач под пробел» (ADR-0060): поиск, открытый
+     * со страницы Владения, показывает «назад» на неё, а форма отбора
+     * идёт методом GET и несёт возврат скрытым полем — адрес действия
+     * GET-формы браузер отбрасывает. «Сбросить» несёт возврат в ссылке.
+     */
+    @Test
+    void comingWithAReturnShowsBackAndTheFilterFormCarriesIt() {
+        String page = teacher().get("/problems?from=/mastery?student%3D5").body();
+
+        assertThat(page).as("«назад» ведёт туда, откуда пришли")
+                .contains("<a href=\"/mastery?student=5\">← Назад</a>");
+        assertThat(filterForm(page)).as("отбор сохраняет возврат")
+                .contains("<input type=\"hidden\" name=\"from\" value=\"/mastery?student=5\">")
+                .contains("href=\"/problems?from=%2Fmastery%3Fstudent%3D5\"");
+    }
+
+    /** Поиск — раздел шапки: без возврата ни «назад», ни скрытого поля. */
+    @Test
+    void withoutAReturnThereIsNoBackAndNoHiddenReturn() {
+        String page = teacher().get("/problems").body();
+
+        assertThat(page).doesNotContain("← Назад");
+        assertThat(filterForm(page)).doesNotContain("name=\"from\"")
+                .contains("href=\"/problems\"");
+    }
+
+    private static String filterForm(String page) {
+        int start = page.indexOf("class=\"filters");
+        return page.substring(start, page.indexOf("</form>", start));
+    }
+
+    /**
      * Разметка в одну строку с одиночными пробелами. Thymeleaf переносит
      * подставленный атрибут на новую строку — ровно туда, где стоял
      * {@code th:selected} в шаблоне, — и образец, написанный с одним

@@ -34,14 +34,15 @@
 
 ## 3. Поиск Задач и список Заданий
 
-- [ ] 3.1 `problem/search.html`: «← Назад» по `shell.back` только с ним;
+- [x] 3.1 `problem/search.html`: «← Назад» по `shell.back` только с ним;
   форма отбора — скрытое поле `from` при `shell.back`; «Сбросить» несёт
   `from` (design.md, Р2, Р7)
-- [ ] 3.2 `assignment/list.html`: то же — «← Назад», скрытое поле в форме
-  отбора, «Сбросить» с `from`
-- [ ] 3.3 Тесты: `ProblemSearchScreenTest` — с `from` «← Назад» на него
+- [x] 3.2 `assignment/list.html`: то же — «← Назад», скрытое поле в форме
+  отбора, «Сбросить» с `from`; период срока — `dueFrom`/`dueTo`
+  (design.md, Р9)
+- [x] 3.3 Тесты: `ProblemSearchScreenTest` — с `from` «← Назад» на него
   и скрытое поле, без `from` ни того, ни другого; тест списка Заданий —
-  то же; проверка — `mvn test -Dtest='ProblemSearchScreenTest,<тест списка Заданий>'`
+  то же; проверка — `mvn test -Dtest='ProblemSearchScreenTest,AssignmentScreenTest'`
   зелёный
 
 ## 4. Черновик Задачи
