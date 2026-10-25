@@ -15,17 +15,17 @@
 
 ## 2. Словари и рубрикатор
 
-- [ ] 2.1 `dictionary/dictionaries.html`: «← Назад» по `shell.back` (только
+- [x] 2.1 `dictionary/dictionaries.html`: «← Назад» по `shell.back` (только
   с ним); ссылки выбора записи и все формы несут `from=${shell.back}`
   (design.md, Р2)
-- [ ] 2.2 `DictionaryController`: POST-обработчики принимают `from`
+- [x] 2.2 `DictionaryController`: POST-обработчики принимают `from`
   и переадресуют через `ReturnTo.carried` (design.md, Р3)
-- [ ] 2.3 `taxonomy/tree.html` и `taxonomy/branches.html`: «← Назад»
+- [x] 2.3 `taxonomy/tree.html` и `taxonomy/branches.html`: «← Назад»
   по `shell.back`; ссылки узлов и все формы (заведение, имя, перемещение,
   удаление, распределение, корень) несут `from=${shell.back}`
-- [ ] 2.4 `TaxonomyController`: POST-обработчики принимают `from`,
+- [x] 2.4 `TaxonomyController`: POST-обработчики принимают `from`,
   `atNode(id, from)` и ветка «к корню» — через `ReturnTo.carried`
-- [ ] 2.5 Тесты: `DictionaryScreenTest` — с `from` есть «← Назад» на него,
+- [x] 2.5 Тесты: `DictionaryScreenTest` — с `from` есть «← Назад» на него,
   без `from` нет; ссылки выбора и формы несут `from`; заведение Метода
   с `from` переадресует с `from`; отказ (занятое имя) показывает «назад»
   на `from`. `TaxonomyScreenTest` — то же для узла, заведения Темы и удаления;

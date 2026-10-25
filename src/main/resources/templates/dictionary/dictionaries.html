@@ -21,6 +21,9 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page">
+<!--/* Словари — раздел шапки: «назад» есть, только когда сюда пришли
+       ссылкой с возвратом, и он переживает выбор записи и действия (ADR-0060). */-->
+<p class="back" th:if="${shell.back}"><a th:href="@{${shell.back}}">← Назад</a></p>
 <div class="page-head">
     <div>
         <h1>Словари</h1>
@@ -37,7 +40,7 @@
         <p class="empty" th:if="${#lists.isEmpty(methods)}">Словарь Методов пуст.</p>
         <ul class="tree">
             <li th:each="method : ${methods}" th:id="'method-' + ${method.id.value}">
-                <a th:href="@{/dictionaries(method=${method.id.value})}"
+                <a th:href="@{${shell.carried('/dictionaries?method=' + method.id.value)}}"
                    th:classappend="${method.id.value == selectedMethodId} ? 'selected'"
                    th:text="${method.name}">Разложение на множители</a>
             </li>
@@ -50,7 +53,7 @@
         <ul class="tree">
             <li th:each="characteristic : ${characteristics}"
                 th:id="'characteristic-' + ${characteristic.id.value}">
-                <a th:href="@{/dictionaries(characteristic=${characteristic.id.value})}"
+                <a th:href="@{${shell.carried('/dictionaries?characteristic=' + characteristic.id.value)}}"
                    th:classappend="${characteristic.id.value == selectedCharacteristicId} ? 'selected'"
                    th:text="${characteristic.name}">Повышенной сложности</a>
             </li>
@@ -67,7 +70,7 @@
                     <summary>Изменить имя</summary>
                     <div class="more-body">
                         <form class="inline-form" method="post"
-                              th:action="@{/dictionaries/methods/{id}/name(id=${selectedMethod.id.value})}">
+                              th:action="@{${shell.carried('/dictionaries/methods/' + selectedMethod.id.value + '/name')}}">
                             <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
                             <button type="submit" class="btn-primary">Переименовать</button>
                             <button type="button" data-close>Отмена</button>
@@ -78,7 +81,7 @@
                     <summary>Удаление</summary>
                     <div class="more-body">
                         <form method="post" data-confirm="Это действие необратимо."
-                              th:action="@{/dictionaries/methods/{id}/deletion(id=${selectedMethod.id.value})}">
+                              th:action="@{${shell.carried('/dictionaries/methods/' + selectedMethod.id.value + '/deletion')}}">
                             <button type="submit" class="btn-danger">Удалить</button>
                             <button type="button" data-close>Отмена</button>
                         </form>
@@ -96,7 +99,7 @@
                     <summary>Изменить имя</summary>
                     <div class="more-body">
                         <form class="inline-form" method="post"
-                              th:action="@{/dictionaries/characteristics/{id}/name(id=${selectedCharacteristic.id.value})}">
+                              th:action="@{${shell.carried('/dictionaries/characteristics/' + selectedCharacteristic.id.value + '/name')}}">
                             <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
                             <button type="submit" class="btn-primary">Переименовать</button>
                             <button type="button" data-close>Отмена</button>
@@ -107,7 +110,7 @@
                     <summary>Удаление</summary>
                     <div class="more-body">
                         <form method="post" data-confirm="Это действие необратимо."
-                              th:action="@{/dictionaries/characteristics/{id}/deletion(id=${selectedCharacteristic.id.value})}">
+                              th:action="@{${shell.carried('/dictionaries/characteristics/' + selectedCharacteristic.id.value + '/deletion')}}">
                             <button type="submit" class="btn-danger">Удалить</button>
                             <button type="button" data-close>Отмена</button>
                         </form>
@@ -126,7 +129,7 @@
                      th:attr="open=${shell.opened('/methods')} ? 'open'">
                 <summary>Новый Метод</summary>
                 <div class="more-body">
-                    <form class="inline-form" method="post" th:action="@{/dictionaries/methods}">
+                    <form class="inline-form" method="post" th:action="@{${shell.carried('/dictionaries/methods')}}">
                         <label>Имя Метода <input type="text" name="name" th:value="${shell.echo('name', '/methods')}"></label>
                         <button type="submit" class="btn-primary">Завести Метод</button>
                         <button type="button" data-close>Отмена</button>
@@ -137,7 +140,7 @@
                      th:attr="open=${shell.opened('/characteristics')} ? 'open'">
                 <summary>Новая Характеристика</summary>
                 <div class="more-body">
-                    <form class="inline-form" method="post" th:action="@{/dictionaries/characteristics}">
+                    <form class="inline-form" method="post" th:action="@{${shell.carried('/dictionaries/characteristics')}}">
                         <label>Имя Характеристики <input type="text" name="name" th:value="${shell.echo('name', '/characteristics')}"></label>
                         <button type="submit" class="btn-primary">Завести Характеристику</button>
                         <button type="button" data-close>Отмена</button>

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
+import ru.locus.ReturnTo;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.Role;
 
@@ -66,22 +67,24 @@ public class DictionaryController {
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/methods")
-    public String createMethod(@RequestParam String name, Model model) {
+    public String createMethod(@RequestParam String name, @RequestParam(required = false) String from,
+                               Model model) {
         try {
-            return atMethod(methods.create(name).value());
+            return atMethod(methods.create(name).value(), from);
         } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, null, null, model);
         }
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/methods/{id}/name")
-    public String renameMethod(@PathVariable long id, @RequestParam String name, Model model) {
+    public String renameMethod(@PathVariable long id, @RequestParam String name,
+                               @RequestParam(required = false) String from, Model model) {
         try {
             methods.rename(new SolutionMethodId(id), name);
         } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, id, null, model);
         }
-        return atMethod(id);
+        return atMethod(id, from);
     }
 
     /**
@@ -90,42 +93,45 @@ public class DictionaryController {
      * в отличие от дерева, где остаётся родитель.
      */
     @PostMapping(Addresses.DICTIONARIES + "/methods/{id}/deletion")
-    public String deleteMethod(@PathVariable long id, Model model) {
+    public String deleteMethod(@PathVariable long id, @RequestParam(required = false) String from, Model model) {
         try {
             methods.delete(new SolutionMethodId(id));
         } catch (IllegalArgumentException refusal) {
             return refused(refusal, id, null, model);
         }
-        return "redirect:" + Addresses.DICTIONARIES;
+        return "redirect:" + ReturnTo.carried(Addresses.DICTIONARIES, from);
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/characteristics")
-    public String createCharacteristic(@RequestParam String name, Model model) {
+    public String createCharacteristic(@RequestParam String name, @RequestParam(required = false) String from,
+                                       Model model) {
         try {
-            return atCharacteristic(characteristics.create(name).value());
+            return atCharacteristic(characteristics.create(name).value(), from);
         } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, null, null, model);
         }
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/characteristics/{id}/name")
-    public String renameCharacteristic(@PathVariable long id, @RequestParam String name, Model model) {
+    public String renameCharacteristic(@PathVariable long id, @RequestParam String name,
+                                       @RequestParam(required = false) String from, Model model) {
         try {
             characteristics.rename(new CharacteristicId(id), name);
         } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, null, id, model);
         }
-        return atCharacteristic(id);
+        return atCharacteristic(id, from);
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/characteristics/{id}/deletion")
-    public String deleteCharacteristic(@PathVariable long id, Model model) {
+    public String deleteCharacteristic(@PathVariable long id, @RequestParam(required = false) String from,
+                                       Model model) {
         try {
             characteristics.delete(new CharacteristicId(id));
         } catch (IllegalArgumentException refusal) {
             return refused(refusal, null, id, model);
         }
-        return "redirect:" + Addresses.DICTIONARIES;
+        return "redirect:" + ReturnTo.carried(Addresses.DICTIONARIES, from);
     }
 
     /**
@@ -169,14 +175,16 @@ public class DictionaryController {
 
     /**
      * Возврат к затронутой записи: параметр держит выбор, якорь — место
-     * в списке. Без них на каждой правке теряется и то, и другое.
+     * в списке, {@code from} — откуда пришли на словари (ADR-0060). Без них
+     * на каждой правке теряется и то, и другое.
      */
-    private static String atMethod(long id) {
-        return "redirect:" + Addresses.DICTIONARIES + "?method=" + id + "#method-" + id;
+    private static String atMethod(long id, String from) {
+        return "redirect:" + ReturnTo.carried(Addresses.DICTIONARIES + "?method=" + id + "#method-" + id, from);
     }
 
-    private static String atCharacteristic(long id) {
-        return "redirect:" + Addresses.DICTIONARIES + "?characteristic=" + id + "#characteristic-" + id;
+    private static String atCharacteristic(long id, String from) {
+        return "redirect:" + ReturnTo.carried(
+                Addresses.DICTIONARIES + "?characteristic=" + id + "#characteristic-" + id, from);
     }
 
     private String refused(RuntimeException refusal, Long method, Long characteristic, Model model) {

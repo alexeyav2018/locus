@@ -7,6 +7,9 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page">
+<!--/* Рубрикатор — раздел шапки: «назад» есть, только когда сюда пришли
+       ссылкой с возвратом, и он переживает выбор узла и действия (ADR-0060). */-->
+<p class="back" th:if="${shell.back}"><a th:href="@{${shell.back}}">← Назад</a></p>
 <div class="page-head">
     <div>
         <h1>Рубрикатор</h1>
@@ -95,7 +98,7 @@
                 <details class="more" name="node-actions" th:attr="open=${shell.opened('/name')} ? 'open'">
                     <summary>Изменить имя</summary>
                     <div class="more-body">
-                        <form class="inline-form" method="post" th:action="@{/taxonomy/{id}/name(id=${selected.id.value})}">
+                        <form class="inline-form" method="post" th:action="@{${shell.carried('/taxonomy/' + selected.id.value + '/name')}}">
                             <label>Новое имя <input type="text" name="name" th:value="${shell.echo('name', '/name')}"></label>
                             <button type="submit" class="btn-primary">Переименовать</button>
                             <button type="button" data-close>Отмена</button>
@@ -114,7 +117,7 @@
                          th:attr="open=${shell.opened('/taxonomy') and shell.postedParam('parentId') != null} ? 'open'">
                     <summary>Новый потомок</summary>
                     <div class="more-body">
-                        <form method="post" th:action="@{/taxonomy}">
+                        <form method="post" th:action="@{${shell.carried('/taxonomy')}}">
                             <input type="hidden" name="parentId" th:value="${selected.id.value}">
                             <label>Имя потомка <input type="text" name="name"
                                     th:value="${shell.postedParam('parentId') != null} ? ${shell.echo('name', '/taxonomy')}"></label>
@@ -140,7 +143,7 @@
                 <details class="more" name="node-actions" th:attr="open=${shell.opened('/parent')} ? 'open'">
                     <summary>Перенести узел</summary>
                     <div class="more-body">
-                        <form method="post" th:action="@{/taxonomy/{id}/parent(id=${selected.id.value})}">
+                        <form method="post" th:action="@{${shell.carried('/taxonomy/' + selected.id.value + '/parent')}}">
                             <label>Перенести под
                                 <select name="parentId">
                                     <option value="">— в корень —</option>
@@ -176,13 +179,13 @@
                     <div class="more-body">
                 <form method="post" th:unless="${restructure}"
                       data-confirm="Это действие необратимо."
-                      th:action="@{/taxonomy/{id}/deletion(id=${selected.id.value})}">
+                      th:action="@{${shell.carried('/taxonomy/' + selected.id.value + '/deletion')}}">
                     <button type="submit" class="btn-danger">Удалить</button>
                     <button type="button" data-close>Отмена</button>
                 </form>
                 <form method="post" th:if="${restructure}" class="distribution"
                       data-confirm="Это действие необратимо."
-                      th:action="@{/taxonomy/{id}/distribution(id=${selected.id.value})}">
+                      th:action="@{${shell.carried('/taxonomy/' + selected.id.value + '/distribution')}}">
                     <h4>Снять Тему с распределением Задач</h4>
                     <p>Тема снимается вместе с разметкой: каждой её Задаче укажите
                         Тему-приёмник, на которую она переедет.</p>
@@ -223,7 +226,7 @@
                  th:attr="open=${shell.opened('/taxonomy') and shell.postedParam('parentId') == null} ? 'open'">
             <summary>Завести корневой узел</summary>
             <div class="more-body">
-                <form class="inline-form" method="post" th:action="@{/taxonomy}">
+                <form class="inline-form" method="post" th:action="@{${shell.carried('/taxonomy')}}">
                     <label>Имя <input type="text" name="name"
                                       th:value="${shell.postedParam('parentId') == null} ? ${shell.echo('name', '/taxonomy')}"></label>
                     <button type="submit" class="btn-primary">Завести</button>
