@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import ru.locus.file.FileType;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.UserId;
@@ -54,17 +55,20 @@ public class AssemblyDraftService {
     private final CurrentUser currentUser;
     private final Clock clock;
     private final AssemblyDraftProperties properties;
+    private final TransactionTemplate transactions;
 
     public AssemblyDraftService(AssemblyDraftRepository drafts,
                                 PdfAssembly assembly,
                                 CurrentUser currentUser,
                                 Clock clock,
-                                AssemblyDraftProperties properties) {
+                                AssemblyDraftProperties properties,
+                                TransactionTemplate transactions) {
         this.drafts = drafts;
         this.assembly = assembly;
         this.currentUser = currentUser;
         this.clock = clock;
         this.properties = properties;
+        this.transactions = transactions;
     }
 
     /**
@@ -83,45 +87,99 @@ public class AssemblyDraftService {
      */
     @PreAuthorize("hasRole('ADMINISTRATOR')")
     public AssemblyDraft upload(String originalName, InputStream content) {
+        return upload(List.of(new Source(originalName, content))).getFirst();
+    }
+
+    /**
+     * Принимает несколько исходников разом — все или ни одного
+     * (design.md assistant-multiple-files, Р2).
+     *
+     * <p>Сначала каждый исходник пишется в рабочую папку и проверяется так же,
+     * как одиночный {@link #upload(String, InputStream)}; первый отказ
+     * убирает с диска уже принятые и называет позицию отклонённого. Строки
+     * черновиков заводятся одной транзакцией, только когда приняты все:
+     * отклонённый набор не оставляет ни одного черновика.
+     *
+     * @return черновики в порядке исходников
+     * @throws SourceRefusedException исходник не подходит; позиция — его место в списке
+     */
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public List<AssemblyDraft> upload(List<Source> sources) {
         sweep();
         UserId owner = currentUser.id();
-        String name = displayName(originalName);
+        List<Received> received = new ArrayList<>();
+        for (int position = 0; position < sources.size(); position++) {
+            try {
+                received.add(receive(sources.get(position)));
+            } catch (RuntimeException refusal) {
+                received.forEach(accepted -> removeQuietly(fileOf(accepted.fileName())));
+                if (refusal instanceof IllegalArgumentException) {
+                    throw new SourceRefusedException(position, refusal.getMessage(), refusal.getCause());
+                }
+                throw refusal;
+            }
+        }
+        try {
+            List<AssemblyDraftId> ids = transactions.execute(status -> received.stream()
+                    .map(accepted -> drafts.create(owner, accepted.name(), accepted.kind(), accepted.contentType(),
+                            accepted.pageCount(), accepted.fileName(), clock.instant()))
+                    .toList());
+            Map<AssemblyDraftId, AssemblyDraft> created = drafts.findByIds(owner, ids).stream()
+                    .collect(Collectors.toMap(AssemblyDraft::id, Function.identity()));
+            return ids.stream().map(created::get).toList();
+        } catch (RuntimeException failure) {
+            received.forEach(accepted -> removeQuietly(fileOf(accepted.fileName())));
+            throw failure;
+        }
+    }
+
+    /**
+     * Пишет исходник в рабочую папку и узнаёт его вид и число страниц;
+     * строки в базе не заводит. Отклонённый исходник с диска убирается.
+     */
+    private Received receive(Source source) {
+        String name = displayName(source.originalName());
         String fileName = UUID.randomUUID().toString();
         Path file = fileOf(fileName);
         try {
             Files.createDirectories(properties.directory());
-            Files.copy(content, file);
+            Files.copy(source.content(), file);
         } catch (IOException e) {
             removeQuietly(file);
             throw new UncheckedIOException("Не удалось принять исходник «" + name + "»", e);
         }
         try {
             byte[] head = head(file);
-            AssemblyDraft.Kind kind;
-            String contentType;
-            int pageCount;
             if (PdfAssembly.isJpeg(head)) {
-                kind = AssemblyDraft.Kind.IMAGE;
-                contentType = FileType.JPEG;
-                pageCount = 1;
-            } else if (PdfAssembly.isPng(head)) {
-                kind = AssemblyDraft.Kind.IMAGE;
-                contentType = FileType.PNG;
-                pageCount = 1;
-            } else if (PdfAssembly.isPdf(head)) {
-                kind = AssemblyDraft.Kind.PDF;
-                contentType = FileType.PDF;
-                pageCount = assembly.pageCount(file, name);
-            } else {
-                throw new IllegalArgumentException("Файл «" + name
-                        + "» не подходит для сборки: принимаются картинки JPEG и PNG и файлы PDF");
+                return new Received(name, AssemblyDraft.Kind.IMAGE, FileType.JPEG, 1, fileName);
             }
-            AssemblyDraftId id = drafts.create(owner, name, kind, contentType, pageCount, fileName, clock.instant());
-            return drafts.findByIds(owner, List.of(id)).getFirst();
+            if (PdfAssembly.isPng(head)) {
+                return new Received(name, AssemblyDraft.Kind.IMAGE, FileType.PNG, 1, fileName);
+            }
+            if (PdfAssembly.isPdf(head)) {
+                return new Received(name, AssemblyDraft.Kind.PDF, FileType.PDF, assembly.pageCount(file, name),
+                        fileName);
+            }
+            throw new IllegalArgumentException("Файл «" + name
+                    + "» не подходит для сборки: принимаются картинки JPEG и PNG и файлы PDF");
         } catch (RuntimeException refusal) {
             removeQuietly(file);
             throw refusal;
         }
+    }
+
+    /**
+     * Исходник к приёму.
+     *
+     * @param originalName имя файла, как его назвал браузер
+     * @param content      содержимое; читает сервис, закрывает вызвавший
+     */
+    public record Source(String originalName, InputStream content) {
+    }
+
+    /** Исходник, принятый на диск и проверенный, но ещё без строки в базе. */
+    private record Received(String name, AssemblyDraft.Kind kind, String contentType, int pageCount,
+                            String fileName) {
     }
 
     /**

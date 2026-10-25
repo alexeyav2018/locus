@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -108,7 +111,7 @@ class AssistantPageTest extends IntegrationTest {
                 .contains("токенов входа")
                 .contains("$0.0014")
                 .contains(FORM)
-                .contains("value=\"" + turn.conversation() + "\"");
+                .contains("action=\"" + TURNS + "?conversation=" + turn.conversation() + "\"");
         assertThat(browser.get(Addresses.ASSISTANT).body()).contains("id=\"turn-" + turn.id() + "\"");
     }
 
@@ -169,7 +172,7 @@ class AssistantPageTest extends IntegrationTest {
         finished(browser, earlier);
 
         assertThat(browser.get(Addresses.ASSISTANT + "?new=true").body())
-                .contains(FORM).doesNotContain("name=\"conversation\"");
+                .contains(FORM).contains("action=\"" + TURNS + "\"");
         Turn running = send(browser, "зависание");
         assertThat(running.conversation()).isNotEqualTo(earlier.conversation());
 
@@ -230,14 +233,36 @@ class AssistantPageTest extends IntegrationTest {
         assertThat(browser.get(first.page()).body()).contains("id=\"turn-" + first.id() + "\"");
     }
 
-    /** Сценарий «Учитель без роли Администратора». */
+    /** Сценарий «Учитель без роли Администратора»: четыре поля и вставка — только у Администратора. */
     @Test
-    void onlyAdministratorHasTheFileField() {
+    void onlyAdministratorHasTheFileFields() {
         String teachers = loggedIn(port, accounts.settled(Role.TEACHER)).get(Addresses.ASSISTANT).body();
         String administrators = loggedIn(port, accounts.settled(Role.ADMINISTRATOR)).get(Addresses.ASSISTANT).body();
 
-        assertThat(teachers).doesNotContain("name=\"file\"");
-        assertThat(administrators).contains("name=\"file\"").contains("снимок листа можно приложить файлом");
+        assertThat(teachers).doesNotContain("type=\"file\"").doesNotContain("data-paste-file");
+        for (int number = 1; number <= 4; number++) {
+            assertThat(administrators).contains("Файл " + number).contains("name=\"file" + number + "\"");
+        }
+        assertThat(administrators).doesNotContain("name=\"file5\"")
+                .contains("data-paste-file").contains("data-paste-status")
+                .contains("до четырёх файлов");
+    }
+
+    /**
+     * Вставка из буфера (Р5) — точечный раздел {@code locus.js}: текст в буфере
+     * не трогается, картинка ложится в первое пустое поле «Вставка N.ext»,
+     * нет пустого или браузер не даёт присвоить — сообщение в строке формы.
+     */
+    @Test
+    void pasteSectionFillsTheFirstEmptyField() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String paste = script.substring(script.indexOf("input[type=file][data-paste-file]"));
+        String styles = Files.readString(Path.of("src/main/resources/static/css/locus.css"), StandardCharsets.UTF_8);
+
+        assertThat(paste).contains("[data-paste-status]", "addEventListener('paste'", "'text/plain'",
+                "'image/'", "input.files.length === 0", "'Вставка ' + number", "'jpeg' ? 'jpg'",
+                "new DataTransfer()", "Свободного поля нет", "выберите файл кнопкой");
+        assertThat(styles).contains(".turn-files {", "repeat(2, minmax(0, 1fr))");
     }
 
     /** Сценарий «Снимок листа». */
@@ -247,13 +272,68 @@ class AssistantPageTest extends IntegrationTest {
         Browser browser = loggedIn(port, administrator);
 
         Browser.Page sent = browser.postMultipart(TURNS, Map.of("prompt", "ответ: что на листе?"),
-                List.of(new Browser.FilePart("file", "лист.jpg", "image/jpeg", jpeg())));
+                List.of(new Browser.FilePart("file1", "лист.jpg", "image/jpeg", jpeg())));
         String page = finished(browser, turn(sent));
 
         LoggedIn.as(administrator);
         AssemblyDraft draft = drafts.own().getFirst();
         assertThat(draft.originalName()).isEqualTo("лист.jpg");
-        assertThat(page).contains("Загружен черновик сборки " + draft.id().value() + " «лист.jpg»");
+        assertThat(page).contains("Файл 1: загружен черновик сборки " + draft.id().value() + " «лист.jpg»");
+    }
+
+    /** Сценарий «Два файла»: два черновика, строки в порядке полей. */
+    @Test
+    void twoFilesBecomeTwoDraftsInFieldOrder() throws IOException {
+        TestAccounts.Account administrator = accounts.settled(Role.ADMINISTRATOR);
+        Browser browser = loggedIn(port, administrator);
+
+        Browser.Page sent = browser.postMultipart(TURNS, Map.of("prompt", "ответ: что на листе?"),
+                List.of(new Browser.FilePart("file2", "кадр два.jpg", "image/jpeg", jpeg()),
+                        new Browser.FilePart("file1", "кадр один.jpg", "image/jpeg", jpeg())));
+        String page = finished(browser, turn(sent));
+
+        LoggedIn.as(administrator);
+        assertThat(drafts.own()).hasSize(2);
+        long first = draftNamed("кадр один.jpg");
+        long second = draftNamed("кадр два.jpg");
+        int one = page.indexOf("Файл 1: загружен черновик сборки " + first + " «кадр один.jpg»");
+        int two = page.indexOf("Файл 2: загружен черновик сборки " + second + " «кадр два.jpg»");
+        assertThat(one).isPositive().isLessThan(two);
+    }
+
+    /** Сценарий «Пустое поле между заполненными»: номера не сдвигаются. */
+    @Test
+    void emptyFieldKeepsTheNumbersOfOthers() throws IOException {
+        Browser browser = loggedIn(port, accounts.settled(Role.ADMINISTRATOR));
+
+        Browser.Page sent = browser.postMultipart(TURNS, Map.of("prompt", "ответ: что на листе?"),
+                List.of(new Browser.FilePart("file1", "условия.jpg", "image/jpeg", jpeg()),
+                        new Browser.FilePart("file2", "", "application/octet-stream", new byte[0]),
+                        new Browser.FilePart("file3", "решения.jpg", "image/jpeg", jpeg())));
+        String page = finished(browser, turn(sent));
+
+        assertThat(page).contains("Файл 1: загружен черновик сборки").contains("«условия.jpg»")
+                .contains("Файл 3: загружен черновик сборки").contains("«решения.jpg»")
+                .doesNotContain("Файл 2:");
+    }
+
+    /** Сценарий «Неподходящий файл»: отказ называет поле, черновиков нет, текст на месте. */
+    @Test
+    void unsuitableFileRefusesTheWholeRequest() throws IOException {
+        TestAccounts.Account administrator = accounts.settled(Role.ADMINISTRATOR);
+        Browser browser = loggedIn(port, administrator);
+
+        Browser.Page refused = browser.postMultipart(TURNS, Map.of("prompt", "разбери лист двумя кадрами"),
+                List.of(new Browser.FilePart("file1", "лист.jpg", "image/jpeg", jpeg()),
+                        new Browser.FilePart("file2", "заметки.txt", "text/plain",
+                                "не картинка".getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("Файл 2: ").contains("«заметки.txt»")
+                .contains("разбери лист двумя кадрами")
+                .doesNotContain("id=\"turn-");
+        LoggedIn.as(administrator);
+        assertThat(drafts.own()).isEmpty();
     }
 
     /** Сценарий «Пустой запрос». */
@@ -297,6 +377,45 @@ class AssistantPageTest extends IntegrationTest {
     }
 
     /**
+     * Сценарий «Сверх предела загрузки» — на пределе контейнера в килобайты,
+     * чтобы не гонять по сети сотню мегабайт. Запрос отклоняет контейнер,
+     * а страница ошибки переадресует в Разговор из адреса действия; отказ
+     * показывается один раз.
+     */
+    @Nested
+    @TestPropertySource(properties = {
+            "spring.servlet.multipart.max-file-size=2KB",
+            "spring.servlet.multipart.max-request-size=4KB"})
+    class OverTheUploadLimit {
+
+        @LocalServerPort
+        private int port;
+
+        @Autowired
+        private TestAccounts accounts;
+
+        @Test
+        void refusalStaysInTheSameConversationAndSaysTheTextIsLost() {
+            Browser browser = loggedIn(port, accounts.settled(Role.ADMINISTRATOR));
+            Turn earlier = send(browser, "ответ до предела");
+            finished(browser, earlier);
+
+            Browser.Page refused = browser.postMultipart(TURNS + "?conversation=" + earlier.conversation(),
+                    Map.of("prompt", "разбери тяжёлый лист"),
+                    List.of(new Browser.FilePart("file1", "тяжёлый.pdf", "application/pdf", new byte[8 * 1024])));
+
+            assertThat(refused.location()).endsWith(earlier.page());
+            String page = browser.get(earlier.page()).body();
+            assertThat(page).contains("Файлы слишком велики: до 2 КБ на файл и до 4 КБ за один запрос")
+                    .contains("Набранный текст не сохранился")
+                    .contains("id=\"turn-" + earlier.id() + "\"")
+                    .contains("action=\"" + TURNS + "?conversation=" + earlier.conversation() + "\"")
+                    .doesNotContain("разбери тяжёлый лист");
+            assertThat(browser.get(earlier.page()).body()).doesNotContain("Файлы слишком велики");
+        }
+    }
+
+    /**
      * Начатая со страницы Реплика.
      *
      * @param page адрес её Разговора, без якоря
@@ -309,7 +428,7 @@ class AssistantPageTest extends IntegrationTest {
     }
 
     private static Turn send(Browser browser, String prompt, long conversation) {
-        return turn(browser.postForm(TURNS, Map.of("prompt", prompt, "conversation", Long.toString(conversation))));
+        return turn(browser.postForm(TURNS + "?conversation=" + conversation, Map.of("prompt", prompt)));
     }
 
     /** Отправка ведёт на адрес Разговора с якорем Реплики (Р1). */
@@ -342,6 +461,12 @@ class AssistantPageTest extends IntegrationTest {
         Browser browser = new Browser(port);
         browser.logIn(account.login(), account.password());
         return browser;
+    }
+
+    /** Номер своего черновика с этим именем; зовётся под личностью его владельца. */
+    private long draftNamed(String name) {
+        return drafts.own().stream().filter(draft -> draft.originalName().equals(name))
+                .findFirst().orElseThrow().id().value();
     }
 
     private static byte[] jpeg() throws IOException {

@@ -78,48 +78,50 @@ public class AssistantService {
     }
 
     /**
-     * Начать Реплику вошедшего учителя без файла и сразу вернуться.
+     * Начать Реплику вошедшего учителя без файлов и сразу вернуться.
      *
-     * @see #startTurn(Optional, String, Optional)
+     * @see #startTurn(Optional, String, List)
      */
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMINISTRATOR')")
     public AssistantTurn startTurn(Optional<AssistantConversationId> conversation, String prompt) {
-        return startTurn(conversation, prompt, Optional.empty());
+        return startTurn(conversation, prompt, List.of());
     }
 
     /**
      * Начать Реплику вошедшего учителя и сразу вернуться.
      *
-     * <p>Приложенный файл принимает ответчик {@link TurnAttachments}
-     * (design.md assistant-chat, Р5), и запрос Помощнику — текст учителя
-     * и строка ответчика через пустую строку; запрос может состоять из одного
-     * файла. Отказы, не требующие файла, — недоступность, пустота, идущая
-     * Реплика — проверяются до приёма: отклонённая Реплика не оставляет
-     * черновика. Гонка двух отправок всё же может его оставить — его уберёт
+     * <p>Приложенные файлы принимает ответчик {@link TurnAttachments}
+     * (design.md assistant-chat, Р5) — все или ни одного, и запрос
+     * Помощнику — текст учителя и через пустую строку строки ответчика
+     * по одной на файл, в порядке списка (design.md assistant-multiple-files,
+     * Р3); запрос может состоять из одних файлов. Отказы, не требующие
+     * файла, — недоступность, пустота, идущая Реплика — проверяются
+     * до приёма: отклонённая Реплика не оставляет черновика. Гонка двух отправок всё же может его оставить — его уберёт
      * попутная уборка черновиков по сроку.
      *
      * @param conversation Разговор, который Реплика продолжает; пусто — новый Разговор
-     * @param attachment   файл к запросу; пусто — без файла
+     * @param files        файлы к запросу в порядке полей; пусто — без файлов
      * @return Реплика в состоянии «работаю»
      * @throws AssistantUnavailableException          Помощник недоступен
-     * @throws IllegalArgumentException               запрос пуст и файла нет, запрос длиннее
-     *                                                {@link #PROMPT_LIMIT}, файл не подходит
+     * @throws IllegalArgumentException               запрос пуст и файлов нет, запрос длиннее
+     *                                                {@link #PROMPT_LIMIT}, файл не подходит —
+     *                                                тогда текст называет его поле
      * @throws AssistantConversationNotFoundException Разговора у учителя нет — в том числе чужой
      * @throws AssistantBusyException                 у учителя уже идёт Реплика
      */
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMINISTRATOR')")
     public AssistantTurn startTurn(Optional<AssistantConversationId> conversation, String prompt,
-            Optional<TurnAttachment> attachment) {
+            List<TurnAttachment> files) {
         AssistantAvailability current = availability;
         if (!current.available()) {
             throw new AssistantUnavailableException(current.cause());
         }
         String text = prompt == null ? "" : prompt.strip();
-        if (text.isEmpty() && attachment.isEmpty()) {
+        if (text.isEmpty() && files.isEmpty()) {
             throw new IllegalArgumentException("Запрос Помощнику пуст");
         }
         UserId owner = currentUser.id();
-        if (attachment.isPresent()) {
+        if (!files.isEmpty()) {
             if (repository.findRunningTurn(owner).isPresent()) {
                 throw new AssistantBusyException();
             }
@@ -127,7 +129,7 @@ public class AssistantService {
             if (receiver == null) {
                 throw new IllegalArgumentException("Файлы Помощнику не принимаются");
             }
-            String note = receiver.attach(attachment.get());
+            String note = String.join("\n", receiver.attach(files));
             text = text.isEmpty() ? note : text + "\n\n" + note;
         }
         if (text.codePointCount(0, text.length()) > PROMPT_LIMIT) {

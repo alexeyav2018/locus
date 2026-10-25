@@ -8,7 +8,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.AfterEach;
@@ -125,12 +129,47 @@ class AssistantConversationsTest extends IntegrationTest {
         LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
 
         AssistantTurn turn = finished(service.startTurn(Optional.empty(), "ответ: что на листе?",
-                Optional.of(new TurnAttachment("лист.png", new ByteArrayInputStream(png())))));
+                List.of(new TurnAttachment(1, "лист.png", new ByteArrayInputStream(png())))));
 
         AssemblyDraft draft = drafts.own().getFirst();
         assertThat(draft.originalName()).isEqualTo("лист.png");
-        assertThat(turn.prompt()).isEqualTo("ответ: что на листе?\n\nЗагружен черновик сборки "
+        assertThat(turn.prompt()).isEqualTo("ответ: что на листе?\n\nФайл 1: загружен черновик сборки "
                 + draft.id().value() + " «лист.png», страниц: 1.");
+    }
+
+    /** Сценарии «Два файла» и «Пустое поле между заполненными». */
+    @Test
+    void severalFilesAreNamedByTheirFieldsInOrder() throws IOException {
+        LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
+
+        AssistantTurn turn = finished(service.startTurn(Optional.empty(), "ответ: в первом условия",
+                List.of(new TurnAttachment(1, "условия.png", new ByteArrayInputStream(png())),
+                        new TurnAttachment(3, "решения.png", new ByteArrayInputStream(png())))));
+
+        Map<String, AssemblyDraft> byName = drafts.own().stream()
+                .collect(Collectors.toMap(AssemblyDraft::originalName, Function.identity()));
+        assertThat(byName).hasSize(2);
+        assertThat(turn.prompt()).isEqualTo("ответ: в первом условия\n\n"
+                + "Файл 1: загружен черновик сборки " + byName.get("условия.png").id().value()
+                + " «условия.png», страниц: 1.\n"
+                + "Файл 3: загружен черновик сборки " + byName.get("решения.png").id().value()
+                + " «решения.png», страниц: 1.");
+    }
+
+    /** Сценарий «Неподходящий файл»: отклоняется весь запрос. */
+    @Test
+    void oneUnsuitableFileRefusesAllAndNamesItsField() throws IOException {
+        LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
+
+        assertThatThrownBy(() -> service.startTurn(Optional.empty(), "ответ", List.of(
+                new TurnAttachment(1, "лист.png", new ByteArrayInputStream(png())),
+                new TurnAttachment(2, "заметки.txt", new ByteArrayInputStream("текст".getBytes())))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Файл 2: ")
+                .hasMessageContaining("заметки.txt");
+
+        assertThat(drafts.own()).isEmpty();
+        assertThat(service.conversations()).isEmpty();
     }
 
     /** Сценарий «Только файл». */
@@ -139,9 +178,9 @@ class AssistantConversationsTest extends IntegrationTest {
         LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
 
         AssistantTurn turn = finished(service.startTurn(Optional.empty(), "  ",
-                Optional.of(new TurnAttachment("лист.png", new ByteArrayInputStream(png())))));
+                List.of(new TurnAttachment(1, "лист.png", new ByteArrayInputStream(png())))));
 
-        assertThat(turn.prompt()).startsWith("Загружен черновик сборки ");
+        assertThat(turn.prompt()).startsWith("Файл 1: загружен черновик сборки ");
     }
 
     /** Сценарии «Пустой запрос» и «Неподходящий файл». */
@@ -149,10 +188,10 @@ class AssistantConversationsTest extends IntegrationTest {
     void emptyPromptAndUnsuitableFileStartNoTurn() {
         LoggedIn.as(accounts.settled(Role.ADMINISTRATOR));
 
-        assertThatThrownBy(() -> service.startTurn(Optional.empty(), " ", Optional.empty()))
+        assertThatThrownBy(() -> service.startTurn(Optional.empty(), " ", List.of()))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("пуст");
-        assertThatThrownBy(() -> service.startTurn(Optional.empty(), "ответ", Optional.of(
-                new TurnAttachment("заметки.txt", new ByteArrayInputStream("текст".getBytes())))))
+        assertThatThrownBy(() -> service.startTurn(Optional.empty(), "ответ", List.of(
+                new TurnAttachment(1, "заметки.txt", new ByteArrayInputStream("текст".getBytes())))))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("JPEG и PNG");
 
         assertThat(service.conversations()).isEmpty();
@@ -165,7 +204,7 @@ class AssistantConversationsTest extends IntegrationTest {
         AssistantTurn running = service.startTurn(Optional.empty(), "зависание");
 
         assertThatThrownBy(() -> service.startTurn(Optional.empty(), "ответ",
-                Optional.of(new TurnAttachment("лист.png", new ByteArrayInputStream(png())))))
+                List.of(new TurnAttachment(1, "лист.png", new ByteArrayInputStream(png())))))
                 .isInstanceOf(AssistantBusyException.class);
         assertThat(drafts.own()).isEmpty();
 
