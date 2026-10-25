@@ -27,6 +27,14 @@
         правится текст по слотам с версией (Р7), меняются Улики, текст
         ходит файлом .md (Р8). Задаче без текста можно записать текст (Р5).
 
+        Формы с долгим вводом помечены data-unsaved (problem-form-unsaved-warning):
+        при уходе с несохранённым static/js/locus.js спросит стандартным вопросом
+        браузера. Показанное при загрузке — "read"; форма, чьё действие отклонено
+        или отправлено «Предпросмотром», показывает присланное — "sent". Какая
+        это форма, решает адрес действия (shell.opened), как и раскрытие блока:
+        контроллер о формах страницы не знает (ADR-0042). Загрузка .md
+        не помечена — терять в выбранном файле нечего.
+
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет решение
         разработчику и в выдачу попадать не должен.
     */-->
@@ -46,7 +54,8 @@
 
 <form method="post"
       enctype="multipart/form-data"
-      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}">
+      th:action="${problem} ? @{/problems/{id}(id=${problem.id.value},from=${shell.back})} : @{/problems(from=${shell.back})}"
+      th:attr="data-unsaved=${(problem == null ? shell.posted != null : shell.opened('/problems/' + problem.id.value)) ? 'sent' : 'read'}">
 
     <th:block th:replace="~{problem/markup :: fields}"/>
 
@@ -106,7 +115,8 @@
     <p class="hint">Markdown; формулы LaTeX — между <code>$…$</code> и <code>$$…$$</code>; знак доллара —
         <code>\$</code>. Слот сохраняется отдельно и перерисовывается только он.</p>
     <th:block th:replace="~{problem/preview :: block(${preview})}"/>
-    <form method="post" th:action="@{/problems/{id}/condition/text(id=${problem.id.value})}">
+    <form method="post" th:action="@{/problems/{id}/condition/text(id=${problem.id.value})}"
+          th:attr="data-unsaved=${(shell.opened('/condition/text') or (shell.opened('/text/preview') and shell.postedParam('conditionText') != null)) ? 'sent' : 'read'}">
         <input type="hidden" name="version" th:value="${form.version}">
         <label>Условие
             <textarea name="conditionText" rows="8" th:text="${form.conditionText}"></textarea></label>
@@ -115,7 +125,8 @@
             <button type="submit" th:formaction="@{/problems/{id}/text/preview(id=${problem.id.value})}">Предпросмотр</button>
         </div>
     </form>
-    <form method="post" th:action="@{/problems/{id}/solution/text(id=${problem.id.value})}">
+    <form method="post" th:action="@{/problems/{id}/solution/text(id=${problem.id.value})}"
+          th:attr="data-unsaved=${(shell.opened('/solution/text') or (shell.opened('/text/preview') and shell.postedParam('solutionText') != null)) ? 'sent' : 'read'}">
         <input type="hidden" name="version" th:value="${form.version}">
         <label>Решение
             <textarea name="solutionText" rows="12" th:text="${form.solutionText}"></textarea></label>
@@ -168,7 +179,8 @@
             <summary>Другая Улика условия</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
-                      th:action="@{/problems/{id}/condition/evidence(id=${problem.id.value})}">
+                      th:action="@{/problems/{id}/condition/evidence(id=${problem.id.value})}"
+                      th:attr="data-unsaved=${shell.opened('/condition/evidence')} ? 'sent' : 'read'">
                     <label>Новая Улика условия
                         <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
@@ -187,7 +199,8 @@
             <summary>Другая Улика решения</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
-                      th:action="@{/problems/{id}/solution/evidence(id=${problem.id.value})}">
+                      th:action="@{/problems/{id}/solution/evidence(id=${problem.id.value})}"
+                      th:attr="data-unsaved=${shell.opened('/solution/evidence')} ? 'sent' : 'read'">
                     <label>Новая Улика решения
                         <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
@@ -214,7 +227,8 @@
                 <p class="hint">Задача станет Задачей с текстом: оба PDF Локус отрисует из текстов, а нынешние
                     файлы условия и решения станут Уликами своих слотов. Нужны оба текста; формулы LaTeX —
                     между <code>$…$</code> и <code>$$…$$</code>.</p>
-                <form method="post" th:action="@{/problems/{id}/text(id=${problem.id.value})}">
+                <form method="post" th:action="@{/problems/{id}/text(id=${problem.id.value})}"
+                      th:attr="data-unsaved=${shell.opened('/text', '/text/preview')} ? 'sent' : 'read'">
                     <label>Условие
                         <textarea name="conditionText" rows="8" th:text="${form.conditionText}"></textarea></label>
                     <label>Решение
@@ -238,7 +252,8 @@
             <summary>Другое условие</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
-                      th:action="@{/problems/{id}/condition(id=${problem.id.value})}">
+                      th:action="@{/problems/{id}/condition(id=${problem.id.value})}"
+                      th:attr="data-unsaved=${shell.opened('/condition')} ? 'sent' : 'read'">
                     <label>Новое условие
                         <input type="file" name="condition" data-assembly-source="condition" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
@@ -257,7 +272,8 @@
             <summary>Другое решение</summary>
             <div class="more-body">
                 <form method="post" enctype="multipart/form-data"
-                      th:action="@{/problems/{id}/solution(id=${problem.id.value})}">
+                      th:action="@{/problems/{id}/solution(id=${problem.id.value})}"
+                      th:attr="data-unsaved=${shell.opened('/solution')} ? 'sent' : 'read'">
                     <label>Новое решение
                         <input type="file" name="solution" data-assembly-source="solution" th:data-assembly-url="@{/problems/drafts}"
                                accept="application/pdf,image/jpeg,image/png"></label>
