@@ -578,6 +578,14 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .step-tool { font-weight: 600; }
 .step-arguments { display: block; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 .turn-form textarea { max-width: none; }
+/* Поля файла к запросу: столбцом на телефоне, в две колонки на широком экране. */
+.turn-files { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem 1rem; }
+.turn-files > label { margin: 0; min-width: 0; }
+.turn-files > [data-paste-status] { grid-column: 1 / -1; margin: 0; }
+.turn-files > [data-paste-status]:empty { display: none; }
+@media (min-width: 760px) {
+    .turn-files { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* Содержимое ответа — только теги самого CommonMark (AnswerMarkdown). */
 .answer { overflow-wrap: anywhere; }
 .answer > :first-child { margin-top: 0; }

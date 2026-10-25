@@ -644,4 +644,56 @@
             });
         }
     });
+
+    // 9. Вставка картинки из буфера обмена (assistant-multiple-files, Р5): поля
+    //    <input type=file data-paste-file> с номером в имени и строка сообщения
+    //    data-paste-status. Текст в буфере не трогается — Excel и Word кладут
+    //    рядом с текстом картинку, а вставка текста в запрос важнее. Вид
+    //    картинки не проверяется: отказ по номеру поля даёт сервер.
+    var pasteFields = Array.from(document.querySelectorAll('input[type=file][data-paste-file]'));
+    if (pasteFields.length) {
+        var pasteStatus = document.querySelector('[data-paste-status]');
+        var tellPaste = function (text) {
+            if (pasteStatus) {
+                pasteStatus.textContent = text;
+            }
+        };
+        document.addEventListener('paste', function (event) {
+            var data = event.clipboardData;
+            if (!data || Array.from(data.types).indexOf('text/plain') >= 0) {
+                return;
+            }
+            var item = Array.from(data.items).find(function (entry) {
+                return entry.kind === 'file' && entry.type.indexOf('image/') === 0;
+            });
+            var blob = item && item.getAsFile();
+            if (!blob) {
+                return;
+            }
+            event.preventDefault();
+            var field = pasteFields.find(function (input) {
+                return input.files.length === 0;
+            });
+            if (!field) {
+                tellPaste('Свободного поля нет: очистите одно из полей файла.');
+                return;
+            }
+            var number = field.name.replace(/\D/g, '');
+            var subtype = item.type.split('/')[1];
+            var name = 'Вставка ' + number + '.' + (subtype === 'jpeg' ? 'jpg' : subtype);
+            try {
+                var transfer = new DataTransfer();
+                transfer.items.add(new File([blob], name, {type: item.type}));
+                field.files = transfer.files;
+            } catch (ignored) {
+                // Старый браузер не даёт собрать список файлов: остаётся кнопка.
+            }
+            if (field.files.length === 0) {
+                tellPaste('Вставить не удалось: выберите файл кнопкой «Файл ' + number + '».');
+                return;
+            }
+            field.dispatchEvent(new Event('change', {bubbles: true}));
+            tellPaste(name + ' — в поле «Файл ' + number + '».');
+        });
+    }
 })();

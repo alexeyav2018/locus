@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -243,6 +246,23 @@ class AssistantPageTest extends IntegrationTest {
         assertThat(administrators).doesNotContain("name=\"file5\"")
                 .contains("data-paste-file").contains("data-paste-status")
                 .contains("до четырёх файлов");
+    }
+
+    /**
+     * Вставка из буфера (Р5) — точечный раздел {@code locus.js}: текст в буфере
+     * не трогается, картинка ложится в первое пустое поле «Вставка N.ext»,
+     * нет пустого или браузер не даёт присвоить — сообщение в строке формы.
+     */
+    @Test
+    void pasteSectionFillsTheFirstEmptyField() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String paste = script.substring(script.indexOf("input[type=file][data-paste-file]"));
+        String styles = Files.readString(Path.of("src/main/resources/static/css/locus.css"), StandardCharsets.UTF_8);
+
+        assertThat(paste).contains("[data-paste-status]", "addEventListener('paste'", "'text/plain'",
+                "'image/'", "input.files.length === 0", "'Вставка ' + number", "'jpeg' ? 'jpg'",
+                "new DataTransfer()", "Свободного поля нет", "выберите файл кнопкой");
+        assertThat(styles).contains(".turn-files {", "repeat(2, minmax(0, 1fr))");
     }
 
     /** Сценарий «Снимок листа». */
