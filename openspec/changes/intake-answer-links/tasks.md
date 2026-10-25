@@ -28,6 +28,6 @@
 
 ## 3. Бэклог и версия
 
-- [ ] 3.1 `mvn clean package` зелёный
-- [ ] 3.2 Поднять версию в `pom.xml` до 3.9.0 и дописать в `CHANGELOG.md`
+- [x] 3.1 `mvn clean package` зелёный
+- [x] 3.2 Поднять версию в `pom.xml` до 3.9.0 и дописать в `CHANGELOG.md`
       строку из proposal.md, раздел «Версия»
