@@ -25,6 +25,10 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page">
+<!--/* Поиск — раздел шапки: «назад» есть, только когда сюда пришли ссылкой
+       с возвратом («Подобрать задачи» с Владения), и он переживает отбор
+       скрытым полем — запрос адреса GET-формы браузер отбрасывает (ADR-0060). */-->
+<p class="back" th:if="${shell.back}"><a th:href="@{${shell.back}}">← Назад</a></p>
 <div class="page-head">
     <div>
         <h1>Поиск Задач</h1>
@@ -37,6 +41,7 @@
 
 <div class="split">
 <form class="filters card sticky" method="get" th:action="@{/problems}">
+    <input type="hidden" name="from" th:if="${shell.back}" th:value="${shell.back}">
     <fieldset>
         <legend>Где искать</legend>
         <!--/* Узлы все, а не только Темы: Раздел здесь не носитель Задач,
@@ -101,7 +106,7 @@
     </fieldset>
 
     <button type="submit" class="btn-primary">Искать</button>
-    <a class="btn btn-sm" th:href="@{/problems}">Сбросить</a>
+    <a class="btn btn-sm" th:href="@{${shell.carried('/problems')}}">Сбросить</a>
 </form>
 
 <div class="found" th:if="${found != null}">

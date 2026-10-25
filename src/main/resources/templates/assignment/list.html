@@ -21,6 +21,12 @@
 <body>
 <th:block th:replace="~{fragments/shell :: header}"/>
 <main id="main" class="page">
+<!--/* Сводка — раздел шапки: «назад» есть, только когда сюда пришли
+       ссылкой с возвратом (с карточки Ученика), и он переживает отбор
+       скрытым полем — запрос адреса GET-формы браузер отбрасывает (ADR-0060).
+       Поэтому период срока назван dueFrom и dueTo, а не from: имя занято
+       возвратом. */-->
+<p class="back" th:if="${shell.back}"><a th:href="@{${shell.back}}">← Назад</a></p>
 <div class="page-head">
     <div>
         <h1>Задания</h1>
@@ -34,6 +40,7 @@
 <details class="more" th:attr="open=${filter.student != null or filter.batch != null or filter.from != null or filter.to != null or filter.onlyNotSubmitted} ? 'open'">
 <summary>Отбор</summary>
 <form class="more-body" method="get" th:action="@{/assignments}">
+    <input type="hidden" name="from" th:if="${shell.back}" th:value="${shell.back}">
     <div class="grid grid--2">
         <label>Ученик
             <select name="student">
@@ -56,8 +63,8 @@
                         th:selected="${filter.batch == one.id}">«9Б» от 01.09.2026</option>
             </select>
         </label>
-        <label>Срок от <input type="date" name="from" th:value="${filter.from}"></label>
-        <label>Срок до <input type="date" name="to" th:value="${filter.to}"></label>
+        <label>Срок от <input type="date" name="dueFrom" th:value="${filter.from}"></label>
+        <label>Срок до <input type="date" name="dueTo" th:value="${filter.to}"></label>
     </div>
     <label>
         <input type="checkbox" name="notSubmitted" value="true" th:checked="${filter.onlyNotSubmitted}">
@@ -65,7 +72,7 @@
     </label>
     <div class="form-actions">
         <button type="submit" class="btn-primary">Отобрать</button>
-        <a class="btn" th:href="@{/assignments}">Сбросить</a>
+        <a class="btn" th:href="@{${shell.carried('/assignments')}}">Сбросить</a>
     </div>
 </form>
 </details>

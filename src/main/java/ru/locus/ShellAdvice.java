@@ -95,6 +95,15 @@ public class ShellAdvice {
             return back != null ? back : fallback;
         }
 
+        /**
+         * Адрес ссылки страницы на себя или её действия с тем же возвратом
+         * (ADR-0060). Без возврата — адрес как есть: параметр
+         * {@code from=${shell.back}} в ссылке Thymeleaf вывел бы пустым.
+         */
+        public String carried(String address) {
+            return ReturnTo.carried(address, back);
+        }
+
         /** Раскрывать ли блок: отклонённое действие — по этому адресу или под ним. */
         public boolean openedUnder(String prefix) {
             return posted != null && (posted.equals(prefix) || posted.startsWith(prefix + "/"));

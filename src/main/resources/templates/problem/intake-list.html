@@ -24,6 +24,11 @@
     <span class="scope scope--personal">Мой кабинет</span>
 </div>
 
+<p class="alert alert--notice" role="status" th:if="${created != null}">
+    <a th:href="@{/problems/{id}(id=${created.id.value},from=${shell.here})}"
+       th:text="'Заведена Задача № ' + ${created.id.value}">Заведена Задача № 12</a>
+</p>
+
 <div class="empty" th:if="${#lists.isEmpty(drafts)}">
     <p>Черновиков нет. Их заводит Помощник по присланному листу.</p>
 </div>

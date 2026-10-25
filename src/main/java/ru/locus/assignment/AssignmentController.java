@@ -63,13 +63,14 @@ public class AssignmentController {
 
     /**
      * Сводка. Условия отбора в адресе, форма {@code GET} — как у поиска
-     * по библиотеке: у отобранного есть собственная ссылка.
+     * по библиотеке: у отобранного есть собственная ссылка. Период срока —
+     * {@code dueFrom} и {@code dueTo}: {@code from} — возврат (ADR-0042).
      */
     @GetMapping(Addresses.ASSIGNMENTS)
     public String list(@RequestParam(required = false) Long student,
                        @RequestParam(required = false) Long batch,
-                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueFrom,
+                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueTo,
                        @RequestParam(defaultValue = "false") boolean notSubmitted,
                        Model model) {
         model.addAttribute("students", students.all());
@@ -78,7 +79,7 @@ public class AssignmentController {
             AssignmentFilter filter = new AssignmentFilter(
                     student == null ? null : new StudentId(student),
                     batch == null ? null : new AssignmentBatchId(batch),
-                    from, to, notSubmitted);
+                    dueFrom, dueTo, notSubmitted);
             model.addAttribute("filter", filter);
             model.addAttribute("assignments", assignments.list(filter));
         } catch (IllegalArgumentException refusal) {

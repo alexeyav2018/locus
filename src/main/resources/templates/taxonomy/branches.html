@@ -34,7 +34,7 @@
 </ul>
 
 <a th:fragment="link(branch)"
-   th:href="@{/taxonomy(node=${branch.node.id.value})}"
+   th:href="@{${shell.carried('/taxonomy?node=' + branch.node.id.value)}}"
    th:classappend="${branch.node.id.value == selectedId} ? 'selected'"
    th:text="${branch.node.name}">Алгебра</a>
 </body>

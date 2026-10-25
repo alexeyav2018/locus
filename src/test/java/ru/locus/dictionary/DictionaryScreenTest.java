@@ -179,6 +179,73 @@ class DictionaryScreenTest extends IntegrationTest {
                 .endsWith("/dictionaries?method=" + created.value() + "#method-" + created.value());
     }
 
+    /** Сценарий «Возврат переживает выбор записи и действия» (ADR-0060). */
+    @Test
+    void comingWithAReturnShowsBackAndEveryLinkAndFormCarriesIt() {
+        SolutionMethodId method = methods.create(unique("Разложение на множители"));
+        CharacteristicId characteristic = characteristics.create(unique("Повышенной сложности"));
+        Browser administrator = loggedIn(Role.ADMINISTRATOR);
+
+        String body = administrator.get("/dictionaries?method=" + method.value() + "&from=/problems/7").body();
+
+        assertThat(body).as("«назад» ведёт туда, откуда пришли")
+                .contains("<a href=\"/problems/7\">← Назад</a>");
+        assertThat(body).as("выбор записи сохраняет возврат")
+                .contains("href=\"/dictionaries?method=" + method.value() + "&amp;from=%2Fproblems%2F7\"")
+                .contains("href=\"/dictionaries?characteristic=" + characteristic.value() + "&amp;from=%2Fproblems%2F7\"");
+        assertThat(body).as("формы несут возврат в адресе действия")
+                .contains("action=\"/dictionaries/methods/" + method.value() + "/name?from=%2Fproblems%2F7\"")
+                .contains("action=\"/dictionaries/methods/" + method.value() + "/deletion?from=%2Fproblems%2F7\"")
+                .contains("action=\"/dictionaries/methods?from=%2Fproblems%2F7\"")
+                .contains("action=\"/dictionaries/characteristics?from=%2Fproblems%2F7\"");
+    }
+
+    /** Сценарий «Возврат переживает выбор записи и действия»: без возврата ни «назад», ни {@code from}. */
+    @Test
+    void withoutAReturnThereIsNoBackAndNoFromAnywhere() {
+        SolutionMethodId method = methods.create(unique("Разложение на множители"));
+
+        String body = loggedIn(Role.ADMINISTRATOR).get("/dictionaries?method=" + method.value()).body();
+
+        assertThat(body).doesNotContain("← Назад");
+        assertThat(body).as("пустой возврат не выводится и пустым параметром")
+                .doesNotContain("from\"").doesNotContain("from=");
+        assertThat(body)
+                .contains("href=\"/dictionaries?method=" + method.value() + "\"")
+                .contains("action=\"/dictionaries/methods/" + method.value() + "/name\"");
+    }
+
+    /** Сценарий «Возврат переживает выбор записи и действия»: переадресация и отказ. */
+    @Test
+    void creationAndRefusalKeepTheReturn() {
+        String name = unique("Разложение на множители");
+        Browser administrator = loggedIn(Role.ADMINISTRATOR);
+
+        Browser.Page done = administrator.postForm(
+                "/dictionaries/methods", Map.of("name", name, "from", "/problems/7"));
+        Browser.Page refused = administrator.postForm(
+                "/dictionaries/methods", Map.of("name", name, "from", "/problems/7"));
+
+        SolutionMethodId created = methods.findByName(name).orElseThrow().id();
+        assertThat(done.location()).as("якорь остаётся последним")
+                .endsWith("/dictionaries?method=" + created.value() + "&from=%2Fproblems%2F7#method-" + created.value());
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).as("отказ показан тем же запросом и «назад» не теряет")
+                .contains("<a href=\"/problems/7\">← Назад</a>");
+    }
+
+    /** Сценарий «Возврат переживает выбор записи и действия»: удаление ведёт к словарям с тем же возвратом. */
+    @Test
+    void deletionComesBackWithTheReturn() {
+        CharacteristicId characteristic = characteristics.create(unique("Повышенной сложности"));
+
+        Browser.Page done = loggedIn(Role.ADMINISTRATOR).postForm(
+                "/dictionaries/characteristics/" + characteristic.value() + "/deletion",
+                Map.of("from", "/problems/7"));
+
+        assertThat(done.location()).endsWith("/dictionaries?from=%2Fproblems%2F7");
+    }
+
     /** Сценарий «Выбрана запись, которой больше нет». */
     @Test
     void selectingAVanishedEntryStillShowsTheDictionaries() {

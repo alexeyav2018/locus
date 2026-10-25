@@ -258,8 +258,8 @@ class AssignmentScreenTest extends IntegrationTest {
 
         String overdue = teacher.get("/assignments?notSubmitted=true").body();
         assertThat(overdue).contains(row(soon)).contains("не сдано").doesNotContain(row(later));
-        assertThat(teacher.get("/assignments?notSubmitted=true&from=" + today().plusDays(5)
-                + "&to=" + today().plusDays(20)).body())
+        assertThat(teacher.get("/assignments?notSubmitted=true&dueFrom=" + today().plusDays(5)
+                + "&dueTo=" + today().plusDays(20)).body())
                 .as("несданных в этом периоде нет")
                 .doesNotContain(row(soon)).doesNotContain(row(later));
 
@@ -267,6 +267,37 @@ class AssignmentScreenTest extends IntegrationTest {
         assertThat(teacher.get("/assignments?notSubmitted=true").body())
                 .as("часы вернулись — сдавать ещё не поздно")
                 .doesNotContain(row(soon));
+    }
+
+    /**
+     * Возврат переживает отбор (ADR-0060): сводка, открытая с карточки
+     * Ученика, показывает «назад» на неё, а форма отбора несёт возврат
+     * скрытым полем. Период срока — {@code dueFrom} и {@code dueTo}:
+     * {@code from} — возврат, и дата под этим именем ломала переход
+     * с карточки (design.md, Р9).
+     */
+    @Test
+    void comingFromTheStudentShowsBackAndTheFilterFormCarriesIt() {
+        AssignmentId soon = issued(student, today().plusDays(2));
+        String card = "/students/" + student.value();
+
+        Browser.Page page = teacher.get("/assignments?student=" + student.value() + "&from=" + card);
+
+        assertThat(page.status()).isEqualTo(200);
+        assertThat(page.body()).contains(row(soon))
+                .contains("<a href=\"" + card + "\">← Назад</a>")
+                .contains("<input type=\"hidden\" name=\"from\" value=\"" + card + "\">")
+                .contains("href=\"/assignments?from=%2Fstudents%2F" + student.value() + "\"")
+                .contains("name=\"dueFrom\"").contains("name=\"dueTo\"");
+    }
+
+    /** Сводка — раздел шапки: без возврата ни «назад», ни скрытого поля. */
+    @Test
+    void summaryWithoutAReturnHasNoBackAndNoHiddenReturn() {
+        String body = teacher.get("/assignments").body();
+
+        assertThat(body).doesNotContain("← Назад").doesNotContain("name=\"from\"")
+                .contains("href=\"/assignments\"");
     }
 
     private AssignmentId issued(StudentId to, LocalDate due) {

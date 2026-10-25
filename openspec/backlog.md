@@ -143,7 +143,7 @@
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
 | `session-lifetime` | Т | `auth-roles` | — | S | нет | не затрагивает | ✅ |
 | `intake-unsaved-warning` | Т | `problem-intake` | `intake-tabs` | S | нет | не затрагивает | ✅ |
-| `back-link-gaps` | Т | `interface-focus` | — | S | нет | не затрагивает | |
+| `back-link-gaps` | Т | `interface-focus` | — | S | нет | не затрагивает | ✅ |
 | `intake-tabs` | Т | `problem-intake`, `back-link-gaps` | — | M | нет | общее и личное | |
 | `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | |
 | `intake-reread-evidence` | Д | `problem-intake` | — | S | нет | не затрагивает | |
@@ -2403,6 +2403,9 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `back-link-gaps` · Т · S · не ломает
+
+> ✅ Выполнено 25.10.2026, версия 3.12.0. Change:
+> [2026-10-25-back-link-gaps](changes/archive/2026-10-25-back-link-gaps/).
 
 **Зачем.** Сеанс учителя 25.10.2026: на странице Черновика Задачи ссылка
 «в словарях» (заведите предложенный Метод) ведёт на словари с `from`,

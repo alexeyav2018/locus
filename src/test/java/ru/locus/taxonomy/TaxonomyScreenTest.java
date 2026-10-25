@@ -213,6 +213,68 @@ class TaxonomyScreenTest extends IntegrationTest {
         assertThat(nodes.findById(child)).isEmpty();
     }
 
+    /** Сценарий «Возврат переживает выбор узла и действия» (ADR-0060). */
+    @Test
+    void comingWithAReturnShowsBackAndEveryLinkAndFormCarriesIt() {
+        TaxonomyNodeId root = nodes.create(unique("Алгебра"), null);
+        TaxonomyNodeId child = nodes.create("Уравнения", root);
+
+        String body = loggedIn(Role.ADMINISTRATOR)
+                .get("/taxonomy?node=" + child.value() + "&from=/problems/7").body();
+
+        assertThat(body).as("«назад» ведёт туда, откуда пришли")
+                .contains("<a href=\"/problems/7\">← Назад</a>");
+        assertThat(body).as("выбор узла сохраняет возврат")
+                .contains("href=\"/taxonomy?node=" + root.value() + "&amp;from=%2Fproblems%2F7\"");
+        assertThat(body).as("формы несут возврат в адресе действия")
+                .contains("action=\"/taxonomy/" + child.value() + "/name?from=%2Fproblems%2F7\"")
+                .contains("action=\"/taxonomy/" + child.value() + "/parent?from=%2Fproblems%2F7\"")
+                .contains("action=\"/taxonomy/" + child.value() + "/deletion?from=%2Fproblems%2F7\"")
+                .contains("action=\"/taxonomy?from=%2Fproblems%2F7\"");
+    }
+
+    /** Сценарий «Возврат переживает выбор узла и действия»: без возврата ни «назад», ни {@code from}. */
+    @Test
+    void withoutAReturnThereIsNoBackAndNoFromInTheTree() {
+        TaxonomyNodeId root = nodes.create(unique("Алгебра"), null);
+
+        String body = loggedIn(Role.ADMINISTRATOR).get("/taxonomy?node=" + root.value()).body();
+
+        assertThat(body).doesNotContain("← Назад");
+        assertThat(body).as("пустой возврат не выводится и пустым параметром").doesNotContain("from\"");
+        assertThat(body)
+                .contains(link(root))
+                .contains("action=\"/taxonomy/" + root.value() + "/name\"")
+                .contains("action=\"/taxonomy\"");
+    }
+
+    /** Сценарий «Возврат переживает выбор узла и действия»: заведение, отказ и удаление. */
+    @Test
+    void creationRefusalAndDeletionKeepTheReturn() {
+        TaxonomyNodeId root = nodes.create(unique("Алгебра"), null);
+        Browser administrator = loggedIn(Role.ADMINISTRATOR);
+
+        Browser.Page created = administrator.postForm("/taxonomy",
+                Map.of("name", "Уравнения", "parentId", String.valueOf(root.value()), "from", "/problems/7"));
+        Browser.Page refused = administrator.postForm("/taxonomy",
+                Map.of("name", "Уравнения", "parentId", String.valueOf(root.value()), "from", "/problems/7"));
+        TaxonomyNodeId child = nodes.findChildren(root).getFirst().id();
+        Browser.Page deleted = administrator.postForm(
+                "/taxonomy/" + child.value() + "/deletion", Map.of("from", "/problems/7"));
+        Browser.Page rootDeleted = administrator.postForm(
+                "/taxonomy/" + root.value() + "/deletion", Map.of("from", "/problems/7"));
+
+        assertThat(created.location()).as("якорь остаётся последним")
+                .endsWith("/taxonomy?node=" + child.value() + "&from=%2Fproblems%2F7#node-" + child.value());
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).as("отказ показан тем же запросом и «назад» не теряет")
+                .contains("<a href=\"/problems/7\">← Назад</a>");
+        assertThat(deleted.location())
+                .endsWith("/taxonomy?node=" + root.value() + "&from=%2Fproblems%2F7#node-" + root.value());
+        assertThat(rootDeleted.location()).as("корня нет — к дереву без выбора, с тем же возвратом")
+                .endsWith("/taxonomy?from=%2Fproblems%2F7");
+    }
+
     /**
      * Задача 4.7: список выбора родителя один на страницу.
      *

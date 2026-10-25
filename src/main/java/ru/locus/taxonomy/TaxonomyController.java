@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
+import ru.locus.ReturnTo;
 import ru.locus.problem.Problem;
 import ru.locus.problem.ProblemDistribution;
 import ru.locus.problem.ProblemId;
@@ -110,9 +111,10 @@ public class TaxonomyController {
     public String create(@RequestParam String name,
                          @RequestParam(required = false) Long parentId,
                          @RequestParam(required = false) String receiver,
+                         @RequestParam(required = false) String from,
                          Model model) {
         try {
-            return atNode(taxonomy.create(name, nodeId(parentId), receiver(receiver)).value());
+            return atNode(taxonomy.create(name, nodeId(parentId), receiver(receiver)).value(), from);
         } catch (NameAlreadyTakenException | TopicCarriesContentException | ReceiverIsNotATopicException
                  | IllegalArgumentException refusal) {
             return refused(refusal, parentId, model);
@@ -120,25 +122,27 @@ public class TaxonomyController {
     }
 
     @PostMapping(Addresses.TAXONOMY + "/{id}/name")
-    public String rename(@PathVariable long id, @RequestParam String name, Model model) {
+    public String rename(@PathVariable long id, @RequestParam String name,
+                         @RequestParam(required = false) String from, Model model) {
         try {
             taxonomy.rename(new TaxonomyNodeId(id), name);
         } catch (NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, id, model);
         }
-        return atNode(id);
+        return atNode(id, from);
     }
 
     @PostMapping(Addresses.TAXONOMY + "/{id}/parent")
     public String move(@PathVariable long id,
                        @RequestParam(required = false) Long parentId,
+                       @RequestParam(required = false) String from,
                        Model model) {
         try {
             taxonomy.move(new TaxonomyNodeId(id), nodeId(parentId));
         } catch (MoveIntoOwnSubtreeException | NameAlreadyTakenException | IllegalArgumentException refusal) {
             return refused(refusal, id, model);
         }
-        return atNode(id);
+        return atNode(id, from);
     }
 
     /**
@@ -146,11 +150,11 @@ public class TaxonomyController {
      * нет, а место, где работал Администратор, теряться не должно.
      */
     @PostMapping(Addresses.TAXONOMY + "/{id}/deletion")
-    public String delete(@PathVariable long id, Model model) {
+    public String delete(@PathVariable long id, @RequestParam(required = false) String from, Model model) {
         try {
             TaxonomyNodeId parent = taxonomy.node(new TaxonomyNodeId(id)).parent();
             taxonomy.delete(new TaxonomyNodeId(id));
-            return parent == null ? "redirect:" + Addresses.TAXONOMY : atNode(parent.value());
+            return atParent(parent, from);
         } catch (NodeNotEmptyException | IllegalArgumentException refusal) {
             return refused(refusal, id, model);
         }
@@ -171,11 +175,12 @@ public class TaxonomyController {
     @PostMapping(Addresses.TAXONOMY + "/{id}/distribution")
     public String distribute(@PathVariable long id,
                              @RequestParam Map<String, String> form,
+                             @RequestParam(required = false) String from,
                              Model model) {
         try {
             TaxonomyNodeId parent = taxonomy.node(new TaxonomyNodeId(id)).parent();
             taxonomy.deleteWithDistribution(new TaxonomyNodeId(id), distribution(form));
-            return parent == null ? "redirect:" + Addresses.TAXONOMY : atNode(parent.value());
+            return atParent(parent, from);
         } catch (NodeNotEmptyException | ReceiverIsNotATopicException | IllegalArgumentException refusal) {
             return refused(refusal, id, model);
         }
@@ -244,10 +249,18 @@ public class TaxonomyController {
 
     /**
      * Возврат к затронутому узлу: параметр держит выбор, якорь — место
-     * в дереве. Без них на каждой правке теряется и то, и другое.
+     * в дереве, {@code from} — откуда пришли на дерево (ADR-0060). Без них
+     * на каждой правке теряется и то, и другое.
      */
-    private static String atNode(long id) {
-        return "redirect:" + Addresses.TAXONOMY + "?node=" + id + "#node-" + id;
+    private static String atNode(long id, String from) {
+        return "redirect:" + ReturnTo.carried(Addresses.TAXONOMY + "?node=" + id + "#node-" + id, from);
+    }
+
+    /** Возврат на прежнего родителя снятого узла, у корневого — к дереву без выбора. */
+    private static String atParent(TaxonomyNodeId parent, String from) {
+        return parent == null
+                ? "redirect:" + ReturnTo.carried(Addresses.TAXONOMY, from)
+                : atNode(parent.value(), from);
     }
 
     private String refused(RuntimeException refusal, Long node, Model model) {

@@ -170,7 +170,7 @@
         <summary>Удалить черновик</summary>
         <div class="more-body">
             <p class="hint">Задача не заводится; Черновики сборки уйдут своей уборкой.</p>
-            <form method="post" th:action="@{/problems/intake/{id}/delete(id=${draft.id.value})}">
+            <form method="post" th:action="@{/problems/intake/{id}/delete(id=${draft.id.value},from=${shell.back})}">
                 <input type="hidden" name="version" th:value="${draft.version}">
                 <div class="form-actions">
                     <button type="submit" class="btn-danger">Удалить черновик</button>
