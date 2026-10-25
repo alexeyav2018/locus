@@ -76,7 +76,7 @@
 
 ## 5. Версия
 
-- [ ] 5.1 `pom.xml` — 3.15.0; `CHANGELOG.md` — запись 3.15.0
+- [x] 5.1 `pom.xml` — 3.15.0; `CHANGELOG.md` — запись 3.15.0
   со строкой из предложения
 
 ## Workflow follow-up
