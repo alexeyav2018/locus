@@ -534,6 +534,9 @@ ol.assembly { margin: 0.35rem 0 1rem; padding-left: 1.5rem; }
 .crop-mode { display: inline-flex; gap: 0.25rem; }
 .crop-mode button[aria-pressed=true] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 .crop-viewport { max-width: 100%; max-height: 80vh; overflow: auto; }
+.crop-viewport[hidden], .crop-failed[hidden] { display: none; }
+.crop-failed { border: 1px solid var(--bad); border-left-width: 5px; background: var(--bad-soft); color: var(--text);
+    border-radius: var(--radius-sm); padding: 0.7rem 1rem; margin: 0 0 0.35rem; }
 .crop-canvas { position: relative; display: inline-block; vertical-align: top; max-width: 100%; touch-action: none;
     cursor: crosshair; user-select: none; -webkit-user-select: none; outline: 1px solid var(--border-strong); }
 .crop-canvas img { display: block; max-width: 100%; max-height: 80vh; pointer-events: none; }

@@ -372,6 +372,21 @@ class AssemblyScreenTest extends IntegrationTest {
         assertThat(styles).contains(".crop-viewport", ".crop-handle", ".crop-canvas.crop-moving { touch-action: pan-x pan-y");
     }
 
+    /**
+     * Отказ показа страницы на сцене (session-lifetime, design.md, решение 4):
+     * скрипт слушает {@code error} и {@code load} картинки сцены и выводит
+     * надпись дословно, стили задают её и прячут окно холста по {@code hidden}.
+     */
+    @Test
+    void scriptNamesTheRefusedPage() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String styles = Files.readString(Path.of("src/main/resources/static/css/locus.css"), StandardCharsets.UTF_8);
+
+        assertThat(script).contains("crop-failed", "addEventListener('error'", "addEventListener('load'",
+                "Сессия истекла или страница недоступна — войдите заново; несохранённое скопируйте");
+        assertThat(styles).contains(".crop-failed {", ".crop-viewport[hidden], .crop-failed[hidden] { display: none; }");
+    }
+
     /** Отказ формы возвращает рамку в поле: скрипт нарисует её заново. */
     @Test
     void refusedFormKeepsTheFrame() throws IOException {

@@ -303,12 +303,32 @@
                     return '<span class="crop-handle" data-handle="' + handle + '"></span>';
                 }).join('')
                 + '</div></div></div>'
+                + '<p class="crop-failed" role="alert" hidden>'
+                + 'Сессия истекла или страница недоступна — войдите заново; несохранённое скопируйте</p>'
                 + '<p class="hint crop-whole">Рамки нет — берётся вся страница.</p>';
             listenForFrame(row, stage.querySelector('.crop-viewport'), stage.querySelector('.crop-canvas'));
+            listenForPage(stage);
         }
         stage.hidden = false;
         showPage(row);
         drawFrame(row);
+    }
+
+    // Отказ показа (session-lifetime, design.md, решение 3): сеанс истёк или
+    // страница недоступна — вместо окна холста надпись; рамка и строка сборки
+    // не трогаются, и показавшаяся позже картинка снимает надпись.
+    function listenForPage(stage) {
+        var image = stage.querySelector('.crop-canvas img');
+        var viewport = stage.querySelector('.crop-viewport');
+        var failed = stage.querySelector('.crop-failed');
+        image.addEventListener('error', function () {
+            viewport.hidden = true;
+            failed.hidden = false;
+        });
+        image.addEventListener('load', function () {
+            viewport.hidden = false;
+            failed.hidden = true;
+        });
     }
 
     function listenForFrame(row, viewport, canvas) {
