@@ -18,17 +18,17 @@
 
 ## 2. Надпись об отказе на сцене рамки и версия
 
-- [ ] 2.1 `static/js/locus.js`, `openStage`: элемент `.crop-failed` с надписью «Сессия истекла
+- [x] 2.1 `static/js/locus.js`, `openStage`: элемент `.crop-failed` с надписью «Сессия истекла
   или страница недоступна — войдите заново; несохранённое скопируйте», скрытый по умолчанию;
   на картинке сцены — `error` прячет `.crop-viewport` и показывает надпись, `load` — наоборот;
   поле `Crop` и строка сборки не трогаются (design.md, решение 3)
-- [ ] 2.2 `static/css/locus.css`: `.crop-failed` и скрытие `.crop-viewport[hidden]`, `.crop-failed[hidden]`;
+- [x] 2.2 `static/css/locus.css`: `.crop-failed` и скрытие `.crop-viewport[hidden]`, `.crop-failed[hidden]`;
   проверка — правило есть и не перекрывается `display` соседних правил
-- [ ] 2.3 Тест в `AssemblyScreenTest` рядом с `scriptBuildsTheZoomPanelAndTheHandles`: скрипт
+- [x] 2.3 Тест в `AssemblyScreenTest` рядом с `scriptBuildsTheZoomPanelAndTheHandles`: скрипт
   слушает `error` и `load` картинки сцены и содержит надпись дословно, стили задают `.crop-failed`;
   проверка — `mvn test -Dtest=AssemblyScreenTest` зелёный
-- [ ] 2.4 Приёмка: `mvn clean package` зелёный
-- [ ] 2.5 Поднять версию в `pom.xml` до `3.10.0` и дописать сверху `CHANGELOG.md` строку
+- [x] 2.4 Приёмка: `mvn clean package` зелёный
+- [x] 2.5 Поднять версию в `pom.xml` до `3.10.0` и дописать сверху `CHANGELOG.md` строку
   из proposal.md, раздел «Версия»; проверка — `grep -n 3.10.0 pom.xml CHANGELOG.md`
 
 ## Workflow follow-up
