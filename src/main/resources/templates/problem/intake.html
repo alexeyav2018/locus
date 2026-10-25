@@ -19,6 +19,11 @@
         фрагмент problem/markup :: fields, общий с формой Задачи. Удаление —
         отдельная форма под раскрывающимся блоком (ADR-0042).
 
+        Форма правки помечена data-unsaved: при уходе с несохранённым скрипт
+        спросит стандартным вопросом браузера (intake-unsaved-warning).
+        Значение «read» — показано прочитанное, «sent» — показано присланное после отказа записи (${sent}),
+        уход теряет его и без новой правки. Форма удаления не помечена.
+
         Черновик личный, хоть из него и заводится Задача общей библиотеки:
         метка — «Мой кабинет».
     */-->
@@ -101,7 +106,8 @@
     </th:block>
 </section>
 
-<form method="post" th:action="@{/problems/intake/{id}(id=${draft.id.value},from=${shell.back})}">
+<form method="post" th:action="@{/problems/intake/{id}(id=${draft.id.value},from=${shell.back})}"
+      th:attr="data-unsaved=${sent} ? 'sent' : 'read'">
     <input type="hidden" name="version" th:value="${draft.version}">
 
     <fieldset>

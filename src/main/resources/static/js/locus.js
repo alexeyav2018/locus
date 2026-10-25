@@ -530,4 +530,39 @@
             });
         }
     });
+
+    // 7. Уход с несохранённым (intake-unsaved-warning): <form data-unsaved>.
+    //    Несохранённое — отличие полей от снимка при загрузке, а не флаг правки:
+    //    Рамку, порядок строк и загруженный файл скрипт меняет без событий полей.
+    //    data-unsaved="sent" — сервер показал присланное после отказа, несохранено
+    //    сразу. Отправка любой формы снимает вопрос: введённое ушло на сервер,
+    //    а удаление черновика — решение, что правки не нужны. Снимок берётся
+    //    последним, когда имена полей файлов сняты и сцены Рамок открыты.
+    function snapshot(form) {
+        return Array.from(new FormData(form)).map(function (entry) {
+            var value = entry[1] instanceof File ? entry[1].name + ':' + entry[1].size : entry[1];
+            return entry[0] + '=' + value;
+        }).join('\n');
+    }
+
+    var watched = Array.from(document.querySelectorAll('form[data-unsaved]')).map(function (form) {
+        return {form: form, read: snapshot(form)};
+    });
+    var submitted = false;
+
+    document.addEventListener('submit', function (event) {
+        if (!event.defaultPrevented) {
+            submitted = true;
+        }
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+        var unsaved = !submitted && watched.some(function (item) {
+            return item.form.getAttribute('data-unsaved') === 'sent' || snapshot(item.form) !== item.read;
+        });
+        if (unsaved) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
 })();

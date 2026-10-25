@@ -9,30 +9,30 @@ design.md, решение 4). `glossary.md`, `domain-model.md`, `standards.md`,
 
 ## 1. Вопрос при уходе с несохранённым
 
-- [ ] 1.1 `static/js/locus.js`, новый последний раздел: снимок каждой
+- [x] 1.1 `static/js/locus.js`, новый последний раздел: снимок каждой
   `form[data-unsaved]` — пары «имя, значение» `FormData` в порядке документа,
   файл — имя и размер; `beforeunload` спрашивает (`preventDefault`,
   `returnValue = ''`), если хоть одна форма со значением `sent` или со снимком,
   отличным от текущего; не отменённый `submit` любой формы снимает вопрос
   (design.md, решения 1–3); проверка — тест 1.4
-- [ ] 1.2 `templates/problem/intake.html`: форме правки —
-  `th:attr="data-unsaved=${sent} ? 'sent' : ''"`, форме удаления — ничего;
+- [x] 1.2 `templates/problem/intake.html`: форме правки —
+  `th:attr="data-unsaved=${sent} ? 'sent' : 'read'"`, форме удаления — ничего;
   комментарий шаблона называет атрибут
-- [ ] 1.3 `ProblemDraftController.refusedSent` кладёт в модель `sent = true`;
+- [x] 1.3 `ProblemDraftController.refusedSent` кладёт в модель `sent = true`;
   прочие пути страницы — без признака
-- [ ] 1.4 Тесты: в `ProblemIntakeScreenTest` — страница несёт
-  `data-unsaved=""` на форме правки и одну такую форму, после отказа разметкой —
+- [x] 1.4 Тесты: в `ProblemIntakeScreenTest` — страница несёт
+  `data-unsaved="read"` на форме правки и одну такую форму, после отказа разметкой —
   `data-unsaved="sent"`; тест скрипта (рядом, чтением `locus.js`) —
   `beforeunload`, `form[data-unsaved]`, `'sent'`, снятие по `submit`;
   проверка — `mvn test -Dtest=ProblemIntakeScreenTest` зелёный
-- [ ] 1.5 `openspec/context/ux-concept.md`, «Правила для новых экранов»:
-  форма с долгим вводом, где уходить приходится, — `data-unsaved`;
+- [x] 1.5 `openspec/context/ux-concept.md`, «Правила для новых экранов»:
+  форма с долгим вводом, где уходить приходится, — `data-unsaved="read"`;
   страница после отказа с присланным — `data-unsaved="sent"`
-- [ ] 1.6 `openspec/backlog.md`: карточка и строка таблицы
+- [x] 1.6 `openspec/backlog.md`: карточка и строка таблицы
   `problem-form-unsaved-warning` (Т, S, зависимость `intake-unsaved-warning`)
   по design.md, решение 4
-- [ ] 1.7 Приёмка: `mvn clean package` зелёный
-- [ ] 1.8 Поднять версию в `pom.xml` до `3.11.0` и дописать сверху `CHANGELOG.md`
+- [x] 1.7 Приёмка: `mvn clean package` зелёный
+- [x] 1.8 Поднять версию в `pom.xml` до `3.11.0` и дописать сверху `CHANGELOG.md`
   строку из proposal.md, раздел «Версия»; проверка — `grep -n 3.11.0 pom.xml CHANGELOG.md`
 
 ## Workflow follow-up
