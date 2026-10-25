@@ -7,6 +7,11 @@
     design.md, Р6): имена полей у обеих одни, и разъехаться им не дадут.
     Отмеченное берётся из ${form}, предлагаемое — из ${parts}, ${topicPaths},
     ${topicMethods}, ${methods} и ${characteristics} модели страницы.
+
+    Необязательный ${topicReturn} — адрес возврата для ссылки на заведение
+    Темы в рубрикаторе (intake-tabs, Р6): его передаёт страница вычитки,
+    форма Задачи — нет, и ссылки у неё нет: введённое там до «Завести
+    Задачу» не хранится.
 */-->
 <th:block th:fragment="fields">
     <fieldset>
@@ -21,6 +26,8 @@
     <fieldset>
         <legend>Темы</legend>
         <p class="hint">Только Темы — листья дерева: Задач на Разделах не бывает.</p>
+        <p class="hint" th:if="${topicReturn}">Нет подходящей? <a
+                th:href="@{/taxonomy(from=${topicReturn})}">Завести в рубрикаторе</a></p>
         <select name="topics" multiple size="8">
             <option th:each="path : ${topicPaths}"
                     th:value="${path.id.value}"

@@ -184,6 +184,21 @@ class ProblemTextRenderingTest {
         assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(10));
     }
 
+    /** Подпись без формул (intake-tabs, design.md, Р8): запись LaTeX словом, доллар знаком. */
+    @Test
+    void captionReplacesFormulasWithAWord() {
+        assertThat(ProblemTextRendering.withoutFormulas("Решите уравнение $x^2 = 4$."))
+                .isEqualTo("Решите уравнение [формула].");
+        assertThat(ProblemTextRendering.withoutFormulas("$$\\frac{a}{b}$$ и $c$"))
+                .isEqualTo("[формула] и [формула]");
+        assertThat(ProblemTextRendering.withoutFormulas("Цена \\$5, код `$x$`"))
+                .as("знак доллара и код — как написаны")
+                .isEqualTo("Цена $5, код `$x$`");
+        assertThat(ProblemTextRendering.withoutFormulas("Найдите $x, если"))
+                .as("незакрытый знак — отказа нет, текст как есть")
+                .isEqualTo("Найдите $x, если");
+    }
+
     private static String text(byte[] pdf) throws IOException {
         try (PDDocument document = Loader.loadPDF(pdf)) {
             return new PDFTextStripper().getText(document);

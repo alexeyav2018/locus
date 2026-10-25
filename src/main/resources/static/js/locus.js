@@ -537,7 +537,8 @@
     //    data-unsaved="sent" — сервер показал присланное после отказа, несохранено
     //    сразу. Отправка любой формы снимает вопрос: введённое ушло на сервер,
     //    а удаление черновика — решение, что правки не нужны. Снимок берётся
-    //    последним, когда имена полей файлов сняты и сцены Рамок открыты.
+    //    после разделов 5 и 6, когда имена полей файлов сняты и сцены Рамок
+    //    открыты; закладки раздела 8 полей формы не меняют.
     function snapshot(form) {
         return Array.from(new FormData(form)).map(function (entry) {
             var value = entry[1] instanceof File ? entry[1].name + ':' + entry[1].size : entry[1];
@@ -563,6 +564,84 @@
         if (unsaved) {
             event.preventDefault();
             event.returnValue = '';
+        }
+    });
+
+    // 8. Закладки внутри одной формы (intake-tabs, Р1, Р2): <div data-tabs>
+    //    с панелями <section data-tab="…"> и заголовком <h2> у каждой. Строку
+    //    кнопок строит скрипт из заголовков, неоткрытые панели прячет hidden —
+    //    их поля остаются в форме и уходят любой кнопкой. Открытая закладка
+    //    пишется в скрытое поле tab только при отправке: переключение не меняет
+    //    полей, и вопрос раздела 7 без правки не задаётся.
+    document.querySelectorAll('[data-tabs]').forEach(function (container) {
+        var panels = Array.from(container.querySelectorAll(':scope > [data-tab]'));
+        if (panels.length < 2) {
+            return;
+        }
+        var list = document.createElement('div');
+        list.className = 'tab-list';
+        list.setAttribute('role', 'tablist');
+        var buttons = panels.map(function (panel) {
+            var heading = panel.querySelector(':scope > h2');
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'tab';
+            button.id = panel.id + '-button';
+            button.textContent = heading ? heading.textContent.trim() : panel.getAttribute('data-tab');
+            button.setAttribute('role', 'tab');
+            button.setAttribute('aria-controls', panel.id);
+            panel.setAttribute('role', 'tabpanel');
+            panel.setAttribute('aria-labelledby', button.id);
+            list.appendChild(button);
+            return button;
+        });
+        container.insertAdjacentElement('beforebegin', list);
+
+        function open(index, focus) {
+            panels.forEach(function (panel, at) {
+                var chosen = at === index;
+                panel.hidden = !chosen;
+                buttons[at].setAttribute('aria-selected', chosen ? 'true' : 'false');
+                buttons[at].tabIndex = chosen ? 0 : -1;
+            });
+            if (focus) {
+                buttons[index].focus();
+            }
+        }
+
+        function current() {
+            return Math.max(0, panels.findIndex(function (panel) {
+                return !panel.hidden;
+            }));
+        }
+
+        var start = panels.findIndex(function (panel) {
+            return panel.getAttribute('data-tab') === container.getAttribute('data-tab-open');
+        });
+        open(Math.max(0, start), false);
+
+        list.addEventListener('click', function (event) {
+            var index = buttons.indexOf(event.target.closest('[role=tab]'));
+            if (index >= 0) {
+                open(index, false);
+            }
+        });
+        list.addEventListener('keydown', function (event) {
+            var step = {ArrowRight: 1, ArrowLeft: -1}[event.key];
+            var index = event.key === 'Home' ? 0 : event.key === 'End' ? panels.length - 1
+                : step ? (current() + step + panels.length) % panels.length : -1;
+            if (index >= 0) {
+                event.preventDefault();
+                open(index, true);
+            }
+        });
+
+        var form = container.closest('form');
+        var field = form && form.querySelector('input[type=hidden][name=tab]');
+        if (field) {
+            form.addEventListener('submit', function () {
+                field.value = panels[current()].getAttribute('data-tab');
+            });
         }
     });
 })();

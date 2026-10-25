@@ -78,6 +78,8 @@ public final class ProblemTextRendering {
     private static final char MARK_OPEN = '\uE000';
     private static final char MARK_CLOSE = '\uE001';
     private static final Pattern MARK = Pattern.compile(MARK_OPEN + "(\\d+)" + MARK_CLOSE);
+    /** Чем формула заменяется в подписи без отрисовки. */
+    private static final String FORMULA_WORD = "[формула]";
 
     /** Перевод строки вплотную к выключной формуле дал бы пустую строку над ней или под ней. */
     private static final String BREAK = "<br />";
@@ -152,6 +154,47 @@ public final class ProblemTextRendering {
             }
         }
         return marked.toString();
+    }
+
+    /**
+     * Текст для подписи, где формулы не рисуются (строка списка черновиков,
+     * intake-tabs, design.md, Р8): тот же сканер записи, но формула
+     * становится словом {@code [формула]}, а {@code \$} — знаком доллара.
+     * Незакрытый {@code $} отказа не даёт — дальше текст как есть: это
+     * подпись, а не отрисовка.
+     */
+    static String withoutFormulas(String text) {
+        StringBuilder plain = new StringBuilder(text.length());
+        int at = 0;
+        while (at < text.length()) {
+            char current = text.charAt(at);
+            if (current == '\\' && at + 1 < text.length()) {
+                char next = text.charAt(at + 1);
+                if (next == '$') {
+                    plain.append(next);
+                } else {
+                    plain.append(current).append(next);
+                }
+                at += 2;
+            } else if (current == '`') {
+                int end = codeSpanEnd(text, at);
+                plain.append(text, at, end);
+                at = end;
+            } else if (current == '$') {
+                boolean display = at + 1 < text.length() && text.charAt(at + 1) == '$';
+                int close = closingDollar(text, at + (display ? 2 : 1), display);
+                if (close < 0) {
+                    plain.append(text, at, text.length());
+                    break;
+                }
+                plain.append(FORMULA_WORD);
+                at = close + (display ? 2 : 1);
+            } else {
+                plain.append(current);
+                at++;
+            }
+        }
+        return plain.toString();
     }
 
     /** Конец кода в обратных кавычках: за такой же серией кавычек; не закрыт — серия просто текст. */

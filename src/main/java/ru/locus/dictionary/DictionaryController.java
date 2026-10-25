@@ -59,11 +59,21 @@ public class DictionaryController {
         this.currentUser = currentUser;
     }
 
+    /**
+     * @param newMethod имя для блока «Новый Метод»: блок раскрыт и поле заполнено —
+     *                  так страница вычитки ведёт заводить названный Помощником
+     *                  Метод (intake-tabs, design.md, Р5)
+     */
     @GetMapping(Addresses.DICTIONARIES)
     public String dictionaries(@RequestParam(required = false) Long method,
                                @RequestParam(required = false) Long characteristic,
+                               @RequestParam(required = false) String newMethod,
                                Model model) {
-        return render(method, characteristic, model);
+        String page = render(method, characteristic, model);
+        if (newMethod != null && !newMethod.isBlank()) {
+            model.addAttribute("newMethod", newMethod.strip());
+        }
+        return page;
     }
 
     @PostMapping(Addresses.DICTIONARIES + "/methods")
