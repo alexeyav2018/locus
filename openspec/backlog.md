@@ -145,7 +145,7 @@
 | `intake-unsaved-warning` | Т | `problem-intake` | `intake-tabs` | S | нет | не затрагивает | ✅ |
 | `back-link-gaps` | Т | `interface-focus` | — | S | нет | не затрагивает | ✅ |
 | `intake-tabs` | Т | `problem-intake`, `back-link-gaps` | — | M | нет | общее и личное | ждёт условия |
-| `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | |
+| `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | ✅ |
 | `intake-reread-evidence` | Д | `problem-intake` | — | S | нет | не затрагивает | |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
@@ -2364,6 +2364,11 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `problem-form-unsaved-warning` · Т · S · не ломает
+
+> ✅ Выполнено 25.10.2026, версия 3.14.0. Change:
+> [2026-10-25-problem-form-unsaved-warning](changes/archive/2026-10-25-problem-form-unsaved-warning/).
+> Развилка — (б): отличие от показанного при загрузке; форму с присланным
+> выбирает шаблон по адресу отклонённого действия.
 
 **Зачем.** Форма Задачи (`/problems/new`, правка) теряет введённое при уходе
 так же молча, как теряла страница вычитки до `intake-unsaved-warning`:
