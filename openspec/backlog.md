@@ -141,7 +141,7 @@
 | `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | ✅ |
 | `intake-answer-links` | Т | `assistant-chat`, `problem-intake` | `backfill-skill` | S | нет | не затрагивает | ждёт условия |
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
-| `session-lifetime` | Т | `auth-roles` | — | S | нет | не затрагивает | |
+| `session-lifetime` | Т | `auth-roles` | — | S | нет | не затрагивает | ✅ |
 | `intake-unsaved-warning` | Т | `problem-intake` | `intake-tabs` | S | нет | не затрагивает | |
 | `back-link-gaps` | Т | `interface-focus` | — | S | нет | не затрагивает | |
 | `intake-tabs` | Т | `problem-intake`, `back-link-gaps` | — | M | нет | общее и личное | |
@@ -2271,6 +2271,12 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `session-lifetime` · Т · S · не ломает
+
+> ✅ Выполнено 25.10.2026, версия 3.10.0. Change:
+> [2026-10-25-session-lifetime](changes/archive/2026-10-25-session-lifetime/).
+> Срок проверяется на контексте встроенного Tomcat работающего сервера,
+> а не чтением настройки; надпись снимается, если картинка загрузилась позже
+> (design.md, решения 2 и 3).
 
 **Зачем.** Сеанс учителя 25.10.2026 на стенде (3.8.0): страница Черновика
 Задачи открыта в 17:11, следующий запрос — в 17:52, по «+» в сцене рамки.
