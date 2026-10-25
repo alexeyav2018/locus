@@ -119,6 +119,34 @@ class AssemblyDraftServiceTest extends IntegrationTest {
     }
 
     @Test
+    void severalSourcesBecomeDraftsInTheirOrder() throws IOException {
+        List<AssemblyDraft> drafts = service.upload(List.of(
+                new AssemblyDraftService.Source("сборник.pdf", stream(pdf(2))),
+                new AssemblyDraftService.Source("снимок.png", stream(png()))));
+
+        assertThat(drafts).extracting(AssemblyDraft::originalName).containsExactly("сборник.pdf", "снимок.png");
+        assertThat(drafts).extracting(AssemblyDraft::pageCount).containsExactly(2, 1);
+        assertThat(service.own()).hasSize(2);
+    }
+
+    @Test
+    void oneUnsuitableSourceRefusesTheWholeSetAndLeavesNothing() throws IOException {
+        long filesBefore = filesInDirectory();
+        byte[] photo = png();
+
+        assertThatThrownBy(() -> service.upload(List.of(
+                new AssemblyDraftService.Source("снимок.png", stream(photo)),
+                new AssemblyDraftService.Source("заметки.txt", stream("просто текст".getBytes(StandardCharsets.UTF_8))),
+                new AssemblyDraftService.Source("ещё.png", stream(photo)))))
+                .isInstanceOfSatisfying(SourceRefusedException.class, refusal -> {
+                    assertThat(refusal.position()).isEqualTo(1);
+                    assertThat(refusal).hasMessageContaining("заметки.txt").hasMessageContaining("JPEG и PNG");
+                });
+        assertThat(service.own()).as("ни одного черновика").isEmpty();
+        assertThat(filesInDirectory()).as("принятый первым исходник с диска убран").isEqualTo(filesBefore);
+    }
+
+    @Test
     void passwordProtectedPdfIsRefusedWithAnExplanation() throws IOException {
         assertThatThrownBy(() -> service.upload("закрытый.pdf", stream(protectedPdf())))
                 .isInstanceOf(IllegalArgumentException.class)

@@ -2,23 +2,23 @@
 
 ## 1. Приём нескольких файлов: черновики, вопрос, сервис Помощника
 
-- [ ] 1.1 `AssemblyDraftService`: шаг приёма исходника на диск
+- [x] 1.1 `AssemblyDraftService`: шаг приёма исходника на диск
   с проверкой вида и страниц вынесен из `upload`; новый
   `upload(List<Source>)` — сначала все шаги приёма, первый отказ
   убирает файлы принятых и бросает `SourceRefusedException`
   с позицией, затем строки одной транзакцией; одиночный `upload` —
   через него, отказы прежние (design.md, Р2)
-- [ ] 1.2 `TurnAttachment(int number, String name, InputStream content)`
+- [x] 1.2 `TurnAttachment(int number, String name, InputStream content)`
   и `label()`; `TurnAttachments.attach(List<TurnAttachment>) →
   List<String>`, javadoc — всё или ничего, отказ начинается с `label()`
   (Р3)
-- [ ] 1.3 `AssemblyDraftAttachments`: список через новый `upload`,
+- [x] 1.3 `AssemblyDraftAttachments`: список через новый `upload`,
   строки «Файл N: загружен черновик сборки M «имя», страниц: K.»,
   отказ «Файл N: …» по позиции (Р2, Р3)
-- [ ] 1.4 `AssistantService.startTurn(conversation, prompt,
+- [x] 1.4 `AssistantService.startTurn(conversation, prompt,
   List<TurnAttachment>)`: строки ответчика блоком после текста учителя;
   перегрузка без файлов — пустым списком; javadoc (Р3)
-- [ ] 1.5 Тесты: `AssemblyDraftServiceTest` (или ближайший тест
+- [x] 1.5 Тесты: `AssemblyDraftServiceTest` (или ближайший тест
   черновиков) — два исходника заводят два черновика, второй
   неподходящий — ни одного черновика и ни одного файла в рабочей папке,
   отказ с позицией; `AssistantConversationsTest` — запрос несёт строки

@@ -253,7 +253,7 @@ class AssistantPageTest extends IntegrationTest {
         LoggedIn.as(administrator);
         AssemblyDraft draft = drafts.own().getFirst();
         assertThat(draft.originalName()).isEqualTo("лист.jpg");
-        assertThat(page).contains("Загружен черновик сборки " + draft.id().value() + " «лист.jpg»");
+        assertThat(page).contains("Файл 1: загружен черновик сборки " + draft.id().value() + " «лист.jpg»");
     }
 
     /** Сценарий «Пустой запрос». */

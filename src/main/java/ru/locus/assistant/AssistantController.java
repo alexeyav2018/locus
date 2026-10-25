@@ -86,7 +86,7 @@ public class AssistantController {
         Optional<AssistantConversationId> target = named(conversation);
         try {
             AssistantTurn turn = file == null || file.isEmpty()
-                    ? service.startTurn(target, prompt, Optional.empty())
+                    ? service.startTurn(target, prompt, List.of())
                     : startWithFile(target, prompt, file);
             return "redirect:" + turnAddress(turn);
         } catch (IllegalArgumentException | AssistantBusyException | AssistantUnavailableException refusal) {
@@ -109,7 +109,7 @@ public class AssistantController {
 
     private AssistantTurn startWithFile(Optional<AssistantConversationId> target, String prompt, MultipartFile file) {
         try (InputStream content = file.getInputStream()) {
-            return service.startTurn(target, prompt, Optional.of(new TurnAttachment(file.getOriginalFilename(), content)));
+            return service.startTurn(target, prompt, List.of(new TurnAttachment(1, file.getOriginalFilename(), content)));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
