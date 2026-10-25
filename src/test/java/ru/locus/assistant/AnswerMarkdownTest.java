@@ -77,6 +77,27 @@ class AnswerMarkdownTest {
     }
 
     @Test
+    void internalAddressInCodeIsLink() {
+        assertThat(AnswerMarkdown.html("Вычитка: `/problems/intake/1`", BACK))
+                .contains("<a href=\"/problems/intake/1?" + FROM + "\">/problems/intake/1</a>")
+                .doesNotContain("<code>");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"find_problems", "https://example.com", "/", "/2", "/problems и т.д."})
+    void otherCodeStaysCode(String code) {
+        String html = AnswerMarkdown.html("`" + code + "`", BACK);
+
+        assertThat(html).doesNotContain("<a").contains("<code>" + code + "</code>");
+    }
+
+    @Test
+    void codeInsideLinkStaysCode() {
+        assertThat(AnswerMarkdown.html("[`/problems/intake/1`](/problems/intake/1)", BACK))
+                .contains("<a href=\"/problems/intake/1?" + FROM + "\"><code>/problems/intake/1</code></a>");
+    }
+
+    @Test
     void imageIsItsCaption() {
         String html = AnswerMarkdown.html("![снимок листа](https://example.com/a.png)", BACK);
 

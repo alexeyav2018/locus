@@ -139,7 +139,7 @@
 | `problem-text` | — | `strategy-edition-3`, `agent-spike` | — | L | нет | общее | ✅ |
 | `assistant-chat` | — | `agent-runner` | — | M | нет | личное | ✅ |
 | `problem-intake` | — | `problem-text`, `locus-mcp` | — | M | нет | общее и личное | ✅ |
-| `intake-answer-links` | Т | `assistant-chat`, `problem-intake` | `backfill-skill` | S | нет | не затрагивает | |
+| `intake-answer-links` | Т | `assistant-chat`, `problem-intake` | `backfill-skill` | S | нет | не затрагивает | ждёт условия |
 | `intake-skill` | Д | `assistant-chat`, `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
@@ -2149,6 +2149,10 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `intake-answer-links` · Т · S · не ломает
+
+> Построено 25.10.2026, версия 3.9.0: правило ответа и навык, фрагмент
+> кода с адресом внутри Локуса — ссылкой, счётчик «Вычитать черновики: N».
+> ✅ — после повторного сеанса учителя, тем же, что закрывает `intake-skill`.
 
 **Зачем.** Первый сеанс учителя на стенде (25.10.2026, `intake-skill`,
 версия 3.8.0): Помощник разобрал лист с тремя задачами и завёл три

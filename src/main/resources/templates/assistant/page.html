@@ -39,7 +39,7 @@
            AwaitingReview, у Администратора — Черновики Задач. */-->
     <a class="btn btn-sm" th:if="${awaiting != null}"
        th:href="@{${awaiting.address}(from=${shell.here})}"
-       th:text="${awaiting.label} + ': ' + ${awaiting.count}">Черновики Задач: 2</a>
+       th:text="${awaiting.label} + ': ' + ${awaiting.count}">Вычитать черновики: 2</a>
 </p>
 
 <ol class="turns" th:unless="${#lists.isEmpty(turns)}">

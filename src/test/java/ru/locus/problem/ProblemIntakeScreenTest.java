@@ -247,7 +247,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
 
         assertThat(teacher.get("/problems/intake").status()).isEqualTo(403);
         assertThat(teacher.get(address(draft)).status()).isEqualTo(403);
-        assertThat(teacher.get("/assistant").body()).doesNotContain("Черновики Задач");
+        assertThat(teacher.get("/assistant").body()).doesNotContain("Вычитать черновики");
     }
 
     @Test
@@ -258,7 +258,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         assertThat(admin.get("/problems/intake").body())
                 .contains("draft-" + draft.id().value())
                 .contains("Найдите $x$, если $\\log_2 8 = x$.");
-        assertThat(admin.get("/assistant").body()).contains("Черновики Задач: 1");
+        assertThat(admin.get("/assistant").body()).contains("Вычитать черновики: 1");
     }
 
     private ProblemDraft assistantDraft(AssemblyDraft conditionPhoto, AssemblyDraft solutionPhoto) {

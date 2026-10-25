@@ -31,6 +31,6 @@ public class ProblemDraftQueue implements AwaitingReview {
     public Optional<Queue> awaiting() {
         return currentUser.loggedIn()
                 .filter(user -> user.hasRole(Role.ADMINISTRATOR))
-                .map(user -> new Queue("Черновики Задач", Addresses.PROBLEM_INTAKE, intake.count()));
+                .map(user -> new Queue("Вычитать черновики", Addresses.PROBLEM_INTAKE, intake.count()));
     }
 }

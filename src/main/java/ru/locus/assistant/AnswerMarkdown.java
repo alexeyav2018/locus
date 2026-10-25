@@ -25,8 +25,9 @@ import ru.locus.ReturnTo;
  * Сырой HTML выводится текстом. Ссылкой остаётся только адрес внутри системы
  * ({@link ReturnTo#safe}), и ведёт она с возвратом {@code from} на показанный
  * Разговор; внешний адрес и {@code javascript:} — текстом, адрес в скобках,
- * чтобы учитель видел, куда звали. Картинка — подписью: внешнюю браузер
- * загрузил бы сам.
+ * чтобы учитель видел, куда звали. Фрагмент кода, целиком состоящий
+ * из внутреннего адреса, — такой же ссылкой (intake-answer-links). Картинка —
+ * подписью: внешнюю браузер загрузил бы сам.
  */
 public final class AnswerMarkdown {
 
@@ -46,6 +47,7 @@ public final class AnswerMarkdown {
                 .softbreak("<br />\n")
                 .nodeRendererFactory(context -> new ImageAsCaption(context.getWriter()))
                 .nodeRendererFactory(context -> new InternalLinksOnly(context, back))
+                .nodeRendererFactory(context -> new InternalAddressCodeAsLink(context, back))
                 .build();
         return renderer.render(MARKDOWN.parse(markdown));
     }
@@ -119,6 +121,60 @@ public final class AnswerMarkdown {
                 context.render(child);
                 child = next;
             }
+        }
+    }
+
+    /**
+     * Фрагмент кода, целиком состоящий из адреса внутри системы, — ссылкой,
+     * как {@code [адрес](адрес)} (intake-answer-links, design.md, Р2, Р3):
+     * Помощник, забыв форму, пишет адрес вычитки в обратных кавычках.
+     * Адрес — то, что принимает {@link ReturnTo#safe}, без пробелов
+     * и с латинской буквой после «/»: {@code /} и {@code /2} в математическом
+     * ответе скорее дробь, чем адрес. Внутри ссылки фрагмент остаётся кодом —
+     * ссылка в ссылке недопустима.
+     */
+    private record InternalAddressCodeAsLink(HtmlNodeRendererContext context, String back) implements NodeRenderer {
+
+        @Override
+        public Set<Class<? extends Node>> getNodeTypes() {
+            return Set.of(Code.class);
+        }
+
+        @Override
+        public void render(Node node) {
+            String literal = ((Code) node).getLiteral();
+            HtmlWriter writer = context.getWriter();
+            Optional<String> internal = insideLink(node) ? Optional.empty() : address(literal);
+            if (internal.isPresent()) {
+                writer.tag("a", Map.of("href", context.encodeUrl(withReturn(internal.get(), back))));
+                writer.text(literal);
+                writer.tag("/a");
+                return;
+            }
+            writer.tag("code");
+            writer.text(literal);
+            writer.tag("/code");
+        }
+
+        private static Optional<String> address(String literal) {
+            if (literal.length() < 2 || !isLatinLetter(literal.charAt(1))
+                    || literal.chars().anyMatch(Character::isWhitespace)) {
+                return Optional.empty();
+            }
+            return ReturnTo.safe(literal);
+        }
+
+        private static boolean isLatinLetter(char c) {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        }
+
+        private static boolean insideLink(Node node) {
+            for (Node parent = node.getParent(); parent != null; parent = parent.getParent()) {
+                if (parent instanceof Link) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
