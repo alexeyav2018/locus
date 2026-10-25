@@ -60,10 +60,10 @@
 
 ## 4. Документы, приёмка, версия
 
-- [ ] 4.1 `openspec/context/ux-concept.md`: правило 12 для новых экранов
+- [x] 4.1 `openspec/context/ux-concept.md`: правило 12 для новых экранов
   (Р9)
-- [ ] 4.2 Приёмка: `mvn clean package` зелёный
-- [ ] 4.3 Поднять версию в `pom.xml` до `3.13.0` и дописать сверху
+- [x] 4.2 Приёмка: `mvn clean package` зелёный
+- [x] 4.3 Поднять версию в `pom.xml` до `3.13.0` и дописать сверху
   `CHANGELOG.md` строку из proposal.md; проверка —
   `grep -n 3.13.0 pom.xml CHANGELOG.md`
 

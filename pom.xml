@@ -13,7 +13,7 @@
 
     <groupId>ru.locus</groupId>
     <artifactId>locus</artifactId>
-    <version>3.12.0</version>
+    <version>3.13.0</version>
     <name>locus</name>
     <description>Платформа поддержки учителя математики</description>
 
