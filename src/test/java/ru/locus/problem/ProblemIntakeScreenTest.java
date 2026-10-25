@@ -9,7 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import ru.locus.IntegrationTest;
 import ru.locus.LoggedIn;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
+import ru.locus.dictionary.SolutionMethodRepository;
 import ru.locus.user.Role;
 
 /**
@@ -59,6 +62,9 @@ class ProblemIntakeScreenTest extends IntegrationTest {
 
     @Autowired
     private TestLibrary library;
+
+    @Autowired
+    private SolutionMethodRepository methods;
 
     private TestAccounts.Account administrator;
 
@@ -268,6 +274,160 @@ class ProblemIntakeScreenTest extends IntegrationTest {
                 "=== 'sent'", "event.returnValue = ''", "submitted = true");
     }
 
+    /**
+     * Сценарий «Четыре закладки одной формы» (intake-tabs, Р1, Р4, Р7): панели
+     * Улики, Условия, Решения и Разметки со своим содержимым внутри единственной
+     * формы правки; кнопки — под закладками, а не в одной из панелей.
+     */
+    @Test
+    void fourTabsOfOneFormCarryTheirOwnContent() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+
+        String body = browser(administrator).get(address(draft)).body();
+
+        assertThat(count(body, "class=\"tab-panel\"")).isEqualTo(4);
+        assertThat(count(body, "data-unsaved=")).isEqualTo(1);
+        assertThat(panel(body, "evidence")).contains("<h2>Улика</h2>")
+                .contains("Улика условия, страница 1").contains("Улика решения, страница 1")
+                .contains("name=\"conditionDraft\"").contains("name=\"solutionDraft\"")
+                .contains("data-assembly-source=\"condition\"")
+                .as("подсказка о Рамке называет этот черновик")
+                .contains("«перечитай Улику черновика № " + draft.id().value() + "»");
+        assertThat(panel(body, "condition")).contains("<h2>Условие</h2>")
+                .contains("name=\"conditionText\"").contains("<mark>8</mark>").contains("8 похоже на 9")
+                .contains("Обновить отрисовку").contains("alt=\"Условие, страница 1\"")
+                .doesNotContain("name=\"solutionText\"");
+        assertThat(panel(body, "solution")).contains("<h2>Решение</h2>")
+                .contains("name=\"solutionText\"").contains("8 похоже на 9")
+                .contains("Обновить отрисовку").contains("alt=\"Решение, страница 1\"");
+        assertThat(panel(body, "markup")).contains("<h2>Разметка</h2>")
+                .contains("Новые Методы").contains("Метод интервалов").contains("name=\"topics\"");
+        assertThat(body.substring(body.indexOf("data-tabs"), body.indexOf("class=\"form-actions\"")))
+                .as("кнопки записи — вне закладок")
+                .doesNotContain(">Сохранить черновик<").doesNotContain(">Сохранить как Задачу<");
+        assertThat(body).contains(">Сохранить снимком, без текста</button>")
+                .doesNotContain("Взять снимок как есть");
+    }
+
+    /** Сценарий «Закладка в адресе» (Р2): названная открыта, неизвестная и пустая — Улика. */
+    @Test
+    void tabInTheAddressIsOpenAndAnUnknownOneOpensTheEvidence() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        assertThat(admin.get(address(draft) + "?tab=solution").body())
+                .contains("data-tab-open=\"solution\"").contains("name=\"tab\" value=\"solution\"");
+        assertThat(admin.get(address(draft) + "?tab=nonsense").body()).contains("data-tab-open=\"evidence\"");
+        assertThat(admin.get(address(draft)).body()).contains("data-tab-open=\"evidence\"");
+    }
+
+    /** Сценарий «Сохранение возвращает на ту же закладку» (Р2): с закладкой и с возвратом. */
+    @Test
+    void writingFromTheMarkupTabComesBackToItWithTheReturn() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        List<Map.Entry<String, String>> sent = new ArrayList<>(fields(draft, CONDITION, true));
+        sent.add(Map.entry("tab", "markup"));
+        Browser admin = browser(administrator);
+
+        Browser.Page saved = admin.postForm(address(draft) + "?from=" + encoded(CONVERSATION), sent);
+
+        assertThat(saved.redirectsTo(address(draft) + "?tab=markup&from=" + encoded(CONVERSATION))).isTrue();
+        assertThat(admin.get(relative(saved)).body()).contains("data-tab-open=\"markup\"");
+    }
+
+    /**
+     * Сценарий «Обновить отрисовку» (Р3): отрисовка — от введённого, черновик
+     * не записан, страница несохранена, версия — присланная, даже если
+     * Помощник тем временем черновик правил.
+     */
+    @Test
+    void refreshRendersTheSentTextWithoutWritingTheDraft() throws IOException {
+        ProblemDraft read = assistantDraft(photo(), photo());
+        ProblemDraft assistant = service.write(read.id(), read.version(), new ProblemDraftChange(null,
+                "Условие Помощника $x$", null, null, null, null, null, null, null, null),
+                ProblemDraft.Editor.ASSISTANT);
+        List<Map.Entry<String, String>> sent = new ArrayList<>(fields(read, "Набранное $\\foo$", true));
+        sent.add(Map.entry("tab", "condition"));
+
+        Browser.Page shown = browser(administrator).postForm(
+                address(read) + "/preview?from=" + encoded(CONVERSATION), sent);
+
+        assertThat(shown.status()).isEqualTo(200);
+        assertThat(shown.body())
+                .as("отрисован введённый текст: его формула не разбирается, у хранимого — разбирается")
+                .contains("role=\"alert\">Формула $\\foo$")
+                .contains("Набранное $\\foo$")
+                .contains("data-unsaved=\"sent\"")
+                .contains("data-tab-open=\"condition\"")
+                .contains("name=\"version\" value=\"" + read.version() + "\"")
+                .contains("href=\"" + CONVERSATION + "\">← ");
+        assertThat(service.draft(read.id())).as("черновик не записан").isEqualTo(assistant);
+    }
+
+    /** «Обновить отрисовку» с плохой Рамкой — отказ на странице, черновик прежний. */
+    @Test
+    void refreshWithABadFrameIsRefusedOnThePage() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        List<Map.Entry<String, String>> sent = new ArrayList<>();
+        for (Map.Entry<String, String> field : fields(draft, CONDITION, true)) {
+            sent.add(field.getKey().equals("conditionCrop") ? Map.entry("conditionCrop", "0.5,0.5,0.1,abc") : field);
+        }
+
+        Browser.Page refused = browser(administrator).postForm(address(draft) + "/preview", sent);
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("class=\"alert\"").contains("data-unsaved=\"sent\"");
+        assertThat(service.draft(draft.id())).isEqualTo(draft);
+    }
+
+    /**
+     * Сценарий «Новый Метод — ссылкой на заведение» (Р5): ссылка ведёт в словари
+     * с именем и возвратом на закладку Разметка; заведённый Метод — без учёта
+     * регистра и крайних пробелов — из показа уходит, хранимый список прежний.
+     */
+    @Test
+    void newMethodsLinkToTheDictionaryAndTheCreatedOneIsNotShown() throws IOException {
+        String created = "Метод " + UUID.randomUUID();
+        String missing = "Метод " + UUID.randomUUID();
+        ProblemDraft draft = assistantDraft(photo(), photo(), List.of(created, missing));
+        methods.create("  " + created.toUpperCase(Locale.ROOT) + " ");
+
+        String markup = panel(browser(administrator).get(address(draft)).body(), "markup");
+
+        assertThat(markup).contains(">" + missing + "</a>").doesNotContain(created);
+        assertThat(markup).contains("href=\"/dictionaries?newMethod=" + query(missing)
+                + "&amp;from=" + query(address(draft) + "?tab=markup") + "\"");
+        assertThat(service.draft(draft.id()).content().newMethods()).containsExactly(created, missing);
+    }
+
+    /** Сценарий «Ссылка на заведение Темы» (Р6): в рубрикатор с возвратом на Разметку; у формы Задачи её нет. */
+    @Test
+    void markupLinksToTheRubricatorWithTheReturn() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        assertThat(panel(admin.get(address(draft) + "?from=" + encoded(CONVERSATION)).body(), "markup"))
+                .contains("Нет подходящей?")
+                .contains("href=\"/taxonomy?from="
+                        + query(address(draft) + "?tab=markup&from=" + encoded(CONVERSATION)) + "\"");
+        assertThat(admin.get("/problems/new").body()).doesNotContain("Завести в рубрикаторе");
+    }
+
+    /**
+     * Закладки строит скрипт (intake-tabs, Р1, Р2): строка кнопок {@code tablist}
+     * из заголовков панелей, неоткрытые — {@code hidden}, открытая закладка
+     * пишется в поле {@code tab} только при отправке.
+     */
+    @Test
+    void scriptBuildsTheTabsAndWritesTheOpenOneOnSubmit() throws IOException {
+        String script = Files.readString(Path.of("src/main/resources/static/js/locus.js"), StandardCharsets.UTF_8);
+        String tabs = script.substring(script.indexOf("querySelectorAll('[data-tabs]')"));
+
+        assertThat(tabs).contains("'tablist'", "'role', 'tab'", "'tabpanel'", "data-tab-open",
+                "panel.hidden = !chosen", "ArrowRight", "name=tab",
+                "addEventListener('submit'", "field.value = panels[current()].getAttribute('data-tab')");
+    }
+
     @Test
     void deleteRemovesTheDraft() throws IOException {
         ProblemDraft draft = assistantDraft(photo(), photo());
@@ -440,14 +600,32 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         return page.location().replaceFirst("^https?://[^/]+", "");
     }
 
+    /** Панель закладки {@code key}: от её начала до следующей панели или до кнопок формы. */
+    private static String panel(String body, String key) {
+        int start = body.indexOf("data-tab=\"" + key + "\"");
+        assertThat(start).as("панель " + key).isGreaterThanOrEqualTo(0);
+        int next = body.indexOf("class=\"tab-panel\"", start);
+        return body.substring(start, next < 0 ? body.indexOf("class=\"form-actions\"", start) : next);
+    }
+
+    /** Значение параметра адреса так, как его кодирует Thymeleaf в {@code @{…}}: «/» и «?» остаются. */
+    private static String query(String value) {
+        return encoded(value).replace("+", "%20").replace("%2F", "/").replace("%3F", "?");
+    }
+
     private static int count(String body, String text) {
         return body.split(Pattern.quote(text), -1).length - 1;
     }
 
     private ProblemDraft assistantDraft(AssemblyDraft conditionPhoto, AssemblyDraft solutionPhoto) {
+        return assistantDraft(conditionPhoto, solutionPhoto, List.of("Метод интервалов"));
+    }
+
+    private ProblemDraft assistantDraft(AssemblyDraft conditionPhoto, AssemblyDraft solutionPhoto,
+                                        List<String> newMethods) {
         return service.create(new ProblemDraftContent(ExamPart.SECOND, CONDITION, SOLUTION,
                 framed(conditionPhoto), framed(solutionPhoto), List.of("8 похоже на 9"),
-                List.of(library.topic()), List.of(library.method()), List.of(), List.of("Метод интервалов")),
+                List.of(library.topic()), List.of(library.method()), List.of(), newMethods),
                 ProblemDraft.Editor.ASSISTANT);
     }
 

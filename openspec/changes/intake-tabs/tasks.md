@@ -42,7 +42,7 @@
 
 ## 3. Тесты
 
-- [ ] 3.1 `ProblemIntakeScreenTest`: четыре панели с содержимым по Р1,
+- [x] 3.1 `ProblemIntakeScreenTest`: четыре панели с содержимым по Р1,
   одна форма `data-unsaved`, кнопки вне контейнера закладок; `tab`
   в адресе — `data-tab-open`, неизвестное — `evidence`; запись
   с `tab=markup` переадресует с ним и с `from`; «Обновить отрисовку»
@@ -51,9 +51,9 @@
   ссылка нового Метода — в словари с `newMethod` и `from`; ссылка
   в рубрикатор с `from`; подсказка о Рамке; кнопка «Сохранить снимком,
   без текста»; список черновиков — «[формула]» вместо LaTeX
-- [ ] 3.2 `DictionaryScreenTest`: `newMethod` раскрывает «Новый Метод»
+- [x] 3.2 `DictionaryScreenTest`: `newMethod` раскрывает «Новый Метод»
   с заполненным именем; без параметра — закрыт
-- [ ] 3.3 Тест скрипта: раздел закладок в `locus.js` (`[data-tabs]`,
+- [x] 3.3 Тест скрипта: раздел закладок в `locus.js` (`[data-tabs]`,
   `role`, `tablist`, запись `tab` в `submit`); проверка —
   `mvn test -Dtest='ProblemIntakeScreenTest,DictionaryScreenTest,ProblemTextRenderingTest'`
   зелёный

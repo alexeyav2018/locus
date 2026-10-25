@@ -179,6 +179,25 @@ class DictionaryScreenTest extends IntegrationTest {
                 .endsWith("/dictionaries?method=" + created.value() + "#method-" + created.value());
     }
 
+    /**
+     * Сценарий «Новый Метод — ссылкой на заведение» (intake-tabs, Р5): имя
+     * из адреса раскрывает блок «Новый Метод» и стоит в поле; без него блок
+     * закрыт и поле пусто.
+     */
+    @Test
+    void newMethodInTheAddressOpensTheCreationBlockWithTheName() {
+        Browser administrator = loggedIn(Role.ADMINISTRATOR);
+
+        String named = administrator.get("/dictionaries?newMethod=%20Метод%20интервалов%20&from=/problems/intake/7").body();
+        String plain = administrator.get("/dictionaries").body();
+
+        assertThat(newMethodBlock(named)).contains("open=\"open\"");
+        assertThat(named).containsPattern("name=\"name\"\\s+value=\"Метод интервалов\"")
+                .contains("<a href=\"/problems/intake/7\">← Назад</a>");
+        assertThat(newMethodBlock(plain)).doesNotContain("open=");
+        assertThat(plain).doesNotContain("value=\"Метод интервалов\"");
+    }
+
     /** Сценарий «Возврат переживает выбор записи и действия» (ADR-0060). */
     @Test
     void comingWithAReturnShowsBackAndEveryLinkAndFormCarriesIt() {
@@ -296,6 +315,13 @@ class DictionaryScreenTest extends IntegrationTest {
                 .contains("href=\"/dictionaries\"");
 
         assertThat(browser.get("/dictionaries").body()).contains(name);
+    }
+
+    /** Открывающий тег блока «Новый Метод». */
+    private static String newMethodBlock(String body) {
+        int summary = body.indexOf("<summary>Новый Метод</summary>");
+        assertThat(summary).as("блок «Новый Метод»").isGreaterThanOrEqualTo(0);
+        return body.substring(body.lastIndexOf("<details", summary), summary);
     }
 
     private static int count(String body, String fragment) {
