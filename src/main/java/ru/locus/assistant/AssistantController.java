@@ -1,5 +1,6 @@
 package ru.locus.assistant;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -7,6 +8,7 @@ import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.http.HttpStatus;
@@ -17,7 +19,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.WebUtils;
 import ru.locus.Addresses;
 import ru.locus.upload.LargeUpload;
 
@@ -40,6 +44,9 @@ import ru.locus.upload.LargeUpload;
 public class AssistantController {
 
     private static final String TURNS = Addresses.ASSISTANT + "/turns";
+
+    /** Поля файла формы — {@code file1} … {@code file4}: номер файла — номер поля. */
+    private static final int FILE_FIELDS = 4;
 
     private final AssistantService service;
     private final Clock clock;
@@ -72,22 +79,24 @@ public class AssistantController {
     }
 
     /**
-     * Начать Реплику в показанном Разговоре, а без него — в новом. Файл
-     * принимает сервис через {@link TurnAttachments}; предел загрузки —
-     * инструмента черновиков, а не общий: PDF сборника весит десятки
-     * мегабайт ({@link LargeUpload}).
+     * Начать Реплику в показанном Разговоре, а без него — в новом. Файлы
+     * полей {@code file1} … {@code file4} принимает сервис через
+     * {@link TurnAttachments}: номер файла — номер поля, пустое поле
+     * пропускается, и номера остальных не сдвигаются (design.md
+     * assistant-multiple-files, Р1). Предел загрузки — инструмента
+     * черновиков, а не общий: PDF сборника весит десятки мегабайт
+     * ({@link LargeUpload}). Запрос сверх него сюда не доходит — его
+     * отклоняет {@link TooLargeTurnRefusal}.
      */
     @LargeUpload
     @PostMapping(TURNS)
     public String start(@RequestParam(required = false) Long conversation,
                         @RequestParam(defaultValue = "") String prompt,
-                        @RequestParam(required = false) MultipartFile file,
+                        HttpServletRequest request,
                         Model model) {
         Optional<AssistantConversationId> target = named(conversation);
         try {
-            AssistantTurn turn = file == null || file.isEmpty()
-                    ? service.startTurn(target, prompt, List.of())
-                    : startWithFile(target, prompt, file);
+            AssistantTurn turn = startWithFiles(target, prompt, files(request));
             return "redirect:" + turnAddress(turn);
         } catch (IllegalArgumentException | AssistantBusyException | AssistantUnavailableException refusal) {
             model.addAttribute("error", refusal.getMessage());
@@ -107,11 +116,51 @@ public class AssistantController {
         return "redirect:" + turnAddress(service.turn(turn));
     }
 
-    private AssistantTurn startWithFile(Optional<AssistantConversationId> target, String prompt, MultipartFile file) {
-        try (InputStream content = file.getInputStream()) {
-            return service.startTurn(target, prompt, List.of(new TurnAttachment(1, file.getOriginalFilename(), content)));
+    /** Непустые файлы полей формы по порядку полей; без файлов — пусто. */
+    private static List<Numbered> files(HttpServletRequest request) {
+        MultipartHttpServletRequest parts = WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
+        List<Numbered> files = new ArrayList<>();
+        if (parts == null) {
+            return files;
+        }
+        for (int number = 1; number <= FILE_FIELDS; number++) {
+            MultipartFile file = parts.getFile("file" + number);
+            if (file != null && !file.isEmpty()) {
+                files.add(new Numbered(number, file));
+            }
+        }
+        return files;
+    }
+
+    private record Numbered(int number, MultipartFile file) {
+    }
+
+    /** Потоки открываются все до вызова сервиса и закрываются все, что бы ни случилось. */
+    private AssistantTurn startWithFiles(Optional<AssistantConversationId> target, String prompt,
+                                         List<Numbered> files) {
+        List<InputStream> opened = new ArrayList<>();
+        try {
+            List<TurnAttachment> attachments = new ArrayList<>();
+            for (Numbered numbered : files) {
+                InputStream content = numbered.file().getInputStream();
+                opened.add(content);
+                attachments.add(new TurnAttachment(numbered.number(), numbered.file().getOriginalFilename(), content));
+            }
+            return service.startTurn(target, prompt, attachments);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        } finally {
+            closeAll(opened);
+        }
+    }
+
+    private static void closeAll(List<InputStream> opened) {
+        for (InputStream content : opened) {
+            try {
+                content.close();
+            } catch (IOException ignored) {
+                // поток файла запроса: закрыть не вышло — убирать нечего
+            }
         }
     }
 

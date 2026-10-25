@@ -28,18 +28,21 @@
 
 ## 2. Страница: четыре поля, Разговор в адресе, отказ по пределу
 
-- [ ] 2.1 `assistant/page.html`: `<fieldset>` с полями `file1`…`file4`
+- [x] 2.1 `assistant/page.html`: `<fieldset>` с полями `file1`…`file4`
   «Файл 1» … «Файл 4» с `data-paste-file` и строкой
   `data-paste-status`, только у Администратора; Разговор —
   в адресе действия, скрытое поле убрано; подсказка пустой страницы
   про файлы; комментарий шаблона (Р1, Р4)
-- [ ] 2.2 `AssistantController.start`: файлы из `MultipartRequest`
+- [x] 2.2 `AssistantController.start`: файлы из `MultipartRequest`
   по именам `file1`…`file4`, пустые пропущены, потоки закрываются все;
   javadoc (Р1)
-- [ ] 2.3 `AssistantController`: `@ExceptionHandler(MaxUploadSizeExceededException)`
-  — шапка и подвал явно, Разговор из строки запроса, текст отказа
-  с пределами из `MultipartProperties` и словами о пропавшем тексте (Р4)
-- [ ] 2.4 Тесты `AssistantPageTest`: поля `file1`…`file4` и признак
+- [x] 2.3 Отказ по пределу — `TooLargeTurnRefusal` (`ErrorViewResolver`):
+  413 по адресу действия формы Помощника — переадресация на Разговор
+  из строки запроса, отказ flash-атрибутом с пределами из
+  `MultipartProperties` и словами о пропавшем тексте;
+  `UploadLimitInterceptor` держит только исходный запрос (Р4, решено
+  при реализации вместо `@ExceptionHandler` контроллера)
+- [x] 2.4 Тесты `AssistantPageTest`: поля `file1`…`file4` и признак
   `data-paste-file` у Администратора, у Учителя полей нет; два файла —
   два черновика и строки в порядке полей; «Файл 1» и «Файл 3» без
   «Файл 2» — номера не сдвинуты; «Файл 2» неподходящий — отказ на

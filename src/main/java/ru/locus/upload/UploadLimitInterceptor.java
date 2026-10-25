@@ -1,5 +1,6 @@
 package ru.locus.upload;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
@@ -23,6 +24,12 @@ import org.springframework.web.util.WebUtils;
  * Тело разбирается здесь же, при первом обращении к файлам
  * ({@code resolve-lazily}): запрос сверх предела контейнера роняет разбор
  * тем же исключением.
+ *
+ * Держит только исходный запрос, а не страницу ошибки: запрос сверх предела
+ * контейнера контейнер отклоняет сам и показывает страницу ошибки тем же
+ * телом, и разбор его здесь уронил бы страницу ошибки вторым отказом —
+ * мимо её разбора (так отказ по пределу показывает страница Помощника,
+ * {@code TooLargeTurnRefusal}).
  */
 public class UploadLimitInterceptor implements HandlerInterceptor {
 
@@ -34,6 +41,9 @@ public class UploadLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (request.getDispatcherType() != DispatcherType.REQUEST) {
+            return true;
+        }
         if (handler instanceof HandlerMethod method && method.hasMethodAnnotation(LargeUpload.class)) {
             return true;
         }

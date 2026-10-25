@@ -13,6 +13,13 @@
 
         Ответ Помощника — готовый HTML от AnswerMarkdown (Р7): единственное
         место th:utext на странице. Тон значка, время и итог готовит Java.
+
+        Файлы к запросу — четыре поля file1…file4 у Администратора
+        (design.md assistant-multiple-files, Р1): номер файла — номер поля.
+        Признак data-paste-file отдаёт поле вставке из буфера (locus.js),
+        строка data-paste-status — её сообщениям (Р5). Разговор — в адресе
+        действия, а не скрытым полем: тело сверх предела не разбирается,
+        и отказ по пределу берёт Разговор из адреса (Р4).
     */-->
 </head>
 <body>
@@ -80,7 +87,8 @@
 
 <div class="empty" th:if="${availability.available and conversation == null and running == null}">
     <p>Напишите, что сделать, — например, «найди задачи на теорему Виета»<th:block
-            th:if="${shell.administrator}">; снимок листа можно приложить файлом</th:block>.</p>
+            th:if="${shell.administrator}">; снимки листа или PDF — до четырёх файлов
+            полями ниже или вставкой из буфера обмена</th:block>.</p>
 </div>
 
 <p class="alert alert--notice" role="status" th:if="${elsewhere != null}">
@@ -89,15 +97,20 @@
 
 <p class="alert" role="alert" th:if="${error}" th:text="${error}">Запрос Помощнику пуст</p>
 
-<form class="turn-form" method="post" enctype="multipart/form-data" th:action="@{/assistant/turns}"
+<form class="turn-form" method="post" enctype="multipart/form-data"
+      th:action="${conversation == null} ? @{/assistant/turns} : @{/assistant/turns(conversation=${conversation.id.value})}"
       th:if="${availability.available and running == null}">
-    <input type="hidden" name="conversation" th:if="${conversation != null}" th:value="${conversation.id.value}">
     <label>Запрос
         <textarea name="prompt" rows="4" th:text="${prompt}"></textarea>
     </label>
-    <label th:if="${shell.administrator}">Снимок листа или PDF
-        <input type="file" name="file" accept="image/jpeg,image/png,application/pdf">
-    </label>
+    <fieldset class="turn-files" th:if="${shell.administrator}">
+        <legend>Снимки листа или PDF</legend>
+        <label th:each="number : ${#numbers.sequence(1, 4)}"><span th:text="'Файл ' + ${number}">Файл 1</span>
+            <input type="file" th:name="'file' + ${number}" accept="image/jpeg,image/png,application/pdf"
+                   data-paste-file>
+        </label>
+        <p class="muted small" data-paste-status role="status"></p>
+    </fieldset>
     <div class="form-actions">
         <button type="submit" class="btn-primary">Отправить</button>
     </div>
