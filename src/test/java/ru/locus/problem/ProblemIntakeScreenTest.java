@@ -37,6 +37,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
     private static final String CONDITION = "Найдите $x$, если $\\log_2 ⟦8⟧ = x$.";
     private static final String SOLUTION = "По определению логарифма $x = 3$.";
     private static final CropFrame FRAME = new CropFrame(0.1, 0.1, 0.5, 0.5);
+    private static final String CONVERSATION = "/assistant?conversation=7";
 
     @LocalServerPort
     private int port;
@@ -124,6 +125,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
     @Test
     void savingWithAStaleVersionIsRefusedAndWithTheCurrentMakesAProblem() throws IOException {
         ProblemDraft read = assistantDraft(photo(), photo());
+        assistantDraft(photo(), photo());
         ProblemDraft assistant = service.write(read.id(), read.version(), new ProblemDraftChange(null,
                 "Условие Помощника $\\log_2 8 = x$", null, null, null, null, null, null, null, null),
                 ProblemDraft.Editor.ASSISTANT);
@@ -139,8 +141,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
                 fields(assistant, "Найдите $x$, если $\\log_2 ⟦8⟧ = x$.", true));
 
         assertThat(current.status()).isEqualTo(302);
-        long problem = Long.parseLong(current.location().replaceAll(".*/problems/", ""));
-        Problem created = problems.problem(new ProblemId(problem));
+        Problem created = problems.problem(created(current));
         assertThat(created.hasText()).isTrue();
         assertThat(created.text().condition()).isEqualTo("Найдите $x$, если $\\log_2 8 = x$.");
         assertThat(created.text().conditionEvidence()).isNotNull();
@@ -152,13 +153,13 @@ class ProblemIntakeScreenTest extends IntegrationTest {
     @Test
     void snapshotMakesAProblemWithoutText() throws IOException {
         ProblemDraft draft = assistantDraft(photo(), photo());
+        assistantDraft(photo(), photo());
 
         Browser.Page saved = browser(administrator).postForm(address(draft) + "/snapshot",
                 fields(draft, CONDITION, true));
 
         assertThat(saved.status()).isEqualTo(302);
-        long problem = Long.parseLong(saved.location().replaceAll(".*/problems/", ""));
-        assertThat(problems.problem(new ProblemId(problem)).hasText()).isFalse();
+        assertThat(problems.problem(created(saved)).hasText()).isFalse();
         assertThat(repository.find(administrator.id(), draft.id())).isEmpty();
     }
 
@@ -212,13 +213,14 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         ProblemDraft second = assistantDraft(photo, photo);
         Browser admin = browser(administrator);
 
-        assertThat(admin.postForm(address(first) + "/problem", fields(first, CONDITION, true)).status())
-                .isEqualTo(302);
+        Browser.Page firstSaved = admin.postForm(address(first) + "/problem", fields(first, CONDITION, true));
+        assertThat(firstSaved.status()).isEqualTo(302);
 
         assertThat(admin.get(address(second)).body()).contains("Улика условия, страница 1");
         Browser.Page saved = admin.postForm(address(second) + "/problem", fields(second, CONDITION, true));
         assertThat(saved.status()).isEqualTo(302);
-        assertThat(saved.location()).contains("/problems/");
+        assertThat(saved.location()).as("черновиков не осталось — к Помощнику").endsWith("/assistant");
+        assertThat(problems.problem(created(firstSaved)).hasText()).isTrue();
     }
 
     /**
@@ -273,8 +275,120 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         Browser.Page deleted = browser(administrator).postForm(address(draft) + "/delete",
                 Map.of("version", String.valueOf(draft.version())));
 
-        assertThat(deleted.redirectsTo("/problems/intake")).isTrue();
+        assertThat(deleted.redirectsTo("/assistant")).as("черновиков не осталось").isTrue();
         assertThat(repository.find(administrator.id(), draft.id())).isEmpty();
+    }
+
+    /** Сценарий «Сохранение черновика не теряет возврата» (back-link-gaps, Р6). */
+    @Test
+    void writingKeepsTheReturn() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        Browser.Page saved = admin.postForm(address(draft) + "?from=" + encoded(CONVERSATION),
+                fields(draft, CONDITION, true));
+
+        assertThat(saved.redirectsTo(address(draft) + "?from=" + encoded(CONVERSATION))).isTrue();
+        assertThat(admin.get(relative(saved)).body()).contains("href=\"" + CONVERSATION + "\">← ");
+    }
+
+    /** Сценарий «Отказ разметкой»: «назад» ведёт туда же, куда до нажатия. */
+    @Test
+    void refusalKeepsTheReturn() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+
+        Browser.Page refused = browser(administrator).postForm(
+                address(draft) + "/problem?from=" + encoded(CONVERSATION), fields(draft, CONDITION, false));
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("class=\"alert\"").contains("href=\"" + CONVERSATION + "\">← ");
+    }
+
+    /** Сценарий «Сохранение ведёт к оставшимся черновикам» (Р4, Р5). */
+    @Test
+    void savingLeadsToTheRemainingDraftsWithTheCreatedProblem() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        Browser.Page saved = admin.postForm(address(draft) + "/problem?from=" + encoded(CONVERSATION),
+                fields(draft, CONDITION, true));
+
+        ProblemId created = created(saved);
+        assertThat(saved.location()).contains("/problems/intake?created=" + created.value()
+                + "&from=" + encoded(CONVERSATION));
+        String list = admin.get(relative(saved)).body();
+        assertThat(list).contains("Заведена Задача № " + created.value())
+                .contains("href=\"/problems/" + created.value() + "?from=")
+                .contains("href=\"" + CONVERSATION + "\">← К Помощнику");
+    }
+
+    /** Черновик, открытый из списка: список не вкладывается сам в себя, прежний {@code created} заменён. */
+    @Test
+    void draftOpenedFromTheListLeadsBackToTheSameList() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        assistantDraft(photo(), photo());
+        String list = "/problems/intake?created=999&from=" + encoded(CONVERSATION);
+
+        Browser.Page saved = browser(administrator).postForm(address(draft) + "/problem?from=" + encoded(list),
+                fields(draft, CONDITION, true));
+
+        assertThat(saved.location()).endsWith("/problems/intake?created=" + created(saved).value()
+                + "&from=" + encoded(CONVERSATION));
+    }
+
+    /** Сценарий «Последний черновик возвращает в Разговор»: и прямо, и через список. */
+    @Test
+    void lastDraftLeadsToTheConversation() throws IOException {
+        ProblemDraft direct = assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        Browser.Page saved = admin.postForm(address(direct) + "/snapshot?from=" + encoded(CONVERSATION),
+                fields(direct, CONDITION, true));
+        assertThat(saved.redirectsTo(CONVERSATION)).isTrue();
+
+        ProblemDraft listed = assistantDraft(photo(), photo());
+        String list = "/problems/intake?from=" + encoded(CONVERSATION);
+        Browser.Page viaList = admin.postForm(address(listed) + "/snapshot?from=" + encoded(list),
+                fields(listed, CONDITION, true));
+        assertThat(viaList.redirectsTo(CONVERSATION)).isTrue();
+    }
+
+    /** Без возврата последний черновик ведёт на раздел по умолчанию ссылки «назад» списка. */
+    @Test
+    void lastDraftWithoutAReturnLeadsToTheAssistant() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+
+        Browser.Page saved = browser(administrator).postForm(address(draft) + "/problem",
+                fields(draft, CONDITION, true));
+
+        assertThat(saved.redirectsTo("/assistant")).isTrue();
+    }
+
+    /** Удаление при оставшихся черновиках — список с возвратом, без надписи. */
+    @Test
+    void deleteLeadsToTheRemainingDraftsWithoutANotice() throws IOException {
+        ProblemDraft draft = assistantDraft(photo(), photo());
+        assistantDraft(photo(), photo());
+        Browser admin = browser(administrator);
+
+        String form = admin.get(address(draft) + "?from=" + encoded(CONVERSATION)).body();
+        assertThat(form).as("форма удаления несёт возврат").contains("/delete?from=/assistant?conversation%3D7");
+
+        Browser.Page deleted = admin.postForm(address(draft) + "/delete?from=" + encoded(CONVERSATION),
+                Map.of("version", String.valueOf(draft.version())));
+
+        assertThat(deleted.redirectsTo("/problems/intake?from=" + encoded(CONVERSATION))).isTrue();
+        assertThat(admin.get(relative(deleted)).body()).doesNotContain("Заведена Задача");
+    }
+
+    /** Надпись — подсказка: несуществующая Задача не даёт ни надписи, ни отказа (Р5). */
+    @Test
+    void createdWithoutSuchProblemShowsNothing() throws IOException {
+        Browser.Page list = browser(administrator).get("/problems/intake?created=999999");
+
+        assertThat(list.status()).isEqualTo(200);
+        assertThat(list.body()).doesNotContain("Заведена Задача");
     }
 
     /** Сценарий «Чужой черновик — 404». */
@@ -308,6 +422,21 @@ class ProblemIntakeScreenTest extends IntegrationTest {
                 .contains("draft-" + draft.id().value())
                 .contains("Найдите $x$, если $\\log_2 8 = x$.");
         assertThat(admin.get("/assistant").body()).contains("Вычитать черновики: 1");
+    }
+
+    /** Номер заведённой Задачи из переадресации на список черновиков. */
+    private static ProblemId created(Browser.Page page) {
+        java.util.regex.Matcher number = Pattern.compile("created=(\\d+)").matcher(page.location());
+        assertThat(number.find()).as("переадресация называет заведённую Задачу: " + page.location()).isTrue();
+        return new ProblemId(Long.parseLong(number.group(1)));
+    }
+
+    private static String encoded(String address) {
+        return java.net.URLEncoder.encode(address, StandardCharsets.UTF_8);
+    }
+
+    private static String relative(Browser.Page page) {
+        return page.location().replaceFirst("^https?://[^/]+", "");
     }
 
     private static int count(String body, String text) {

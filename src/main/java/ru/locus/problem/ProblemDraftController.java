@@ -1,5 +1,7 @@
 package ru.locus.problem;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,7 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
 import ru.locus.Addresses;
+import ru.locus.ReturnTo;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
 import ru.locus.dictionary.SolutionMethodId;
@@ -67,7 +71,10 @@ public class ProblemDraftController {
 
     /** Свои черновики; открытие списка попутно убирает брошенные (Р4). */
     @GetMapping(Addresses.PROBLEM_INTAKE)
-    public String list(Model model) {
+    public String list(@RequestParam(required = false) Long created, Model model) {
+        if (created != null) {
+            created(new ProblemId(created)).ifPresent(problem -> model.addAttribute("created", problem));
+        }
         model.addAttribute("drafts", intake.drafts().stream()
                 .map(draft -> new Listed(draft, local(draft), title(draft.content())))
                 .toList());
@@ -99,6 +106,7 @@ public class ProblemDraftController {
                         @RequestParam(required = false) List<Integer> solutionFrom,
                         @RequestParam(required = false) List<Integer> solutionTo,
                         @RequestParam(required = false) List<String> solutionCrop,
+                        @RequestParam(required = false) String from,
                         Model model) {
         Sent sent = new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                 conditionDraft, conditionFrom, conditionTo, conditionCrop,
@@ -106,7 +114,7 @@ public class ProblemDraftController {
         ProblemDraftId draftId = new ProblemDraftId(id);
         try {
             written(draftId, version, sent);
-            return "redirect:" + Addresses.PROBLEM_INTAKE + "/" + id;
+            return "redirect:" + ReturnTo.carried(Addresses.PROBLEM_INTAKE + "/" + id, from);
         } catch (ProblemDraftChangedException refusal) {
             return refusedStored(draftId, refusal, model);
         } catch (NotATopicException | IllegalArgumentException refusal) {
@@ -132,12 +140,13 @@ public class ProblemDraftController {
                                 @RequestParam(required = false) List<Integer> solutionFrom,
                                 @RequestParam(required = false) List<Integer> solutionTo,
                                 @RequestParam(required = false) List<String> solutionCrop,
+                                @RequestParam(required = false) String from,
                                 Model model) {
         return saved(new ProblemDraftId(id), version, ProblemDraftService.Kind.TEXT,
                 new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                         conditionDraft, conditionFrom, conditionTo, conditionCrop,
                         solutionDraft, solutionFrom, solutionTo, solutionCrop),
-                model);
+                from, model);
     }
 
     /** «Взять снимок как есть»: Задача без текста, PDF слотов — из строк сборки. */
@@ -158,21 +167,23 @@ public class ProblemDraftController {
                                @RequestParam(required = false) List<Integer> solutionFrom,
                                @RequestParam(required = false) List<Integer> solutionTo,
                                @RequestParam(required = false) List<String> solutionCrop,
+                               @RequestParam(required = false) String from,
                                Model model) {
         return saved(new ProblemDraftId(id), version, ProblemDraftService.Kind.SNAPSHOT,
                 new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                         conditionDraft, conditionFrom, conditionTo, conditionCrop,
                         solutionDraft, solutionFrom, solutionTo, solutionCrop),
-                model);
+                from, model);
     }
 
-    /** «Удалить черновик»: Задачи не заводит, ведёт к списку черновиков. */
+    /** «Удалить черновик»: Задачи не заводит, ведёт к оставшимся черновикам (back-link-gaps, Р4). */
     @PostMapping(Addresses.PROBLEM_INTAKE + "/{id}/delete")
-    public String delete(@PathVariable long id, @RequestParam long version, Model model) {
+    public String delete(@PathVariable long id, @RequestParam long version,
+                         @RequestParam(required = false) String from, Model model) {
         ProblemDraftId draftId = new ProblemDraftId(id);
         try {
             intake.delete(draftId, version);
-            return "redirect:" + Addresses.PROBLEM_INTAKE;
+            return away(from, null);
         } catch (ProblemDraftChangedException refusal) {
             return refusedStored(draftId, refusal, model);
         }
@@ -184,7 +195,8 @@ public class ProblemDraftController {
      * черновик»; отказ заведения — хранимый черновик с отказом: введённое
      * уже записано.
      */
-    private String saved(ProblemDraftId id, long version, ProblemDraftService.Kind kind, Sent sent, Model model) {
+    private String saved(ProblemDraftId id, long version, ProblemDraftService.Kind kind, Sent sent,
+                         String from, Model model) {
         ProblemDraft written;
         try {
             written = written(id, version, sent);
@@ -195,9 +207,61 @@ public class ProblemDraftController {
         }
         try {
             ProblemId created = intake.save(id, written.version(), kind);
-            return "redirect:" + Addresses.PROBLEMS + "/" + created.value();
+            return away(from, created);
         } catch (ProblemDraftChangedException | NotATopicException | IllegalArgumentException refusal) {
             return refusedStored(id, refusal, model);
+        }
+    }
+
+    /**
+     * Уход со страницы черновика после утверждения или удаления
+     * (back-link-gaps, design.md, Р4): к оставшимся черновикам — списком
+     * с возвратом страницы черновика, а без оставшихся — туда, куда вела бы
+     * ссылка «назад» списка. Открытая из списка страница несёт возвратом
+     * сам список; тогда возврат списка — его собственный {@code from},
+     * и список строится заново с ним, без вложения списка в список
+     * (прежний {@code created} при этом заменяется).
+     *
+     * @param created заведённая Задача — список назовёт её; {@code null} у удаления
+     */
+    private String away(String from, ProblemId created) {
+        String back = ReturnTo.safe(from).orElse(null);
+        String listBack = back != null && pathOf(back).equals(Addresses.PROBLEM_INTAKE) ? fromOf(back) : back;
+        if (intake.count() == 0) {
+            return "redirect:" + ReturnTo.safe(listBack).map(ReturnTo::location).orElse(Addresses.ASSISTANT);
+        }
+        String list = created == null
+                ? Addresses.PROBLEM_INTAKE
+                : Addresses.PROBLEM_INTAKE + "?created=" + created.value();
+        return "redirect:" + ReturnTo.carried(list, listBack);
+    }
+
+    private static String pathOf(String address) {
+        int end = address.length();
+        for (char stop : new char[] {'?', '#'}) {
+            int at = address.indexOf(stop);
+            if (at >= 0 && at < end) {
+                end = at;
+            }
+        }
+        return address.substring(0, end);
+    }
+
+    /** Собственный возврат адреса: значение его параметра {@code from}, раскодированное. */
+    private static String fromOf(String address) {
+        String value = UriComponentsBuilder.fromUriString(address).build().getQueryParams().getFirst("from");
+        return value == null ? null : URLDecoder.decode(value, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Заведённая Задача для надписи списка (Р5). Номер приходит из адреса:
+     * нет такой Задачи — нет и надписи, отказа нет — это подсказка, а не данные.
+     */
+    private Optional<Problem> created(ProblemId id) {
+        try {
+            return Optional.of(problems.problem(id));
+        } catch (IllegalArgumentException missing) {
+            return Optional.empty();
         }
     }
 
