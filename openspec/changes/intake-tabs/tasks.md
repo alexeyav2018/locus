@@ -2,21 +2,21 @@
 
 ## 1. Сервер: закладка, отрисовка введённого, новые Методы, строка списка
 
-- [ ] 1.1 `ProblemTextRendering.withoutFormulas(text)` — формулы словом
+- [x] 1.1 `ProblemTextRendering.withoutFormulas(text)` — формулы словом
   «[формула]», `\$` — знаком доллара, код и незакрытый `$` как есть
   (design.md, Р8); тест в `ProblemTextRenderingTest`
-- [ ] 1.2 `ProblemDraftController.title` — через `withoutFormulas`
+- [x] 1.2 `ProblemDraftController.title` — через `withoutFormulas`
   после `DoubtMarks.strip`
-- [ ] 1.3 Параметр `tab` (Р2): разбор с умолчанием `evidence`, модельный
+- [x] 1.3 Параметр `tab` (Р2): разбор с умолчанием `evidence`, модельный
   атрибут `tab` в `page(...)`; GET читает из адреса, запись
   и утверждение принимают из формы; «Сохранить черновик» переадресует
   на `/problems/intake/{id}?tab=…` с `from`
-- [ ] 1.4 `POST /problems/intake/{id}/preview` (Р3): присланное
+- [x] 1.4 `POST /problems/intake/{id}/preview` (Р3): присланное
   на страницу без записи, `sent=true`, версия — присланная; плохая
   Рамка — отказ на странице
-- [ ] 1.5 Модельный атрибут `newMethods` — имена Помощника без имеющихся
+- [x] 1.5 Модельный атрибут `newMethods` — имена Помощника без имеющихся
   в словаре без учёта регистра и крайних пробелов (Р5)
-- [ ] 1.6 `DictionaryController` GET принимает `newMethod`;
+- [x] 1.6 `DictionaryController` GET принимает `newMethod`;
   `dictionary/dictionaries.html` — блок «Новый Метод» раскрыт и поле
   заполнено при нём (Р5)
 

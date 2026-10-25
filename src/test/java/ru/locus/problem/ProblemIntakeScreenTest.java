@@ -113,7 +113,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
 
         Browser.Page saved = admin.postForm(address(draft), fields(draft, "Новое условие $x$", true));
 
-        assertThat(saved.redirectsTo(address(draft))).isTrue();
+        assertThat(saved.redirectsTo(address(draft) + "?tab=evidence")).as("без закладки в форме — Улика").isTrue();
         ProblemDraft written = service.draft(draft.id());
         assertThat(written.version()).isEqualTo(draft.version() + 1);
         assertThat(written.content().conditionText()).isEqualTo("Новое условие $x$");
@@ -288,7 +288,7 @@ class ProblemIntakeScreenTest extends IntegrationTest {
         Browser.Page saved = admin.postForm(address(draft) + "?from=" + encoded(CONVERSATION),
                 fields(draft, CONDITION, true));
 
-        assertThat(saved.redirectsTo(address(draft) + "?from=" + encoded(CONVERSATION))).isTrue();
+        assertThat(saved.redirectsTo(address(draft) + "?tab=evidence&from=" + encoded(CONVERSATION))).isTrue();
         assertThat(admin.get(relative(saved)).body()).contains("href=\"" + CONVERSATION + "\">← ");
     }
 
@@ -420,7 +420,8 @@ class ProblemIntakeScreenTest extends IntegrationTest {
 
         assertThat(admin.get("/problems/intake").body())
                 .contains("draft-" + draft.id().value())
-                .contains("Найдите $x$, если $\\log_2 8 = x$.");
+                .contains("Найдите [формула], если [формула].")
+                .doesNotContain("\\log_2");
         assertThat(admin.get("/assistant").body()).contains("Вычитать черновики: 1");
     }
 

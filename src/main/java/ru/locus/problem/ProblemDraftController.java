@@ -5,9 +5,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +22,7 @@ import ru.locus.Addresses;
 import ru.locus.ReturnTo;
 import ru.locus.dictionary.CharacteristicId;
 import ru.locus.dictionary.CharacteristicService;
+import ru.locus.dictionary.SolutionMethod;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.dictionary.SolutionMethodService;
 import ru.locus.taxonomy.TaxonomyNodeId;
@@ -83,9 +87,9 @@ public class ProblemDraftController {
 
     /** Страница вычитки: Улика рядом с отрисовкой, поля правки, разметка. */
     @GetMapping(Addresses.PROBLEM_INTAKE + "/{id}")
-    public String draft(@PathVariable long id, Model model) {
+    public String draft(@PathVariable long id, @RequestParam(required = false) String tab, Model model) {
         ProblemDraft draft = intake.draft(new ProblemDraftId(id));
-        return page(draft, draft.content(), model);
+        return page(draft, draft.content(), Tab.of(tab), model);
     }
 
     /** «Сохранить черновик»: запись введённого и снова страница вычитки. */
@@ -107,19 +111,64 @@ public class ProblemDraftController {
                         @RequestParam(required = false) List<Integer> solutionTo,
                         @RequestParam(required = false) List<String> solutionCrop,
                         @RequestParam(required = false) String from,
+                        @RequestParam(required = false) String tab,
                         Model model) {
         Sent sent = new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                 conditionDraft, conditionFrom, conditionTo, conditionCrop,
                 solutionDraft, solutionFrom, solutionTo, solutionCrop);
         ProblemDraftId draftId = new ProblemDraftId(id);
+        Tab open = Tab.of(tab);
         try {
             written(draftId, version, sent);
-            return "redirect:" + ReturnTo.carried(Addresses.PROBLEM_INTAKE + "/" + id, from);
+            return "redirect:" + ReturnTo.carried(Addresses.PROBLEM_INTAKE + "/" + id + "?tab=" + open.key(), from);
         } catch (ProblemDraftChangedException refusal) {
-            return refusedStored(draftId, refusal, model);
+            return refusedStored(draftId, refusal, open, model);
         } catch (NotATopicException | IllegalArgumentException refusal) {
-            return refusedSent(draftId, sent, refusal, model);
+            return refusedSent(draftId, sent, refusal, open, model);
         }
+    }
+
+    /**
+     * «Обновить отрисовку» (intake-tabs, design.md, Р3): страница от присланного,
+     * черновик не пишется. Версия — присланная: правка Помощника, сделанная
+     * тем временем, остаётся поводом для «перечитайте» при сохранении.
+     * В полях не хранимое — страница несохранена сразу.
+     */
+    @PostMapping(Addresses.PROBLEM_INTAKE + "/{id}/preview")
+    public String preview(@PathVariable long id,
+                          @RequestParam long version,
+                          @RequestParam(required = false) ExamPart part,
+                          @RequestParam(required = false) List<Long> topics,
+                          @RequestParam(required = false) List<Long> methodIds,
+                          @RequestParam(required = false) List<Long> characteristicIds,
+                          @RequestParam(required = false) String conditionText,
+                          @RequestParam(required = false) String solutionText,
+                          @RequestParam(required = false) List<Long> conditionDraft,
+                          @RequestParam(required = false) List<Integer> conditionFrom,
+                          @RequestParam(required = false) List<Integer> conditionTo,
+                          @RequestParam(required = false) List<String> conditionCrop,
+                          @RequestParam(required = false) List<Long> solutionDraft,
+                          @RequestParam(required = false) List<Integer> solutionFrom,
+                          @RequestParam(required = false) List<Integer> solutionTo,
+                          @RequestParam(required = false) List<String> solutionCrop,
+                          @RequestParam(required = false) String tab,
+                          Model model) {
+        Sent sent = new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
+                conditionDraft, conditionFrom, conditionTo, conditionCrop,
+                solutionDraft, solutionFrom, solutionTo, solutionCrop);
+        ProblemDraftId draftId = new ProblemDraftId(id);
+        Tab open = Tab.of(tab);
+        ProblemDraft stored = intake.draft(draftId);
+        String page = page(stored, sent.change().applyTo(stored.content()), version, open, model);
+        try {
+            AssemblyOrderForm.requireFrames(sent.conditionCrop());
+            AssemblyOrderForm.requireFrames(sent.solutionCrop());
+        } catch (IllegalArgumentException refusal) {
+            AssemblyRefusals.report(refusal);
+            model.addAttribute("error", refusal.getMessage());
+        }
+        model.addAttribute("sent", true);
+        return page;
     }
 
     /** «Сохранить как Задачу»: Задача с текстом черновика без пометок. */
@@ -141,12 +190,13 @@ public class ProblemDraftController {
                                 @RequestParam(required = false) List<Integer> solutionTo,
                                 @RequestParam(required = false) List<String> solutionCrop,
                                 @RequestParam(required = false) String from,
+                                @RequestParam(required = false) String tab,
                                 Model model) {
         return saved(new ProblemDraftId(id), version, ProblemDraftService.Kind.TEXT,
                 new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                         conditionDraft, conditionFrom, conditionTo, conditionCrop,
                         solutionDraft, solutionFrom, solutionTo, solutionCrop),
-                from, model);
+                from, Tab.of(tab), model);
     }
 
     /** «Взять снимок как есть»: Задача без текста, PDF слотов — из строк сборки. */
@@ -168,12 +218,13 @@ public class ProblemDraftController {
                                @RequestParam(required = false) List<Integer> solutionTo,
                                @RequestParam(required = false) List<String> solutionCrop,
                                @RequestParam(required = false) String from,
+                               @RequestParam(required = false) String tab,
                                Model model) {
         return saved(new ProblemDraftId(id), version, ProblemDraftService.Kind.SNAPSHOT,
                 new Sent(part, topics, methodIds, characteristicIds, conditionText, solutionText,
                         conditionDraft, conditionFrom, conditionTo, conditionCrop,
                         solutionDraft, solutionFrom, solutionTo, solutionCrop),
-                from, model);
+                from, Tab.of(tab), model);
     }
 
     /** «Удалить черновик»: Задачи не заводит, ведёт к оставшимся черновикам (back-link-gaps, Р4). */
@@ -185,7 +236,7 @@ public class ProblemDraftController {
             intake.delete(draftId, version);
             return away(from, null);
         } catch (ProblemDraftChangedException refusal) {
-            return refusedStored(draftId, refusal, model);
+            return refusedStored(draftId, refusal, Tab.EVIDENCE, model);
         }
     }
 
@@ -196,20 +247,20 @@ public class ProblemDraftController {
      * уже записано.
      */
     private String saved(ProblemDraftId id, long version, ProblemDraftService.Kind kind, Sent sent,
-                         String from, Model model) {
+                         String from, Tab tab, Model model) {
         ProblemDraft written;
         try {
             written = written(id, version, sent);
         } catch (ProblemDraftChangedException refusal) {
-            return refusedStored(id, refusal, model);
+            return refusedStored(id, refusal, tab, model);
         } catch (NotATopicException | IllegalArgumentException refusal) {
-            return refusedSent(id, sent, refusal, model);
+            return refusedSent(id, sent, refusal, tab, model);
         }
         try {
             ProblemId created = intake.save(id, written.version(), kind);
             return away(from, created);
         } catch (ProblemDraftChangedException | NotATopicException | IllegalArgumentException refusal) {
-            return refusedStored(id, refusal, model);
+            return refusedStored(id, refusal, tab, model);
         }
     }
 
@@ -276,10 +327,10 @@ public class ProblemDraftController {
      * по устаревшему, и молча смешать его с чужой правкой нельзя (Р6);
      * отказ заведения — введённое уже записано.
      */
-    private String refusedStored(ProblemDraftId id, RuntimeException refusal, Model model) {
+    private String refusedStored(ProblemDraftId id, RuntimeException refusal, Tab tab, Model model) {
         AssemblyRefusals.report(refusal);
         ProblemDraft stored = intake.draft(id);
-        String page = page(stored, stored.content(), model);
+        String page = page(stored, stored.content(), tab, model);
         model.addAttribute("error", refusal.getMessage());
         return page;
     }
@@ -289,10 +340,10 @@ public class ProblemDraftController {
      * присланное, чтобы человек не набирал его заново. Версия — хранимая:
      * она и есть прочитанная.
      */
-    private String refusedSent(ProblemDraftId id, Sent sent, RuntimeException refusal, Model model) {
+    private String refusedSent(ProblemDraftId id, Sent sent, RuntimeException refusal, Tab tab, Model model) {
         AssemblyRefusals.report(refusal);
         ProblemDraft stored = intake.draft(id);
-        String page = page(stored, sent.change().applyTo(stored.content()), model);
+        String page = page(stored, sent.change().applyTo(stored.content()), stored.version(), tab, model);
         model.addAttribute("error", refusal.getMessage());
         // В полях не хранимое: уход со страницы теряет его и без новой правки
         // (intake-unsaved-warning, design.md, решение 2).
@@ -300,12 +351,18 @@ public class ProblemDraftController {
         return page;
     }
 
+    private String page(ProblemDraft stored, ProblemDraftContent shown, Tab tab, Model model) {
+        return page(stored, shown, stored.version(), tab, model);
+    }
+
     /**
      * Модель страницы вычитки. Показывается {@code shown} — хранимое
-     * или присланное до отказа; версия и отметка правки — хранимого.
+     * или присланное до отказа либо для отрисовки; отметка правки —
+     * хранимого, версия — {@code version}: хранимая либо прочитанная
+     * страницей, если показанное от неё (Р3). Открыта закладка {@code tab}.
      */
-    private String page(ProblemDraft stored, ProblemDraftContent shown, Model model) {
-        ProblemDraft draft = new ProblemDraft(stored.id(), stored.owner(), shown, stored.version(),
+    private String page(ProblemDraft stored, ProblemDraftContent shown, long version, Tab tab, Model model) {
+        ProblemDraft draft = new ProblemDraft(stored.id(), stored.owner(), shown, version,
                 stored.changedBy(), stored.changedAt(), stored.createdAt());
         ProblemForm form = ProblemForm.sent(shown.part(),
                 shown.topics().stream().map(TaxonomyNodeId::value).toList(),
@@ -325,9 +382,12 @@ public class ProblemDraftController {
         model.addAttribute("topicPaths", taxonomy.topicPaths());
         model.addAttribute("topicMethods",
                 topic == null ? List.of() : problems.methodsUsedIn(new TaxonomyNodeId(topic)));
-        model.addAttribute("methods", methods.all());
+        List<SolutionMethod> dictionary = methods.all();
+        model.addAttribute("methods", dictionary);
+        model.addAttribute("newMethods", unknown(shown.newMethods(), dictionary));
         model.addAttribute("characteristics", characteristics.all());
         model.addAttribute("parts", ExamPart.values());
+        model.addAttribute("tab", tab.key());
         return "problem/intake";
     }
 
@@ -335,9 +395,27 @@ public class ProblemDraftController {
         return LocalDateTime.ofInstant(draft.changedAt(), clock.getZone());
     }
 
-    /** Чем черновик назван в списке: первая непустая строка условия без пометок. */
+    /**
+     * Новые Методы Помощника, которых в словаре ещё нет (Р5): заведённый
+     * Метод из показа уходит. Сравнение — как уникальность словаря, без
+     * учёта регистра и крайних пробелов. Хранимый список не меняется.
+     */
+    private static List<String> unknown(List<String> named, List<SolutionMethod> dictionary) {
+        Set<String> known = new HashSet<>();
+        dictionary.forEach(method -> known.add(comparable(method.name())));
+        return named.stream().filter(name -> !known.contains(comparable(name))).toList();
+    }
+
+    private static String comparable(String name) {
+        return name.strip().toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Чем черновик назван в списке: первая непустая строка условия без пометок
+     * и без записи формул — LaTeX в строке таблицы не читается (intake-tabs, Р8).
+     */
     private static String title(ProblemDraftContent content) {
-        String first = DoubtMarks.strip(content.conditionText()).lines()
+        String first = ProblemTextRendering.withoutFormulas(DoubtMarks.strip(content.conditionText())).lines()
                 .map(String::strip)
                 .filter(line -> !line.isEmpty())
                 .findFirst()
@@ -347,6 +425,33 @@ public class ProblemDraftController {
 
     /** Строка списка черновиков. */
     public record Listed(ProblemDraft draft, LocalDateTime changedAt, String title) {
+    }
+
+    /**
+     * Закладка страницы вычитки (Р2): её открывает адрес, её же присылает
+     * форма. Неизвестное и отсутствующее — Улика: с неё вычитка начинается.
+     */
+    enum Tab {
+        EVIDENCE("evidence"), CONDITION("condition"), SOLUTION("solution"), MARKUP("markup");
+
+        private final String key;
+
+        Tab(String key) {
+            this.key = key;
+        }
+
+        String key() {
+            return key;
+        }
+
+        static Tab of(String key) {
+            for (Tab tab : values()) {
+                if (tab.key.equals(key)) {
+                    return tab;
+                }
+            }
+            return EVIDENCE;
+        }
     }
 
     /**

@@ -125,12 +125,15 @@
         <!--/* Заведение не зависит от выбора: в пустой словарь иначе
                не попасть — выбирать там нечего. */-->
         <div class="folds" th:if="${administrator}">
+            <!--/* newMethod — имя, с которым сюда привела страница вычитки
+                   (intake-tabs, Р5): блок раскрыт и поле заполнено. */-->
             <details class="more more--primary" name="new-entry"
-                     th:attr="open=${shell.opened('/methods')} ? 'open'">
+                     th:attr="open=${shell.opened('/methods') or newMethod != null} ? 'open'">
                 <summary>Новый Метод</summary>
                 <div class="more-body">
                     <form class="inline-form" method="post" th:action="@{${shell.carried('/dictionaries/methods')}}">
-                        <label>Имя Метода <input type="text" name="name" th:value="${shell.echo('name', '/methods')}"></label>
+                        <label>Имя Метода <input type="text" name="name"
+                                                 th:value="${shell.echo('name', '/methods') ?: newMethod}"></label>
                         <button type="submit" class="btn-primary">Завести Метод</button>
                         <button type="button" data-close>Отмена</button>
                     </form>
