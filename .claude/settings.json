@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); case \"$input\" in *openspec/backlog.md*) ;; *) exit 0 ;; esac; check=\"$HOME/.claude/skills/backlog-maintenance/check_backlog.py\"; if [ ! -f \"$check\" ]; then echo \"check_backlog: проверялки $check нет — бэклог не проверен (навык backlog-maintenance не установлен)\" >&2; exit 2; fi; printf '%s' \"$input\" | python3 \"$check\" --hook"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "check=\"$HOME/.claude/skills/backlog-maintenance/check_backlog.py\"; if [ ! -f \"$check\" ]; then echo \"check_backlog: проверялки $check нет — бэклог не проверен (навык backlog-maintenance не установлен)\"; exit 0; fi; python3 \"$check\" --session-start"
+          }
+        ]
+      }
+    ]
+  }
+}
