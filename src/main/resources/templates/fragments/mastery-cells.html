@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--/*
+    Ячейки Владения одной Задачи — общие для формы приёма Работы и блока
+    «Вердикт и владение» принятой Работы (work/assignment.html): отметки
+    сохраняются тем же действием, что приём или вердикт
+    (`work-mastery-at-receipt`).
+
+    cells(cells, entered) — по ячейке скрытые Тема и Метод и список
+        значений; три параллельных списка topic/method/status собираются
+        в отметки по индексу (Mark.fromForm). Текущее значение и справка
+        «решено N из M» — в подписи, а не выбраны в списке: выбранное
+        текущее ничего бы не меняло, но читалось бы как предзаполнение
+        (ADR-0011). Выбранным бывает только введённое в отклонённую форму
+        этой же Задачи — entered (EnteredReview), у прочих форм null.
+        Задача без Тем или Методов ячеек не даёт — тогда блока нет вовсе.
+
+    Подключается внутри формы, под вердиктом и примечанием:
+        <fieldset th:replace="~{fragments/mastery-cells :: cells(${problemCells}, ${entered})}"></fieldset>
+*/-->
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<fieldset th:fragment="cells(cells, entered)" th:unless="${#lists.isEmpty(cells)}">
+    <legend>Владение</legend>
+    <div class="cell" th:each="cell : ${cells}">
+        <p th:text="${cell.topicPath} + ' × ' + ${cell.methodName}">Алгебра / Уравнения × Замена переменной</p>
+        <p class="marks" th:text="'сейчас: ' + ${cell.status.title} + ' · ' + ${cell.hint}">сейчас: неизвестно · решено 2 из 3</p>
+        <input type="hidden" name="topic" th:value="${cell.topic.value}">
+        <input type="hidden" name="method" th:value="${cell.method.value}">
+        <select name="status">
+            <option value="" th:selected="${entered == null or entered.statusOf(cell) == null}">без изменения</option>
+            <option th:each="one : ${statuses}" th:value="${one.name()}" th:text="${one.title}"
+                    th:selected="${entered != null and entered.statusOf(cell) == one}">владеет</option>
+        </select>
+    </div>
+</fieldset>
+</body>
+</html>

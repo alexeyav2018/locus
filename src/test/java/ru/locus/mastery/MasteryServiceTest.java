@@ -111,7 +111,7 @@ class MasteryServiceTest extends IntegrationTest {
 
         Map<ProblemId, List<MasteryCell>> cells = service.cellsOf(assignment);
 
-        assertThat(cells).containsOnlyKeys(problem);
+        assertThat(cells).containsOnlyKeys(problem, other);
         assertThat(cells.get(problem)).extracting(MasteryCell::cell).containsExactlyInAnyOrder(
                 new Cell(topicA, methodX), new Cell(topicA, methodY),
                 new Cell(topicB, methodX), new Cell(topicB, methodY));
@@ -124,10 +124,15 @@ class MasteryServiceTest extends IntegrationTest {
         assertThat(cells.get(problem).get(0).methodName()).isNotBlank();
     }
 
-    /** Сценарий «До приёма Работы ячеек нет». */
+    /** Сценарий «Ячейки в форме приёма»: ячейки есть у каждой Задачи и без Работы, в порядке выдачи. */
     @Test
-    void withoutAWorkThereAreNoCells() {
-        assertThat(service.cellsOf(assignment)).isEmpty();
+    void withoutAWorkEveryProblemStillHasItsCells() {
+        Map<ProblemId, List<MasteryCell>> cells = service.cellsOf(assignment);
+
+        assertThat(cells.keySet()).containsExactly(problem, other);
+        assertThat(cells.get(problem)).hasSize(4);
+        assertThat(cells.get(other)).extracting(MasteryCell::cell).containsExactly(new Cell(topicA, methodX));
+        assertThat(cells.get(other)).extracting(MasteryCell::status).containsOnly(UNKNOWN);
     }
 
     /** Сценарий «Выборочная простановка»: две из четырёх меняются, две остаются. */
@@ -252,7 +257,9 @@ class MasteryServiceTest extends IntegrationTest {
 
         works.delete(owner, work);
 
-        assertThat(service.cellsOf(assignment)).as("ячеек без Работы нет").isEmpty();
+        MasteryCell first = service.cellsOf(assignment).get(problem).get(0);
+        assertThat(first.cell()).isEqualTo(new Cell(topicA, methodX));
+        assertThat(first.status()).as("ячейка показывает отметку и без Работы").isEqualTo(MASTERED);
         assertThat(marks.findByStudent(owner, student)).containsEntry(new Cell(topicA, methodX), MASTERED);
     }
 

@@ -107,7 +107,8 @@ Thymeleaf, PostgreSQL, миграции Liquibase, тесты на Testcontainer
 ([ADR-0039](openspec/context/adr/0039-otmetka-tolko-s-suzhdeniem.md)).
 Ставятся на экране приёма `/works?assignment=` по принятой Работе —
 ячейки-кандидаты «Темы Задачи × её Методы», выборочно, без
-предзаполнения, `POST /mastery`; вердикт на отметки не влияет, Работа
+предзаполнения, с `work-mastery-at-receipt` — вместе с приёмом и вердиктом
+одним сохранением; вердикт на отметки не влияет, Работа
 удаляется — отметка остаётся. `MasteryRepository` — с `UserId` всюду,
 кроме четырёх методов класса ADR-0036 (`countByTopic`, `countByMethod`,
 `rehomeTopic`, `deleteByTopic`), перечисленных поимённо

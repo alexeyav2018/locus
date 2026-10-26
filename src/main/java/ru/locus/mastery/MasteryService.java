@@ -32,7 +32,6 @@ import ru.locus.user.CurrentUser;
 import ru.locus.user.UserId;
 import ru.locus.work.ProblemPair;
 import ru.locus.work.Solved;
-import ru.locus.work.StudentWork;
 import ru.locus.work.StudentWorkRepository;
 
 /**
@@ -42,10 +41,12 @@ import ru.locus.work.StudentWorkRepository;
  * чтение распределения и пробелов по Ученику (`mastery-views`).
  *
  * <p>Ячейки не хранятся, а вычисляются на каждый показ (standards.md,
- * «Вычислимое вычисляется в запросе»): у Задачи с принятой Работой
- * кандидаты — {@code topics × methods} её разметки, в порядке разметки;
- * у Задачи без Работы ячеек нет — отметка ставится «точечно, в момент
- * проверки» (ADR-0011), а до Работы проверять нечего. Подписи ячеек —
+ * «Вычислимое вычисляется в запросе»): у каждой Задачи Задания
+ * кандидаты — {@code topics × methods} её разметки, в порядке разметки.
+ * У Задачи без Работы они стоят в форме приёма: отметка ставится
+ * «в момент проверки» (ADR-0011), и проверка идёт вместе с приёмом —
+ * Работа и отметки записываются одной транзакцией
+ * ({@code StudentWorkService.receive}). Подписи ячеек —
  * пути Тем и имена Методов — уже есть у {@link FoundProblem}, который
  * экран приёма и так получает от {@link AssignmentService#problemsOf};
  * дерево и словарь здесь не спрашиваются.
@@ -61,8 +62,10 @@ import ru.locus.work.StudentWorkRepository;
  * <p>Работы читаются из {@link StudentWorkRepository}, а не из
  * {@code StudentWorkService}: тот тянет {@code StudentService}, который
  * собирает ответчиков {@code StudentUsage}, среди них {@link MasteryOfStudent} —
- * и через сервис отметок круг бы замкнулся. Зависимость {@code work → mastery}
- * (показ ячеек) идёт в одну сторону; обратной нет (design.md). Второй вход
+ * и через сервис отметок круг бы замкнулся. К тому же сам
+ * {@code StudentWorkService} зовёт этот сервис — отметки пишутся в одной
+ * транзакции с приёмом Работы и её вердиктом (`work-mastery-at-receipt`),
+ * и зависимость между сервисами идёт в одну сторону. Второй вход
  * ({@link #overviewOf}), наоборот, зовёт {@link StudentService} напрямую —
  * кольца здесь нет: {@code StudentService} зависит от {@code List<StudentUsage>},
  * среди них {@link MasteryOfStudent}, а тот зависит от {@link MasteryRepository},
@@ -104,10 +107,9 @@ public class MasteryService {
     }
 
     /**
-     * Ячейки владения по Заданию — только у Задач, по которым принята
-     * Работа, в порядке выдачи Задач; внутри Задачи — Темы в порядке
-     * разметки × Методы в порядке разметки. У Задачи без Работы ключа
-     * в карте нет.
+     * Ячейки владения по Заданию — у каждой Задачи состава, с Работой
+     * и без, в порядке выдачи Задач; внутри Задачи — Темы в порядке
+     * разметки × Методы в порядке разметки.
      *
      * <p>На весь экран — по одному запросу на значения
      * ({@link MasteryRepository#findByStudent}) и на справку
@@ -123,21 +125,11 @@ public class MasteryService {
     public Map<ProblemId, List<MasteryCell>> cellsOf(AssignmentId assignmentId) {
         UserId owner = owner();
         Assignment assignment = assignments.assignment(assignmentId).assignment();
-        Set<ProblemId> withWork = new HashSet<>();
-        for (StudentWork work : works.findByAssignment(owner, assignment.id())) {
-            withWork.add(work.problem());
-        }
         Map<ProblemId, List<MasteryCell>> cells = new LinkedHashMap<>();
-        if (withWork.isEmpty()) {
-            return cells;
-        }
         Map<Cell, MasteryStatus> statuses = marks.findByStudent(owner, assignment.student());
         Map<ProblemPair, Solved> hints = works.countCheckedByPairs(owner, assignment.student());
         for (FoundProblem found : assignments.problemsOf(assignment)) {
             Problem problem = found.problem();
-            if (!withWork.contains(problem.id())) {
-                continue;
-            }
             List<MasteryCell> ofProblem = new ArrayList<>();
             for (int t = 0; t < problem.topics().size(); t++) {
                 TaxonomyNodeId topic = problem.topics().get(t);

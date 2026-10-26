@@ -28,8 +28,11 @@ import ru.locus.assignment.AssignmentId;
 import ru.locus.assignment.AssignmentService;
 import ru.locus.assignment.TheoryScope;
 import ru.locus.file.FileType;
+import ru.locus.mastery.Mark;
+import ru.locus.mastery.MasteryStatus;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentService;
+import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
 
 /**
@@ -66,13 +69,15 @@ class WorkFilesTest extends IntegrationTest {
     @Value("${locus.file.local.directory}")
     private Path directory;
 
+    private TaxonomyNodeId topic;
     private ProblemId problem;
     private AssignmentId assignment;
 
     @BeforeEach
     void logInAndIssue() {
         LoggedIn.as(accounts.settled(Role.TEACHER));
-        problem = library.problem(library.topic());
+        topic = library.topic();
+        problem = library.problem(topic);
         assignment = assignments.issueToStudent(students.create(TestLibrary.unique("Иванов Пётр")),
                 List.of(problem), java.time.LocalDate.of(2026, 9, 30), TheoryScope.NONE);
     }
@@ -88,7 +93,7 @@ class WorkFilesTest extends IntegrationTest {
         byte[] large = resource("large.jpg");
         byte[] rotated = resource("rotated.jpg");
         StudentWorkId id = service.receive(assignment, problem, null, null, "",
-                List.of(new UploadedWorkFile(large, FileType.JPEG), new UploadedWorkFile(rotated, FileType.JPEG)));
+                List.of(new UploadedWorkFile(large, FileType.JPEG), new UploadedWorkFile(rotated, FileType.JPEG)), List.of());
 
         List<LinkedFile> files = service.filesOf(service.work(id));
         Browser browser = anyone();
@@ -104,7 +109,7 @@ class WorkFilesTest extends IntegrationTest {
     void pdfComesBackByteForByte() {
         byte[] pdf = TestLibrary.pdf();
         StudentWorkId id = service.receive(assignment, problem, null, null, "",
-                List.of(new UploadedWorkFile(pdf, FileType.PDF)));
+                List.of(new UploadedWorkFile(pdf, FileType.PDF)), List.of());
 
         String link = service.filesOf(service.work(id)).get(0).link().toString();
 
@@ -114,7 +119,7 @@ class WorkFilesTest extends IntegrationTest {
     /** Сценарий «Файл только по временной ссылке». */
     @Test
     void withoutAValidSignatureTheFileIsNotServed() {
-        StudentWorkId id = service.receive(assignment, problem, null, null, "", List.of(jpeg()));
+        StudentWorkId id = service.receive(assignment, problem, null, null, "", List.of(jpeg()), List.of());
         String link = service.filesOf(service.work(id)).get(0).link().toString();
         String withoutSignature = link.substring(0, link.indexOf('?'));
         String withPostponedExpiry = link.replaceFirst("expires=\\d+", "expires=9999999999");
@@ -128,7 +133,7 @@ class WorkFilesTest extends IntegrationTest {
     /** Сценарии «Удаление файла» и «Удаление Работы»: ранее выданные ссылки не отдают. */
     @Test
     void deletedFileAndDeletedWorkAreNotServedByEarlierLinks() {
-        StudentWorkId id = service.receive(assignment, problem, null, null, "", List.of(jpeg(), jpeg(), jpeg()));
+        StudentWorkId id = service.receive(assignment, problem, null, null, "", List.of(jpeg(), jpeg(), jpeg()), List.of());
         List<LinkedFile> files = service.filesOf(service.work(id));
         String firstLink = files.get(0).link().toString();
         String secondLink = files.get(1).link().toString();
@@ -144,13 +149,27 @@ class WorkFilesTest extends IntegrationTest {
         assertThat(browser.getBytes(thirdLink)).isEmpty();
     }
 
+    /** Сценарий «Отказ в отметке отменяет приём»: уложенные снимки убраны, Работы нет. */
+    @Test
+    void refusedMarkLeavesNoFilesBehind() throws IOException {
+        long before = filesInStorage();
+
+        assertThatThrownBy(() -> service.receive(assignment, problem, null, null, "", List.of(jpeg(), jpeg()),
+                List.of(new Mark(topic, library.method(), MasteryStatus.MASTERED))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Ячейки нет");
+
+        assertThat(service.ofAssignment(assignment)).isEmpty();
+        assertThat(filesInStorage()).as("оба снимка убраны из хранилища").isEqualTo(before);
+    }
+
     /** Сценарий «Файл неподдерживаемого типа»: отклонён до укладки — в хранилище не появилось ничего. */
     @Test
     void unsupportedTypeIsRefusedBeforeAnythingIsStored() throws IOException {
         long before = filesInStorage();
 
         assertThatThrownBy(() -> service.receive(assignment, problem, null, null, "",
-                List.of(jpeg(), new UploadedWorkFile("текст".getBytes(), "text/plain"))))
+                List.of(jpeg(), new UploadedWorkFile("текст".getBytes(), "text/plain")), List.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("изображения и PDF");
 
