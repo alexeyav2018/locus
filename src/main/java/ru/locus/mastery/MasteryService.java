@@ -30,14 +30,17 @@ import ru.locus.taxonomy.TaxonomyPath;
 import ru.locus.taxonomy.TaxonomyService;
 import ru.locus.user.CurrentUser;
 import ru.locus.user.UserId;
-import ru.locus.work.ProblemPair;
-import ru.locus.work.Solved;
+import ru.locus.warmup.Warmup;
+import ru.locus.warmup.WarmupId;
+import ru.locus.warmup.WarmupNotFoundException;
+import ru.locus.warmup.WarmupRepository;
 import ru.locus.work.StudentWorkRepository;
 
 /**
  * Простановка и показ отметок Владения — единственный вход области
  * для Учителя: ячейки на экране приёма по Заданию, выборочная
- * простановка по принятой Работе (ADR-0011, ADR-0039) и второй вход —
+ * простановка по принятой Работе (ADR-0011, ADR-0039), то же на странице
+ * Разминки — второе основание отметки (ADR-0061) — и второй вход —
  * чтение распределения и пробелов по Ученику (`mastery-views`).
  *
  * <p>Ячейки не хранятся, а вычисляются на каждый показ (standards.md,
@@ -65,7 +68,10 @@ import ru.locus.work.StudentWorkRepository;
  * и через сервис отметок круг бы замкнулся. К тому же сам
  * {@code StudentWorkService} зовёт этот сервис — отметки пишутся в одной
  * транзакции с приёмом Работы и её вердиктом (`work-mastery-at-receipt`),
- * и зависимость между сервисами идёт в одну сторону. Второй вход
+ * и зависимость между сервисами идёт в одну сторону. Итоги Разминок для
+ * справки — так же из {@link WarmupRepository}, а не из сервиса Разминок:
+ * тот зовёт этот сервис при сохранении итогов и отметок одним действием
+ * (ADR-0061), и обратная зависимость замкнула бы кольцо. Второй вход
  * ({@link #overviewOf}), наоборот, зовёт {@link StudentService} напрямую —
  * кольца здесь нет: {@code StudentService} зависит от {@code List<StudentUsage>},
  * среди них {@link MasteryOfStudent}, а тот зависит от {@link MasteryRepository},
@@ -82,6 +88,7 @@ public class MasteryService {
     private final MasteryRepository marks;
     private final AssignmentService assignments;
     private final StudentWorkRepository works;
+    private final WarmupRepository warmups;
     private final StudentService students;
     private final TaxonomyService taxonomy;
     private final SolutionMethodService solutionMethods;
@@ -91,6 +98,7 @@ public class MasteryService {
     public MasteryService(MasteryRepository marks,
                           AssignmentService assignments,
                           StudentWorkRepository works,
+                          WarmupRepository warmups,
                           StudentService students,
                           TaxonomyService taxonomy,
                           SolutionMethodService solutionMethods,
@@ -99,6 +107,7 @@ public class MasteryService {
         this.marks = marks;
         this.assignments = assignments;
         this.works = works;
+        this.warmups = warmups;
         this.students = students;
         this.taxonomy = taxonomy;
         this.solutionMethods = solutionMethods;
@@ -112,10 +121,12 @@ public class MasteryService {
      * разметки × Методы в порядке разметки.
      *
      * <p>На весь экран — по одному запросу на значения
-     * ({@link MasteryRepository#findByStudent}) и на справку
-     * ({@link StudentWorkRepository#countCheckedByPairs}), а не по запросу
+     * ({@link MasteryRepository#findByStudent}) и на каждое основание
+     * справки ({@link StudentWorkRepository#countCheckedByPairs},
+     * {@link WarmupRepository#countOutcomesByPairs}), а не по запросу
      * на ячейку. Справка считает проверенные Работы Ученика по ВСЕМ его
-     * Заданиям, не только этому: она о Ученике и паре, а не о Задании.
+     * Заданиям, не только этому, и Итоги всех его Разминок: она о Ученике
+     * и паре, а не о Задании.
      * Ячейка без строки — {@link MasteryStatus#UNKNOWN} (ADR-0039).
      *
      * @throws ru.locus.assignment.AssignmentNotFoundException чужое или
@@ -127,7 +138,8 @@ public class MasteryService {
         Assignment assignment = assignments.assignment(assignmentId).assignment();
         Map<ProblemId, List<MasteryCell>> cells = new LinkedHashMap<>();
         Map<Cell, MasteryStatus> statuses = marks.findByStudent(owner, assignment.student());
-        Map<ProblemPair, Solved> hints = works.countCheckedByPairs(owner, assignment.student());
+        Map<Cell, Solved> byWorks = works.countCheckedByPairs(owner, assignment.student());
+        Map<Cell, Solved> byWarmups = warmups.countOutcomesByPairs(owner, assignment.student());
         for (FoundProblem found : assignments.problemsOf(assignment)) {
             Problem problem = found.problem();
             List<MasteryCell> ofProblem = new ArrayList<>();
@@ -135,11 +147,12 @@ public class MasteryService {
                 TaxonomyNodeId topic = problem.topics().get(t);
                 for (int m = 0; m < problem.methods().size(); m++) {
                     SolutionMethodId method = problem.methods().get(m);
-                    Solved solved = hints.getOrDefault(new ProblemPair(topic, method), new Solved(0, 0));
+                    Cell cell = new Cell(topic, method);
                     ofProblem.add(new MasteryCell(topic, found.topicPaths().get(t),
                             method, found.methodNames().get(m),
-                            statuses.getOrDefault(new Cell(topic, method), MasteryStatus.UNKNOWN),
-                            solved.correct(), solved.checked()));
+                            statuses.getOrDefault(cell, MasteryStatus.UNKNOWN),
+                            byWorks.getOrDefault(cell, Solved.NONE),
+                            byWarmups.getOrDefault(cell, Solved.NONE)));
                 }
             }
             cells.put(problem.id(), ofProblem);
@@ -192,6 +205,90 @@ public class MasteryService {
             }
         }
         StudentId student = assignment.student();
+        for (Mark mark : effective) {
+            marks.put(owner, student, mark.topic(), mark.method(), mark.status());
+        }
+    }
+
+    /**
+     * Ячейки владения по Разминке — у каждого участника, в порядке
+     * участников (ADR-0061).
+     *
+     * <p>Ячейки участника — объединение пар всех Задач Разминки, каждая
+     * пара один раз: Задачи в порядке состава, внутри — Темы в порядке
+     * разметки × Методы в порядке разметки; повторная пара остаётся там,
+     * где встретилась впервые. Повторять её у каждой Задачи нельзя: одна
+     * ячейка дважды в одной форме дала бы два значения одной отметке.
+     * Значение и справка по обоим основаниям — как в {@link #cellsOf}:
+     * по одному запросу на значения и на каждое основание у каждого
+     * участника.
+     *
+     * <p>Разминка читается {@link WarmupRepository} с владельцем вошедшего:
+     * чужая неотличима от несуществующей.
+     *
+     * @throws WarmupNotFoundException чужая или несуществующая Разминка
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    public Map<StudentId, List<MasteryCell>> cellsOfWarmup(WarmupId warmupId) {
+        UserId owner = owner();
+        Warmup warmup = existingWarmup(owner, warmupId);
+        List<PairOfWarmup> pairs = pairsOf(problems.problems(warmup.problems()));
+        Map<StudentId, List<MasteryCell>> cells = new LinkedHashMap<>();
+        for (StudentId student : warmup.students()) {
+            Map<Cell, MasteryStatus> statuses = marks.findByStudent(owner, student);
+            Map<Cell, Solved> byWorks = works.countCheckedByPairs(owner, student);
+            Map<Cell, Solved> byWarmups = warmups.countOutcomesByPairs(owner, student);
+            List<MasteryCell> ofStudent = new ArrayList<>();
+            for (PairOfWarmup pair : pairs) {
+                Cell cell = pair.cell();
+                ofStudent.add(new MasteryCell(cell.topic(), pair.topicPath(), cell.method(), pair.methodName(),
+                        statuses.getOrDefault(cell, MasteryStatus.UNKNOWN),
+                        byWorks.getOrDefault(cell, Solved.NONE),
+                        byWarmups.getOrDefault(cell, Solved.NONE)));
+            }
+            cells.put(student, ofStudent);
+        }
+        return cells;
+    }
+
+    /**
+     * Выборочная простановка участнику Разминки — второе основание отметки
+     * (ADR-0061); устроена как {@link #mark}: {@code null} у
+     * {@link Mark#status()} — «без изменения», {@link MasteryStatus#UNKNOWN}
+     * снимает отметку, все проверки до первой записи, одна транзакция.
+     *
+     * <p>Основание проверяется здесь, а не у вызывающего: Разминка своя,
+     * Ученик — её участник, каждая пара — из разметки хотя бы одной Задачи
+     * Разминки. Метода «отметить по набору Задач, переданному вызывающим»
+     * нет намеренно: с ним правило «отметка только по основанию» ушло бы
+     * из области отметок, и любой сервис мог бы отметить по любым Задачам.
+     * Итоги Разминки ни на что здесь не влияют и не читаются (ADR-0014).
+     *
+     * @throws WarmupNotFoundException чужая или несуществующая Разминка
+     * @throws IllegalArgumentException Ученик не участник, пара не из Задач
+     *         Разминки
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @Transactional
+    public void markByWarmup(WarmupId warmupId, StudentId student, List<Mark> markList) {
+        UserId owner = owner();
+        Warmup warmup = existingWarmup(owner, warmupId);
+        if (!warmup.hasStudent(student)) {
+            throw new IllegalArgumentException("Этот Ученик в Разминке не участвует");
+        }
+        Set<Cell> candidates = new HashSet<>();
+        for (PairOfWarmup pair : pairsOf(problems.problems(warmup.problems()))) {
+            candidates.add(pair.cell());
+        }
+        List<Mark> effective = new ArrayList<>();
+        for (Mark mark : markList) {
+            if (!candidates.contains(mark.cell())) {
+                throw new IllegalArgumentException("Ячейки нет: пара не из разметки Задач Разминки");
+            }
+            if (mark.status() != null) {
+                effective.add(mark);
+            }
+        }
         for (Mark mark : effective) {
             marks.put(owner, student, mark.topic(), mark.method(), mark.status());
         }
@@ -309,6 +406,34 @@ public class MasteryService {
             }
         }
         return candidates;
+    }
+
+    /**
+     * Пары Задач Разминки — объединение без повторов, в порядке состава
+     * и разметки, с подписями первого вхождения.
+     */
+    private static List<PairOfWarmup> pairsOf(List<FoundProblem> found) {
+        Map<Cell, PairOfWarmup> pairs = new LinkedHashMap<>();
+        for (FoundProblem problem : found) {
+            List<TaxonomyNodeId> topics = problem.problem().topics();
+            List<SolutionMethodId> methods = problem.problem().methods();
+            for (int t = 0; t < topics.size(); t++) {
+                for (int m = 0; m < methods.size(); m++) {
+                    Cell cell = new Cell(topics.get(t), methods.get(m));
+                    pairs.putIfAbsent(cell, new PairOfWarmup(cell,
+                            problem.topicPaths().get(t), problem.methodNames().get(m)));
+                }
+            }
+        }
+        return List.copyOf(pairs.values());
+    }
+
+    private Warmup existingWarmup(UserId owner, WarmupId id) {
+        return warmups.findById(owner, id).orElseThrow(() -> new WarmupNotFoundException(id));
+    }
+
+    /** Пара Задач Разминки с подписями — заготовка ячейки до значения и справки. */
+    private record PairOfWarmup(Cell cell, String topicPath, String methodName) {
     }
 
     private UserId owner() {

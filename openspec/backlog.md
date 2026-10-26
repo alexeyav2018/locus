@@ -162,7 +162,7 @@
 | `assistant-multiple-files` | Т | `assistant-chat`, `problem-intake` | — | M | нет | общее и личное | построено |
 | `assignment-repeat-hint` | Т | — | — | S | нет | личное | ✅ |
 | `work-mastery-at-receipt` | Т | — | — | S | нет | личное | ✅ |
-| `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | |
+| `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | построено |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Разминки — Locus</title>
+    <!--/*
+        Разминки вошедшего Учителя, новые по дате первыми (ADR-0061);
+        с параметром student — только те, где Ученик участник (с карточки
+        Ученика). Строка — дата, адресат (имя Ученика или имя Группы
+        на момент Разминки), число Задач и участников.
+
+        Разминок здесь не заводят: как и выдача Задания, Разминка
+        начинается с поиска по библиотеке — пустому списку об этом сказано
+        словами, чтобы Учитель не искал кнопку.
+
+        Список уже отфильтрован по владельцу — шаблон о владельце не знает.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<!--/* Раздел шапки: «назад» есть, только когда сюда пришли ссылкой
+       с возвратом (с карточки Ученика). */-->
+<p class="back" th:if="${shell.back}"><a th:href="@{${shell.back}}">← Назад</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="${student} ? 'Разминки: ' + ${student.name} : 'Разминки'">Разминки</h1>
+        <p class="lead">Задачи, решённые на занятиях, и итоги по ним. Новые — первыми.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<div class="empty" th:if="${#lists.isEmpty(warmups)}">
+    <p>Разминок пока нет. Разминка начинается
+    с <a th:href="@{/problems}">поиска по библиотеке</a>: отметьте найденные Задачи
+    и нажмите «Провести Разминку».</p>
+    <a class="btn btn-primary" th:href="@{/problems}">К поиску Задач</a>
+</div>
+
+<ul class="items" th:unless="${#lists.isEmpty(warmups)}">
+    <li class="item" th:each="item : ${warmups}" th:id="'warmup-' + ${item.warmup.id.value}">
+        <a class="grow" th:href="@{/warmups/{id}(id=${item.warmup.id.value},from=${shell.here})}"
+           th:text="${#temporals.format(item.warmup.heldOn, 'dd.MM.yyyy')} + ' — '
+                    + (${item.warmup.forGroup} ? 'Группа «' + ${item.addressee} + '»' : ${item.addressee})">01.09.2026 — Группа «9Б»</a>
+        <p class="marks"
+           th:text="'Задач: ' + ${#lists.size(item.warmup.problems)} + ' · участников: ' + ${#lists.size(item.participants)}">Задач: 3 · участников: 5</p>
+    </li>
+</ul>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

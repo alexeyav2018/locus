@@ -21,6 +21,8 @@ import ru.locus.assignment.AssignmentRepository;
 import ru.locus.assignment.TheoryScope;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.file.FileKey;
+import ru.locus.mastery.Cell;
+import ru.locus.mastery.Solved;
 import ru.locus.problem.ExamPart;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
@@ -306,9 +308,9 @@ class StudentWorkRepositoryTest extends IntegrationTest {
         works.create(bob, otherOwner.assignment(), otherOwner.problems().get(0), RECEIVED,
                 Verdict.CORRECT, "", List.of(key("jpg")));
 
-        Map<ProblemPair, Solved> solved = works.countCheckedByPairs(alice, student);
+        Map<Cell, Solved> solved = works.countCheckedByPairs(alice, student);
 
-        assertThat(solved).containsExactly(Map.entry(new ProblemPair(topic, method), new Solved(2, 3)));
+        assertThat(solved).containsExactly(Map.entry(new Cell(topic, method), new Solved(2, 3)));
         assertThat(works.countCheckedByPairs(bob, student)).as("чужой Ученик — пусто").isEmpty();
     }
 
@@ -326,10 +328,10 @@ class StudentWorkRepositoryTest extends IntegrationTest {
         works.create(alice, assignment, problem, RECEIVED, Verdict.INCORRECT, "", List.of(key("jpg")));
 
         assertThat(works.countCheckedByPairs(alice, student)).containsOnly(
-                Map.entry(new ProblemPair(topic, method), new Solved(0, 1)),
-                Map.entry(new ProblemPair(topic, otherMethod), new Solved(0, 1)),
-                Map.entry(new ProblemPair(otherTopic, method), new Solved(0, 1)),
-                Map.entry(new ProblemPair(otherTopic, otherMethod), new Solved(0, 1)));
+                Map.entry(new Cell(topic, method), new Solved(0, 1)),
+                Map.entry(new Cell(topic, otherMethod), new Solved(0, 1)),
+                Map.entry(new Cell(otherTopic, method), new Solved(0, 1)),
+                Map.entry(new Cell(otherTopic, otherMethod), new Solved(0, 1)));
     }
 
     private Issued issue(UserId owner, int problemCount) {

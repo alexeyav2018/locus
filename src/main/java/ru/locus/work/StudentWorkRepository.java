@@ -17,6 +17,8 @@ import org.springframework.stereotype.Repository;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.file.FileKey;
+import ru.locus.mastery.Cell;
+import ru.locus.mastery.Solved;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.taxonomy.TaxonomyNodeId;
@@ -231,7 +233,8 @@ public class StudentWorkRepository {
     }
 
     /**
-     * Справка «решено N из M» по каждой паре «Тема × Метод», на которой
+     * Справка по Работам — первое из двух оснований у ячейки владения
+     * ({@link Solved}) — по каждой паре «Тема × Метод», на которой
      * у Ученика владельца есть хотя бы одна ПРОВЕРЕННАЯ Работа, — одним
      * запросом на всего Ученика, а не по ячейке: экран приёма показывает
      * справку у каждой ячейки каждой Задачи с Работой.
@@ -242,8 +245,8 @@ public class StudentWorkRepository {
      * ({@code verdict IS NULL}) не считаются вовсе — до вердикта Работа
      * о владении не говорит ничего (ADR-0038). Чужой Ученик — пустая карта.
      */
-    public Map<ProblemPair, Solved> countCheckedByPairs(UserId owner, StudentId student) {
-        Map<ProblemPair, Solved> solved = new LinkedHashMap<>();
+    public Map<Cell, Solved> countCheckedByPairs(UserId owner, StudentId student) {
+        Map<Cell, Solved> solved = new LinkedHashMap<>();
         database.sql("""
                         select pt.topic_id, pm.solution_method_id,
                                count(*) filter (where w.verdict = ?) as correct,
@@ -258,7 +261,7 @@ public class StudentWorkRepository {
                         """)
                 .params(Verdict.CORRECT.name(), owner.value(), student.value())
                 .query((rs, rowNum) -> Map.entry(
-                        new ProblemPair(new TaxonomyNodeId(rs.getLong("topic_id")),
+                        new Cell(new TaxonomyNodeId(rs.getLong("topic_id")),
                                 new SolutionMethodId(rs.getLong("solution_method_id"))),
                         new Solved(rs.getInt("correct"), rs.getInt("checked"))))
                 .list()

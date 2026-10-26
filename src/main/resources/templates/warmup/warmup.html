@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <!--/* Страница рассчитана на телефон: итоги ставят у доски, по ходу
+           занятия. Ни таблиц, ни фиксированных ширин — участник за
+           участником, как Учитель и смотрит на учеников (design.md
+           warmup, решение 6). */-->
+    <title>Разминка — Locus</title>
+    <!--/*
+        Страница Разминки (ADR-0061): дата, адресат, Задачи ссылками
+        на библиотеку и блок на каждого участника.
+
+        У участника на виду — итоги по Задачам словами: «справился»,
+        «не справился» либо «—», пустая клетка: Задачу не писал или до неё
+        не дошли. Пустая клетка — отсутствие итога, а не значение, и с «не
+        справился» не путается нигде. Под итогами — блок «Итоги и владение»:
+        итог по каждой Задаче и ячейки Владения фрагментом mastery-cells,
+        одна кнопка «Сохранить» — итоги и отметки одним действием, одной
+        транзакцией (WarmupService.record).
+
+        В списке итога выбран сохранённый итог: форма шлёт все Задачи
+        состава, и выбор «—» по умолчанию стёр бы поставленное. В ячейках
+        Владения, наоборот, выбрано «без изменения»: итог ничего
+        не предзаполняет (ADR-0011, ADR-0014), текущее значение и справка —
+        в подписи ячейки.
+
+        Блоки участников исключают друг друга (общий name у details);
+        отклонённый раскрыт с введённым (entered, EnteredOutcomes) — только
+        у своего участника.
+
+        Состав не правится: ошиблись — Разминку удаляют и заводят заново.
+        Удаление уносит итоги, отметки Владения остаются — они на паре
+        «Тема × Метод», а не на Разминке. Действия несут возврат from
+        (ADR-0060).
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/warmups')}}">← К Разминкам</a></p>
+<div class="page-head">
+    <div>
+        <h1 th:text="'Разминка ' + ${#temporals.format(listed.warmup.heldOn, 'dd.MM.yyyy')}">Разминка 01.09.2026</h1>
+        <p class="lead" th:text="${listed.warmup.forGroup} ? 'Группа «' + ${listed.addressee} + '»' : 'Ученик: ' + ${listed.addressee}">Группа «9Б»</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Этот Ученик в Разминке не участвует</p>
+
+<h2>Задачи</h2>
+<ul class="items problems">
+    <li class="item" th:each="problem : ${problems}">
+        <a class="grow" th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
+           th:text="'№ ' + ${problem.number}">№ 12</a>
+        <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
+        <p class="marks"
+           th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')} + '. Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Темы: Алгебра / Уравнения. Методы: Замена переменной</p>
+    </li>
+</ul>
+
+<h2>Участники</h2>
+<section class="participant" th:each="student : ${listed.participants}"
+         th:id="'student-' + ${student.id.value}"
+         th:with="saved=${outcomes.get(student.id)},
+                  mine=${entered != null and entered.isFor(student.id)},
+                  chosen=${mine ? entered : null}">
+    <h2>
+        <a th:href="@{/students/{id}(id=${student.id.value})}" th:text="${student.name}">Иванов Пётр</a>
+        <span class="badge" th:if="${student.withdrawn}">выбыл</span>
+    </h2>
+    <!--/* Итог каждой Задачи — одним th:text: человек видит строку слитно,
+           и тест ищет её целиком. */-->
+    <ul class="items">
+        <li th:each="problem : ${problems}"
+            th:with="value=${saved?.get(problem.problem.id)}"
+            th:text="'№ ' + ${problem.number} + ': ' + (${value} ? ${value.title} : '—')">№ 12: справился</li>
+    </ul>
+
+    <details class="more" name="participants"
+             th:attr="open=${shell.opened('/students/' + student.id.value)} ? 'open'">
+        <summary>Итоги и владение</summary>
+        <div class="more-body">
+            <form method="post"
+                  th:action="@{${shell.carried('/warmups/' + listed.warmup.id.value + '/students/' + student.id.value)}}">
+                <fieldset>
+                    <legend>Итоги</legend>
+                    <label th:each="problem : ${problems}"
+                           th:with="value=${mine and entered.hasOutcomeFor(problem.problem.id)}
+                                          ? ${entered.outcomeOf(problem.problem.id)}
+                                          : ${saved?.get(problem.problem.id)}">
+                        <span th:text="'№ ' + ${problem.number}">№ 12</span>
+                        <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
+                        <select name="outcome">
+                            <option value="" th:selected="${value == null}">—</option>
+                            <option th:each="one : ${outcomeValues}" th:value="${one.name()}" th:text="${one.title}"
+                                    th:selected="${value == one}">справился</option>
+                        </select>
+                    </label>
+                </fieldset>
+                <fieldset th:replace="~{fragments/mastery-cells :: cells(${cells.get(student.id)}, ${chosen})}"></fieldset>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Сохранить</button>
+                    <button type="button" data-close>Отмена</button>
+                </div>
+            </form>
+        </div>
+    </details>
+</section>
+
+<h2>Действия</h2>
+<div class="folds">
+    <details class="more" name="warmup-actions" th:attr="open=${shell.opened('/deletion')} ? 'open'">
+        <summary>Удаление</summary>
+        <div class="more-body">
+            <p>Итоги Разминки уйдут вместе с ней. Отметки Владения, поставленные здесь, останутся.</p>
+            <form method="post" data-confirm="Это действие необратимо."
+                  th:action="@{${shell.carried('/warmups/' + listed.warmup.id.value + '/deletion')}}">
+                <button type="submit" class="btn-danger">Удалить Разминку</button>
+                <button type="button" data-close>Отмена</button>
+            </form>
+        </div>
+    </details>
+</div>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/shell :: head}"/>
+    <title>Новая Разминка — Locus</title>
+    <!--/*
+        Форма Разминки (ADR-0061): Задачи, отмеченные в поиске по библиотеке,
+        дата — по умолчанию сегодняшняя, без ограничений: Учитель записывает
+        и прошедшую Разминку, — и адресат: один из своих действующих Учеников
+        либо одна из своих Групп. Задачи повторяются скрытыми полями: форма —
+        продолжение поиска, как форма выдачи Задания.
+
+        Адресат ровно один: два списка, правило «Ученик либо Группа»
+        проверяет Addressee.of, а не шаблон. Выбывшие в списке не предлагаются
+        (ADR-0040); у Группы участниками станут её действующие члены на этот
+        момент. Отказ любого рода возвращает эту же форму с сообщением
+        и введённым.
+
+        Срока, охвата теории и файлов у Разминки нет: Задачи решаются
+        на занятии, сдавать нечего.
+    */-->
+</head>
+<body>
+<th:block th:replace="~{fragments/shell :: header}"/>
+<main id="main" class="page page--medium">
+<p class="back"><a th:href="@{${shell.backOr('/problems')}}">← К поиску Задач</a></p>
+<div class="page-head">
+    <div>
+        <h1>Новая Разминка</h1>
+        <p class="lead">Задачи, которые решают на занятии. Итоги и владение — на странице Разминки.</p>
+    </div>
+    <span class="scope scope--personal">Мой кабинет</span>
+</div>
+
+<p class="alert" role="alert" th:if="${error}" th:text="${error}">Разминке нужна хотя бы одна Задача</p>
+
+<form method="post" th:action="@{/warmups}">
+    <input type="hidden" name="from" th:if="${shell.back}" th:value="${shell.back}">
+    <fieldset>
+        <legend>Задачи</legend>
+        <p th:if="${#lists.isEmpty(problems)}">Ни одной Задачи не отмечено — вернитесь
+            к <a th:href="@{/problems}">поиску по библиотеке</a> и отметьте Задачи
+            в найденном.</p>
+        <ul class="items problems" th:unless="${#lists.isEmpty(problems)}">
+            <li class="item" th:each="problem : ${problems}">
+                <input type="hidden" name="problem" th:value="${problem.problem.id.value}">
+                <a class="grow" th:href="@{/problems/{id}(id=${problem.problem.id.value},from=${shell.here})}"
+                   th:text="'№ ' + ${problem.number}">№ 12</a>
+                <span class="badge" th:text="${problem.problem.part.title}">вторая часть</span>
+                <p class="marks"
+                   th:text="'Темы: ' + ${#strings.listJoin(problem.topicPaths, '; ')}">Темы: Алгебра / Уравнения</p>
+                <p class="marks"
+                   th:text="'Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Методы: Замена переменной</p>
+            </li>
+        </ul>
+    </fieldset>
+
+    <fieldset>
+        <legend>Когда</legend>
+        <label>Дата Разминки <input type="date" name="heldOn" th:value="${heldOn}"></label>
+    </fieldset>
+
+    <fieldset>
+        <legend>Кому</legend>
+        <p th:if="${#lists.isEmpty(students)}">Учеников пока нет — заведите их
+            в <a th:href="@{/students}">списке Учеников</a>.</p>
+        <label>Ученику
+            <select name="student">
+                <option value="">— не выбран —</option>
+                <option th:each="one : ${students}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenStudent == one.id.value}">Иванов Пётр</option>
+            </select>
+        </label>
+        <label>или Группе
+            <select name="group">
+                <option value="">— не выбрана —</option>
+                <option th:each="one : ${groups}"
+                        th:value="${one.id.value}"
+                        th:text="${one.name}"
+                        th:selected="${chosenGroup == one.id.value}">9Б</option>
+            </select>
+        </label>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Провести Разминку</button>
+        <a class="btn" th:href="@{${shell.backOr('/problems')}}">Отмена</a>
+    </div>
+</form>
+</main>
+<th:block th:replace="~{fragments/shell :: footer}"/>
+</body>
+</html>
