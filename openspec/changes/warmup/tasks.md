@@ -15,20 +15,21 @@
 
 ## 1. Схема, запись, репозиторий
 
-- [ ] 1.1 Миграция `0018-warmup.yaml` (четыре таблицы, ключи и каскады — design.md, решение 1;
-  шапка-комментарий по образцу `0007-assignments.yaml`), подключить в `db.changelog-master.yaml`;
+- [x] 1.1 Миграция `0018-warmup.yaml` (четыре таблицы, ключи и каскады — design.md, решение 1;
+  шапка-комментарий по образцу `0007-assignments.yaml`); `db.changelog-master.yaml` подхватывает
+  папку целиком (`includeAll`), правка не нужна;
   проверка — `mvn test -Dtest=MigrationsOnStartupTest`
-- [ ] 1.2 Пакет `ru.locus.warmup`: `WarmupId`, `Warmup` (владелец, дата, имя Группы или `null`,
+- [x] 1.2 Пакет `ru.locus.warmup`: `WarmupId`, `Warmup` (владелец, дата, имя Группы или `null`,
   участники и Задачи — непустые, без повторов), `WarmupOutcome` (`SUCCEEDED`, `FAILED`, подпись
   словом), `WarmupNotFoundException` (404); проверка — `get_diagnostics_for_file`
-- [ ] 1.3 `WarmupRepository` на `JdbcClient`: `create(owner, heldOn, groupName, students, problems)`,
+- [x] 1.3 `WarmupRepository` на `JdbcClient`: `create(owner, heldOn, groupName, students, problems)`,
   `findById(owner, id)`, `find(owner, student)` (новые по дате первыми, `student` — `null` или
   участник), `delete(owner, id)`, `findOutcomes(owner, id)`, `putOutcome`/`removeOutcome(owner, id,
   student, problem, …)`, `countByStudent(owner, student)`, `countOutcomesByPairs(owner, student)`
   (пока возвращает карту по `ru.locus.work.ProblemPair`/`Solved`; переезд — раздел 2)
   и единственный без владельца `countByProblem(problem)` (класс ADR-0036); проверка —
   `get_diagnostics_for_file`
-- [ ] 1.4 `WarmupRepositoryTest`: создание и чтение с порядком Задач, отбор по участнику,
+- [x] 1.4 `WarmupRepositoryTest`: создание и чтение с порядком Задач, отбор по участнику,
   удаление уносит итоги, пустой клетки нет (удаление строки), чужой Ученик в участниках
   и итог не участнику падают на ключах, счёт пар; `OwnerIsRequiredByWarmupsTest` — у каждого
   публичного метода `UserId`, кроме поимённо `countByProblem`; проверка —

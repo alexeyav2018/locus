@@ -76,9 +76,12 @@
   `warmup` с каскадом, `(student_id, user_id)` на `student` **без**
   каскада — участник не удаляется (ADR-0035); уникальность
   `(warmup_id, student_id, user_id)` — цель ссылки итога.
-- `warmup_problem` — состав: `warmup_id`, `problem_id`, `position`;
-  ключ `(warmup_id, problem_id)`, уникальность `(warmup_id, position)`;
-  ссылка на `warmup` с каскадом, на `problem` без каскада — Задача
+- `warmup_problem` — состав: `warmup_id`, `problem_id`, `user_id`,
+  `position`; ключ `(warmup_id, problem_id)`, уникальность
+  `(warmup_id, position)`; ссылка `(warmup_id, user_id)` на `warmup`
+  с каскадом — `user_id` в каждой таблице области, как
+  у `assignment_problem` (решено при apply: так держит
+  `OwnerIsRequiredByWarmupsTest`), — на `problem` без каскада — Задача
   заморожена (ADR-0030), и база не даст её удалить и в обход сервиса.
 - `warmup_outcome` — Итоги Разминки: `warmup_id`, `student_id`,
   `problem_id`, `user_id`, `outcome VARCHAR(20) NOT NULL`; ключ
@@ -104,6 +107,12 @@
 `WarmupRepository`, `WarmupService`, `WarmupController`,
 `WarmupNotFoundException` (404), ответчики `WarmupsOfProblem`
 и `WarmupsOfStudent`. Адрес — `Addresses.WARMUPS = "/warmups"`.
+
+Решено при apply: участники в `Warmup` — по алфавиту имён, как состав
+Раздачи в `findByBatch`; `WarmupRepository.findOutcomes` отдаёт
+`Map<StudentId, Map<ProblemId, WarmupOutcome>>` — страница раскладывает
+итоги по участнику и Задаче, отдельная запись строки итога наружу
+не нужна.
 
 ### 3. Адресат — общий `Addressee`
 

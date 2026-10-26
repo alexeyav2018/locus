@@ -1,0 +1,231 @@
+# Разминки — новая область ЛИЧНОГО контура (ADR-0061).
+#
+# Имена выведены из имён классов (openspec/context/glossary.md, «Имена в коде
+# и в базе»): Warmup → warmup, WarmupOutcome → warmup_outcome; связующие
+# таблицы — warmup_student и warmup_problem, первой та сущность, которой
+# связь принадлежит: участники и состав — часть Разминки.
+#
+# Колонка user_id есть в КАЖДОЙ таблице, как у Заданий (0007): строка
+# без владельца — это строка, которую увидят все, и у репозитория области
+# нет метода без владельца (ADR-0027) — кроме одного, названного поимённо:
+# счёт Разминок по Задаче для ответа библиотеке идёт по всем владельцам
+# (ADR-0036).
+#
+# Срока, охвата теории, файлов и «не сдано» здесь НЕТ: Разминка решается
+# на занятии, сдавать нечего (ADR-0061). Дата — день, когда её провели.
+#
+# Участники хранятся, а не вычисляются из Группы: состав фиксируется
+# на момент заведения, Группа меняется и удаляется свободно (ADR-0035).
+# Имя Группы — ТЕКСТОМ, как у Раздачи: ключ либо запретил бы удаление
+# Группы, либо обнулялся бы, теряя происхождение. Пусто — Разминка Ученику.
+#
+# Ключи на student и на warmup составные, с user_id: Разминка с чужим
+# Учеником не может существовать — ей не на что сослаться. На student
+# и на problem — БЕЗ каскада: Ученик с Разминкой не удаляется (ADR-0035),
+# Задача в Разминке заморожена (ADR-0030), и база не даст удалить их даже
+# в обход сервиса. Всё прочее уходит каскадом от warmup: удаление Разминки —
+# одно delete, итоги — часть записи. Отметок Владения схема не касается:
+# они на паре «Тема × Метод», а не на Разминке.
+#
+# Итог Разминки — только суждение: outcome NOT NULL. Пустая клетка —
+# отсутствие строки, а не значение (ADR-0061, как «неизвестно» у отметки,
+# ADR-0039). Итог ссылается на участника и на Задачу состава этой же
+# Разминки — итог не участнику или не по Задаче состава не вставится.
+databaseChangeLog:
+  - changeSet:
+      id: 0018-warmup
+      author: locus
+      comment: Разминка — дата, имя Группы текстом или пусто; без срока, охвата и «не сдано»
+      changes:
+        - createTable:
+            tableName: warmup
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_warmup
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: held_on
+                  type: DATE
+                  constraints:
+                    nullable: false
+              # Пусто у Разминки Ученику: имя бывает только у Разминки Группе.
+              - column:
+                  name: group_name
+                  type: VARCHAR(200)
+        - addForeignKeyConstraint:
+            baseTableName: warmup
+            baseColumnNames: user_id
+            referencedTableName: user_
+            referencedColumnNames: id
+            constraintName: fk_warmup_user
+        - addUniqueConstraint:
+            tableName: warmup
+            columnNames: id, user_id
+            constraintName: uq_warmup_id_user
+
+  - changeSet:
+      id: 0018-warmup-student
+      author: locus
+      comment: >-
+        Участники Разминки — на момент заведения. Каскад от Разминки;
+        на Ученика без каскада: участник не удаляется (ADR-0035).
+      changes:
+        - createTable:
+            tableName: warmup_student
+            columns:
+              - column:
+                  name: warmup_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: warmup_student
+            columnNames: warmup_id, student_id
+            constraintName: pk_warmup_student
+        - addForeignKeyConstraint:
+            baseTableName: warmup_student
+            baseColumnNames: warmup_id, user_id
+            referencedTableName: warmup
+            referencedColumnNames: id, user_id
+            constraintName: fk_warmup_student_warmup
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: warmup_student
+            baseColumnNames: student_id, user_id
+            referencedTableName: student
+            referencedColumnNames: id, user_id
+            constraintName: fk_warmup_student_student
+        # Цель ссылки итога: итог ставится участнику этой Разминки
+        # и этого владельца.
+        - addUniqueConstraint:
+            tableName: warmup_student
+            columnNames: warmup_id, student_id, user_id
+            constraintName: uq_warmup_student_user
+
+  - changeSet:
+      id: 0018-warmup-problem
+      author: locus
+      comment: >-
+        Состав Разминки: Задачи библиотеки в порядке выбора. Каскад
+        от Разминки; на Задачу без каскада: она заморожена (ADR-0030).
+      changes:
+        - createTable:
+            tableName: warmup_problem
+            columns:
+              - column:
+                  name: warmup_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              # Порядок Задач в Разминке — как у Задания: учитель выбирает
+              # их в порядке, который для него что-то значит.
+              - column:
+                  name: position
+                  type: INT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: warmup_problem
+            columnNames: warmup_id, problem_id
+            constraintName: pk_warmup_problem
+        - addUniqueConstraint:
+            tableName: warmup_problem
+            columnNames: warmup_id, position
+            constraintName: uq_warmup_problem_position
+        - addForeignKeyConstraint:
+            baseTableName: warmup_problem
+            baseColumnNames: warmup_id, user_id
+            referencedTableName: warmup
+            referencedColumnNames: id, user_id
+            constraintName: fk_warmup_problem_warmup
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: warmup_problem
+            baseColumnNames: problem_id
+            referencedTableName: problem
+            referencedColumnNames: id
+            constraintName: fk_warmup_problem_problem
+
+  - changeSet:
+      id: 0018-warmup-outcome
+      author: locus
+      comment: >-
+        Итог Разминки на паре «Ученик × Задача» — только суждение; пустая
+        клетка — отсутствие строки. Ссылки на участника и на Задачу состава
+        той же Разминки, обе с каскадом.
+      changes:
+        - createTable:
+            tableName: warmup_outcome
+            columns:
+              - column:
+                  name: warmup_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: problem_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: outcome
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: warmup_outcome
+            columnNames: warmup_id, student_id, problem_id
+            constraintName: pk_warmup_outcome
+        - addForeignKeyConstraint:
+            baseTableName: warmup_outcome
+            baseColumnNames: warmup_id, student_id, user_id
+            referencedTableName: warmup_student
+            referencedColumnNames: warmup_id, student_id, user_id
+            constraintName: fk_warmup_outcome_student
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            baseTableName: warmup_outcome
+            baseColumnNames: warmup_id, problem_id
+            referencedTableName: warmup_problem
+            referencedColumnNames: warmup_id, problem_id
+            constraintName: fk_warmup_outcome_problem
+            onDelete: CASCADE
