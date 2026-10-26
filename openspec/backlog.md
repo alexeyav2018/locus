@@ -148,7 +148,7 @@
 | `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | ✅ |
 | `intake-reread-evidence` | Д | `problem-intake` | — | S | нет | не затрагивает | ждёт условия |
 | `assistant-multiple-files` | Т | `assistant-chat`, `problem-intake` | — | M | нет | общее и личное | ждёт условия |
-| `assignment-repeat-hint` | Т | — | — | S | нет | личное | |
+| `assignment-repeat-hint` | Т | — | — | S | нет | личное | ✅ |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки
