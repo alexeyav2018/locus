@@ -103,10 +103,10 @@
 | `intake-tabs` | Т | `problem-intake`, `back-link-gaps` | — | M | нет | общее и личное | на стенде |
 | `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | ✅ |
 | `intake-reread-evidence` | Д | `problem-intake` | — | S | нет | не затрагивает | на стенде |
-| `assistant-multiple-files` | Т | `assistant-chat`, `problem-intake` | — | M | нет | общее и личное | построено |
+| `assistant-multiple-files` | Т | `assistant-chat`, `problem-intake` | — | M | нет | общее и личное | на стенде |
 | `assignment-repeat-hint` | Т | — | — | S | нет | личное | ✅ |
 | `work-mastery-at-receipt` | Т | — | — | S | нет | личное | ✅ |
-| `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | построено |
+| `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | на стенде |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки
