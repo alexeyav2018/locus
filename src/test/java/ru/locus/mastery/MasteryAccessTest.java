@@ -24,12 +24,16 @@ import ru.locus.student.StudentId;
 import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
+import ru.locus.work.StudentWorkId;
 import ru.locus.work.StudentWorkRepository;
 
 /**
- * Задача 6.3: простановка отметок Владения доступна только роли Учителя.
- * `mastery-views` добавила второй вход — {@code GET /mastery?student=},
- * экран Владения Ученика, — и проверяется здесь той же тройкой.
+ * Простановка отметок Владения доступна только роли Учителя. С
+ * `work-mastery-at-receipt` отметки приходят формой вердикта принятой
+ * Работы ({@code POST /works/{id}/verdict}), а прежний адрес
+ * {@code POST /mastery} больше не принимается. `mastery-views` добавила
+ * второй вход — {@code GET /mastery?student=}, экран Владения Ученика, —
+ * и проверяется здесь той же тройкой.
  *
  * Как у Работ ({@code StudentWorkAccessTest}): Администратор без роли
  * Учителя получает 403 по прямому адресу, и ни одной отметки
@@ -66,6 +70,7 @@ class MasteryAccessTest extends IntegrationTest {
     private SolutionMethodId method;
     private ProblemId problem;
     private AssignmentId assignment;
+    private StudentWorkId work;
 
     @BeforeEach
     void setTheScene() {
@@ -77,7 +82,7 @@ class MasteryAccessTest extends IntegrationTest {
         LocalDate today = LocalDate.now();
         assignment = assignments.create(owner.id(), student, null, today, today.plusDays(7), TheoryScope.NONE,
                 List.of(problem));
-        works.create(owner.id(), assignment, problem, today, null, "",
+        work = works.create(owner.id(), assignment, problem, today, null, "",
                 List.of(new FileKey(UUID.randomUUID() + ".jpg")));
     }
 
@@ -86,7 +91,7 @@ class MasteryAccessTest extends IntegrationTest {
     void administratorWithoutTeacherRoleIsRefused() {
         Browser administrator = loggedIn(Role.ADMINISTRATOR);
 
-        assertThat(administrator.postForm("/mastery", form("MASTERED")).status()).isEqualTo(403);
+        assertThat(administrator.postForm(verdict(), form("MASTERED")).status()).isEqualTo(403);
         assertThat(marks.countByStudent(owner.id(), student)).as("ни одной отметки").isZero();
     }
 
@@ -104,10 +109,27 @@ class MasteryAccessTest extends IntegrationTest {
         Browser teacher = new Browser(port);
         teacher.logIn(owner.login(), owner.password());
 
-        Browser.Page posted = teacher.postForm("/mastery", form("MASTERED"));
+        Browser.Page posted = teacher.postForm(verdict(), form("MASTERED"));
 
         assertThat(posted.redirectsTo("/works?assignment=" + assignment.value())).isTrue();
         assertThat(marks.countByStudent(owner.id(), student)).isEqualTo(1);
+    }
+
+    /** Отдельного адреса простановки больше нет: {@code POST /mastery} отклоняется, отметок нет. */
+    @Test
+    void thePostToMasteryIsNoLongerAccepted() {
+        Browser teacher = new Browser(port);
+        teacher.logIn(owner.login(), owner.password());
+
+        Browser.Page posted = teacher.postForm("/mastery", List.of(
+                Map.entry("assignment", String.valueOf(assignment.value())),
+                Map.entry("problem", String.valueOf(problem.value())),
+                Map.entry("topic", String.valueOf(topic.value())),
+                Map.entry("method", String.valueOf(method.value())),
+                Map.entry("status", "MASTERED")));
+
+        assertThat(posted.status()).isEqualTo(405);
+        assertThat(marks.countByStudent(owner.id(), student)).isZero();
     }
 
     /** Учитель допущен и к экрану Владения. */
@@ -124,7 +146,7 @@ class MasteryAccessTest extends IntegrationTest {
     void withoutLoginThePostLeadsToTheLoginForm() {
         Browser visitor = new Browser(port);
 
-        Browser.Page page = visitor.postForm("/mastery", form("MASTERED"));
+        Browser.Page page = visitor.postForm(verdict(), form("MASTERED"));
 
         assertThat(page.redirectsTo("/login")).isTrue();
         assertThat(marks.countByStudent(owner.id(), student)).isZero();
@@ -140,10 +162,15 @@ class MasteryAccessTest extends IntegrationTest {
         assertThat(page.redirectsTo("/login")).isTrue();
     }
 
+    private String verdict() {
+        return "/works/" + work.value() + "/verdict";
+    }
+
+    /** Форма «Вердикт и владение»: без вердикта, с одной ячейкой. */
     private List<Map.Entry<String, String>> form(String status) {
         return List.of(
-                Map.entry("assignment", String.valueOf(assignment.value())),
-                Map.entry("problem", String.valueOf(problem.value())),
+                Map.entry("verdict", ""),
+                Map.entry("note", ""),
                 Map.entry("topic", String.valueOf(topic.value())),
                 Map.entry("method", String.valueOf(method.value())),
                 Map.entry("status", status));

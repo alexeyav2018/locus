@@ -1,56 +1,34 @@
 package ru.locus.mastery;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
-import ru.locus.assignment.AssignmentId;
-import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
-import ru.locus.work.AssignmentScreen;
 
 /**
- * Простановка отметок Владения с экрана приёма Работ (С5, ADR-0011)
- * и экран Владения одного Ученика (`mastery-views`).
+ * Экран Владения одного Ученика (`mastery-views`):
+ * {@code GET /mastery?student=} — состояние Ученика целиком
+ * ({@link MasteryService#overviewOf}).
  *
- * Своего экрана у отметок нет: ячейки показывает экран приёма
- * ({@link AssignmentScreen}), а сюда приходит только форма одной Задачи —
- * {@code assignment}, {@code problem} и три параллельных списка
- * {@code topic}, {@code method}, {@code status}, по элементу на ячейку
- * (design.md {@code mastery-marks}, «Форма ячеек»). Пустой {@code status} —
- * «без изменения», он превращается в {@link Mark} с {@code null}
- * и сервисом пропускается; {@code UNKNOWN} — снятие (ADR-0039).
+ * Своего адреса простановки у отметок нет: с `work-mastery-at-receipt`
+ * они приходят в форме приёма Работы или в форме её вердикта и пишутся
+ * тем же действием ({@code StudentWorkController}), одной транзакцией.
+ * Второй дороги к тому же здесь не держится.
  *
- * Списки читаются сырыми из {@link HttpServletRequest}, а не через
- * {@code @RequestParam List<String>}: конвертер Spring разбирает
- * единственное значение как список через запятую и пустую строку
- * превращает в пустой список — у Задачи с одной ячейкой «без изменения»
- * списки разошлись бы по длине, и форма ломалась бы молча.
- *
- * Контроллер тонкий (standards.md, «Слои и границы»): права, владелец
- * и все проверки — в {@link MasteryService}; отказ сервиса
- * ({@link IllegalArgumentException}) показывается текстом на экране
- * приёма того же Задания, как отказы форм Работ. Чужое Задание — 404
- * от сервиса, здесь не перехватывается.
- *
- * {@code GET /mastery?student=} — второй, независимый вход: экран
- * Владения одного Ученика целиком ({@link MasteryService#overviewOf}).
- * Без параметра — к сводке Учеников, вход идёт от Ученика, как в Работы —
+ * Без параметра — к сводке Учеников: вход идёт от Ученика, как в Работы —
  * от Задания. Чужой Ученик — {@link ru.locus.student.StudentNotFoundException}
- * от сервиса, здесь не перехватывается.
+ * от сервиса, здесь не перехватывается. Контроллер тонкий (standards.md,
+ * «Слои и границы»): права и владелец — в {@link MasteryService}.
  */
 @Controller
 public class MasteryController {
 
     private final MasteryService mastery;
-    private final AssignmentScreen screen;
 
-    public MasteryController(MasteryService mastery, AssignmentScreen screen) {
+    public MasteryController(MasteryService mastery) {
         this.mastery = mastery;
-        this.screen = screen;
     }
 
     @GetMapping(Addresses.MASTERY)
@@ -60,26 +38,5 @@ public class MasteryController {
         }
         model.addAttribute("overview", mastery.overviewOf(new StudentId(student)));
         return "mastery/student";
-    }
-
-    @PostMapping(Addresses.MASTERY)
-    public String mark(@RequestParam long assignment,
-                       @RequestParam long problem,
-                       HttpServletRequest request,
-                       Model model) {
-        AssignmentId assignmentId = new AssignmentId(assignment);
-        try {
-            mastery.mark(assignmentId, new ProblemId(problem),
-                    Mark.fromForm(values(request, "topic"), values(request, "method"), values(request, "status")));
-        } catch (IllegalArgumentException refusal) {
-            model.addAttribute("error", refusal.getMessage());
-            return screen.render(assignmentId, model);
-        }
-        return AssignmentScreen.redirectTo(assignmentId);
-    }
-
-    private static String[] values(HttpServletRequest request, String name) {
-        String[] values = request.getParameterValues(name);
-        return values == null ? new String[0] : values;
     }
 }

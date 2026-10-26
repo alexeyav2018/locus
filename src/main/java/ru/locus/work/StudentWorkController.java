@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -22,6 +24,9 @@ import ru.locus.Addresses;
 import ru.locus.ShellAdvice;
 import ru.locus.assignment.AssignmentId;
 import ru.locus.file.FilePages;
+import ru.locus.mastery.Cell;
+import ru.locus.mastery.Mark;
+import ru.locus.mastery.MasteryStatus;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.student.StudentService;
@@ -44,7 +49,10 @@ import ru.locus.student.StudentService;
  *
  * Отказы сервиса ({@link IllegalArgumentException}) и превышение предела
  * загрузки ({@link MaxUploadSizeExceededException}) показываются текстом
- * на экране приёма того Задания, откуда пришла форма. Задание при приёме
+ * на экране приёма того Задания, откуда пришла форма. Отклонённая форма
+ * приёма или вердикта показывается снова с введённым ({@link EnteredReview}):
+ * вердиктом, примечанием, датой и значениями ячеек Владения, которые
+ * приходят в тех же формах (`work-mastery-at-receipt`). Задание при приёме
  * стоит в адресе формы, а не только в теле: если тело не разобрано —
  * предел превышен, — из него ничего не прочитать, а адрес читается всегда.
  *
@@ -96,12 +104,18 @@ public class StudentWorkController {
                           @RequestParam(required = false) Verdict verdict,
                           @RequestParam(required = false) String note,
                           @RequestParam(name = "files", required = false) List<MultipartFile> files,
+                          HttpServletRequest request,
                           Model model) {
         AssignmentId assignmentId = new AssignmentId(assignment);
+        ProblemId problemId = new ProblemId(problem);
+        List<Mark> marks = List.of();
         try {
-            works.receive(assignmentId, new ProblemId(problem), receivedOn, verdict, note, uploaded(files), List.of());
+            marks = marksFrom(request);
+            works.receive(assignmentId, problemId, receivedOn, verdict, note, uploaded(files), marks);
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
+            model.addAttribute("entered", new EnteredReview(problemId, verdict, note,
+                    receivedOn == null ? null : receivedOn.toString(), chosen(marks)));
             return renderAssignment(assignmentId, model);
         }
         return atAssignment(assignmentId);
@@ -174,14 +188,29 @@ public class StudentWorkController {
         return atAssignment(assignmentId);
     }
 
+    /**
+     * Вердикт, примечание и отметки Владения принятой Работы — одним
+     * сохранением (блок «Вердикт и владение»). Отказ показывается на экране
+     * приёма с введённым, вердикт при этом прежний: сервис откатывает всё.
+     */
     @PostMapping(Addresses.WORKS + "/{id}/verdict")
     public String setVerdict(@PathVariable long id,
                              @RequestParam(required = false) Verdict verdict,
-                             @RequestParam(required = false) String note) {
+                             @RequestParam(required = false) String note,
+                             HttpServletRequest request,
+                             Model model) {
         StudentWorkId workId = new StudentWorkId(id);
-        AssignmentId assignmentId = works.work(workId).assignment();
-        works.setVerdict(workId, verdict, note, List.of());
-        return atAssignment(assignmentId);
+        StudentWork work = works.work(workId);
+        List<Mark> marks = List.of();
+        try {
+            marks = marksFrom(request);
+            works.setVerdict(workId, verdict, note, marks);
+        } catch (IllegalArgumentException refusal) {
+            model.addAttribute("error", refusal.getMessage());
+            model.addAttribute("entered", new EnteredReview(work.problem(), verdict, note, null, chosen(marks)));
+            return renderAssignment(work.assignment(), model);
+        }
+        return atAssignment(work.assignment());
     }
 
     @PostMapping(Addresses.WORKS + "/{id}/deletion")
@@ -231,9 +260,34 @@ public class StudentWorkController {
     }
 
     /**
-     * Экран приёма собирает {@link AssignmentScreen}: тот же экран рисует
-     * и {@code MasteryController} — при отказе в простановке отметок.
+     * Отметки из формы ячеек — три параллельных списка {@code topic},
+     * {@code method}, {@code status}. Читаются сырыми из запроса, а не через
+     * {@code @RequestParam List<String>}: почему — в {@link Mark#fromForm}.
+     * В запросе с файлами обычные поля доступны так же: к этому моменту
+     * тело уже разобрано привязкой {@code files}.
      */
+    private static List<Mark> marksFrom(HttpServletRequest request) {
+        return Mark.fromForm(request.getParameterValues("topic"),
+                             request.getParameterValues("method"),
+                             request.getParameterValues("status"));
+    }
+
+    /**
+     * Выбранные значения ячеек для повторного показа формы. Испорченная
+     * форма ячеек отказывает ещё при разборе — тогда отметок нет, и форма
+     * показывается с «без изменения» во всех ячейках.
+     */
+    private static Map<Cell, MasteryStatus> chosen(List<Mark> marks) {
+        Map<Cell, MasteryStatus> chosen = new HashMap<>();
+        for (Mark mark : marks) {
+            if (mark.status() != null) {
+                chosen.put(mark.cell(), mark.status());
+            }
+        }
+        return chosen;
+    }
+
+    /** Экран приёма собирает {@link AssignmentScreen}: модель отказа та же, что у показа. */
     private String renderAssignment(AssignmentId id, Model model) {
         return screen.render(id, model);
     }

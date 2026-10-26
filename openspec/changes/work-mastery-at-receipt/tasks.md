@@ -38,29 +38,29 @@
 
 ## 2. Экран приёма: ячейки в форме приёма, блок «Вердикт и владение»
 
-- [ ] 2.1 Запись `ru.locus.work.EnteredReview` (Задача, вердикт, примечание, дата текстом,
+- [x] 2.1 Запись `ru.locus.work.EnteredReview` (Задача, вердикт, примечание, дата текстом,
   `Map<Cell, MasteryStatus>` выбранных) с методами для шаблона: относится ли к Задаче,
   выбранное значение ячейки (design.md, решение 5); проверка — `get_diagnostics_for_file`
-- [ ] 2.2 `StudentWorkController.receive` и `setVerdict` читают три списка сырыми
+- [x] 2.2 `StudentWorkController.receive` и `setVerdict` читают три списка сырыми
   (`getParameterValues`) и разбирают `Mark.fromForm`; отказ (`IllegalArgumentException`)
   у обоих — `error` и `entered` в модель и экран приёма; `setVerdict` получает `problem`
   из Работы; проверка — `StudentWorkControllerIsThinTest` зелёный
-- [ ] 2.3 `MasteryController`: `POST /mastery` снят, остаётся `GET /mastery?student=`;
+- [x] 2.3 `MasteryController`: `POST /mastery` снят, остаётся `GET /mastery?student=`;
   javadoc без простановки; `AssignmentScreen` — javadoc о двух контроллерах поправить;
   проверка — `MasteryControllerIsThinTest` зелёный
-- [ ] 2.4 `templates/work/assignment.html`: в «Принять решение» под вердиктом и примечанием —
+- [x] 2.4 `templates/work/assignment.html`: в «Принять решение» под вердиктом и примечанием —
   подпись «Владение» и ячейки (как в прежнем блоке: скрытые `topic`/`method`, `status`
   с «без изменения»); блоки «Вердикт» и «Владение» — один «Вердикт и владение» с кнопкой
   «Сохранить», раскрывается по `/works/{id}/verdict`; выбранное из `entered` — только в блоке
   своей Задачи; комментарий шаблона переписать; проверка — экран открывается
   (`mvn test -Dtest=WorkScreenTest`)
-- [ ] 2.5 `MasteryScreenTest` переписать под новые формы: ячейки в форме приёма (четыре,
+- [x] 2.5 `MasteryScreenTest` переписать под новые формы: ячейки в форме приёма (четыре,
   «без изменения»), приём с отметкой, приём без файла — ни Работы, ни отметки, «владеет»
   и вердикт выбраны снова, один блок «Вердикт и владение» без отдельного «Владения»,
   выборочная простановка и снятие через «неизвестно» формой вердикта, справка, вердикт
   не меняет ячеек, отказ по паре не из разметки — на том же экране, вердикт прежний;
   проверка — `mvn test -Dtest=MasteryScreenTest`
-- [ ] 2.6 Тесты, славшие `POST /mastery` (`MasteryAccessTest`, `MasteryIsFilteredByOwnerTest`,
+- [x] 2.6 Тесты, славшие `POST /mastery` (`MasteryAccessTest`, `MasteryIsFilteredByOwnerTest`,
   `MasteryOverviewScreenTest`), — на `POST /works/{id}/verdict` с ячейками; для чужого —
   404 по чужой Работе; посетитель без входа — на вход; `POST /mastery` больше не принимается;
   проверка — `mvn test -Dtest='Mastery*Test,StudentWork*Test,Works*Test,WorkScreenTest'`

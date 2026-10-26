@@ -24,14 +24,16 @@ import ru.locus.student.StudentId;
 import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
+import ru.locus.work.StudentWorkId;
 import ru.locus.work.StudentWorkRepository;
 
 /**
  * Граница общего и личного для отметок Владения, обе половины разом
  * и глазами двух Учителей — по образцу {@link ru.locus.work.WorksAreFilteredByOwnerTest}.
  *
- * Первая половина: отметки — личный контур. Простановка по чужому
- * Заданию не выполняется — ответ такой же, как для несуществующего,
+ * Первая половина: отметки — личный контур. Простановка формой вердикта
+ * чужой Работы ({@code POST /works/{id}/verdict}, `work-mastery-at-receipt`)
+ * не выполняется — ответ такой же, как для несуществующей,
  * и отметки владельца остаются какими были: ни новых, ни изменённых.
  * Вторая половина: два Учителя ставят отметки своим Ученикам на одной
  * и той же паре «Тема × Метод» библиотеки, и каждый видит на экране
@@ -82,6 +84,7 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
     private ProblemId problem;
     private StudentId alicesStudent;
     private AssignmentId alicesAssignment;
+    private StudentWorkId alicesWork;
 
     @BeforeEach
     void setTheScene() {
@@ -93,13 +96,13 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
         problem = library.problem(topic, method);
         alicesStudent = students.create(alice.id(), TestLibrary.unique("Иванов Пётр"));
         alicesAssignment = issue(alice, alicesStudent);
-        receive(alice, alicesAssignment);
+        alicesWork = receive(alice, alicesAssignment);
     }
 
-    /** Сценарий «Простановка по чужому Заданию»: 404, отметок А не появилось. */
+    /** Сценарий «Простановка по чужой Работе»: 404, отметок А не появилось. */
     @Test
     void markingAnotherTeachersAssignmentIsNotFoundAndLeavesNothing() {
-        Browser.Page posted = bobsBrowser.postForm("/mastery", form(alicesAssignment, "MASTERED"));
+        Browser.Page posted = bobsBrowser.postForm(verdict(alicesWork), form("MASTERED"));
 
         assertThat(posted.status()).isEqualTo(404);
         assertThat(marks.countByStudent(alice.id(), alicesStudent)).as("у А отметок не появилось").isZero();
@@ -111,7 +114,7 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
     void markingAnotherTeachersAssignmentChangesNothing() {
         marks.put(alice.id(), alicesStudent, topic, method, MasteryStatus.NOT_MASTERED);
 
-        Browser.Page posted = bobsBrowser.postForm("/mastery", form(alicesAssignment, "MASTERED"));
+        Browser.Page posted = bobsBrowser.postForm(verdict(alicesWork), form("MASTERED"));
 
         assertThat(posted.status()).isEqualTo(404);
         assertThat(marks.findByStudent(alice.id(), alicesStudent))
@@ -133,12 +136,12 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
     void twoTeachersMarkTheSamePairAndEachSeesOnlyTheirOwn() {
         StudentId bobsStudent = students.create(bob.id(), TestLibrary.unique("Сидорова Анна"));
         AssignmentId bobsAssignment = issue(bob, bobsStudent);
-        receive(bob, bobsAssignment);
+        StudentWorkId bobsWork = receive(bob, bobsAssignment);
         Browser alicesBrowser = loggedIn(alice);
 
-        assertThat(alicesBrowser.postForm("/mastery", form(alicesAssignment, "MASTERED"))
+        assertThat(alicesBrowser.postForm(verdict(alicesWork), form("MASTERED"))
                 .redirectsTo("/works?assignment=" + alicesAssignment.value())).isTrue();
-        assertThat(bobsBrowser.postForm("/mastery", form(bobsAssignment, "NOT_MASTERED"))
+        assertThat(bobsBrowser.postForm(verdict(bobsWork), form("NOT_MASTERED"))
                 .redirectsTo("/works?assignment=" + bobsAssignment.value())).isTrue();
 
         String alicesScreen = alicesBrowser.get("/works?assignment=" + alicesAssignment.value()).body();
@@ -159,10 +162,10 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
     void twoTeachersMarkNotMasteredOnTheSamePairAndEachSeesOnlyTheirOwnGap() {
         StudentId bobsStudent = students.create(bob.id(), TestLibrary.unique("Сидорова Анна"));
         AssignmentId bobsAssignment = issue(bob, bobsStudent);
-        receive(bob, bobsAssignment);
+        StudentWorkId bobsWork = receive(bob, bobsAssignment);
         Browser alicesBrowser = loggedIn(alice);
-        alicesBrowser.postForm("/mastery", form(alicesAssignment, "NOT_MASTERED"));
-        bobsBrowser.postForm("/mastery", form(bobsAssignment, "NOT_MASTERED"));
+        alicesBrowser.postForm(verdict(alicesWork), form("NOT_MASTERED"));
+        bobsBrowser.postForm(verdict(bobsWork), form("NOT_MASTERED"));
 
         String alicesScreen = alicesBrowser.get("/mastery?student=" + alicesStudent.value()).body();
         String bobsScreen = bobsBrowser.get("/mastery?student=" + bobsStudent.value()).body();
@@ -177,15 +180,20 @@ class MasteryIsFilteredByOwnerTest extends IntegrationTest {
                 List.of(problem));
     }
 
-    private void receive(TestAccounts.Account owner, AssignmentId assignment) {
-        works.create(owner.id(), assignment, problem, LocalDate.now(), null, "",
+    private StudentWorkId receive(TestAccounts.Account owner, AssignmentId assignment) {
+        return works.create(owner.id(), assignment, problem, LocalDate.now(), null, "",
                 List.of(new FileKey(UUID.randomUUID() + ".jpg")));
     }
 
-    private List<Map.Entry<String, String>> form(AssignmentId assignment, String status) {
+    private static String verdict(StudentWorkId work) {
+        return "/works/" + work.value() + "/verdict";
+    }
+
+    /** Форма «Вердикт и владение»: без вердикта, с одной ячейкой. */
+    private List<Map.Entry<String, String>> form(String status) {
         return List.of(
-                Map.entry("assignment", String.valueOf(assignment.value())),
-                Map.entry("problem", String.valueOf(problem.value())),
+                Map.entry("verdict", ""),
+                Map.entry("note", ""),
                 Map.entry("topic", String.valueOf(topic.value())),
                 Map.entry("method", String.valueOf(method.value())),
                 Map.entry("status", status));

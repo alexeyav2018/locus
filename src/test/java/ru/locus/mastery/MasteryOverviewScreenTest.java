@@ -25,6 +25,7 @@ import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
 import ru.locus.user.UserId;
+import ru.locus.work.StudentWorkId;
 import ru.locus.work.StudentWorkRepository;
 
 /**
@@ -83,21 +84,8 @@ class MasteryOverviewScreenTest extends IntegrationTest {
         AssignmentId assignment = assignments.create(owner, student, null,
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 8), TheoryScope.NONE,
                 List.of(masteredProblem, gapProblem));
-        receive(assignment, masteredProblem);
-        receive(assignment, gapProblem);
-
-        teacher.postForm("/mastery", List.of(
-                java.util.Map.entry("assignment", String.valueOf(assignment.value())),
-                java.util.Map.entry("problem", String.valueOf(masteredProblem.value())),
-                java.util.Map.entry("topic", String.valueOf(topic.value())),
-                java.util.Map.entry("method", String.valueOf(masteredMethod.value())),
-                java.util.Map.entry("status", "MASTERED")));
-        teacher.postForm("/mastery", List.of(
-                java.util.Map.entry("assignment", String.valueOf(assignment.value())),
-                java.util.Map.entry("problem", String.valueOf(gapProblem.value())),
-                java.util.Map.entry("topic", String.valueOf(topic.value())),
-                java.util.Map.entry("method", String.valueOf(gapMethod.value())),
-                java.util.Map.entry("status", "NOT_MASTERED")));
+        mark(receive(assignment, masteredProblem), masteredMethod, "MASTERED");
+        mark(receive(assignment, gapProblem), gapMethod, "NOT_MASTERED");
     }
 
     @Test
@@ -145,8 +133,18 @@ class MasteryOverviewScreenTest extends IntegrationTest {
         return "/mastery?student=" + student.value();
     }
 
-    private void receive(AssignmentId assignment, ProblemId problem) {
-        works.create(owner, assignment, problem, LocalDate.of(2026, 9, 3), null, "",
+    private StudentWorkId receive(AssignmentId assignment, ProblemId problem) {
+        return works.create(owner, assignment, problem, LocalDate.of(2026, 9, 3), null, "",
                 List.of(new FileKey(UUID.randomUUID() + ".jpg")));
+    }
+
+    /** Отметка формой «Вердикт и владение» принятой Работы, без вердикта. */
+    private void mark(StudentWorkId work, SolutionMethodId method, String status) {
+        teacher.postForm("/works/" + work.value() + "/verdict", List.of(
+                java.util.Map.entry("verdict", ""),
+                java.util.Map.entry("note", ""),
+                java.util.Map.entry("topic", String.valueOf(topic.value())),
+                java.util.Map.entry("method", String.valueOf(method.value())),
+                java.util.Map.entry("status", status)));
     }
 }

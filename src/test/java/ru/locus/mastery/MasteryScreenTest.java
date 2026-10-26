@@ -2,11 +2,15 @@ package ru.locus.mastery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +24,7 @@ import ru.locus.assignment.AssignmentRepository;
 import ru.locus.assignment.TheoryScope;
 import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.file.FileKey;
+import ru.locus.file.FileType;
 import ru.locus.problem.ExamPart;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
@@ -32,15 +37,19 @@ import ru.locus.work.StudentWorkRepository;
 import ru.locus.work.Verdict;
 
 /**
- * Задача 6.2: раздел «Владение» на экране приёма — ячейки у принятой
- * Работы, выборочная простановка одной формой, снятие через «неизвестно»,
- * справка «решено N из M», независимость от вердикта.
+ * Ячейки Владения на экране приёма (`work-mastery-at-receipt`): ячейки
+ * в форме приёма у каждой Задачи, приём с отметкой одним действием, отказ
+ * приёма без файла с выбранным на месте, один блок «Вердикт и владение»
+ * у принятой Работы — выборочная простановка и снятие через «неизвестно»
+ * его формой, справка «решено N из M», вердикт не трогает ячеек, отказ
+ * по паре не из разметки — на том же экране при прежнем вердикте.
  *
  * Сравнивается видимый человеку текст, а не разметка (antipatterns.md);
- * исключение — {@code viewport}: экран под телефон, и раздел не должен
- * этого сломать. Работы заводятся через репозиторий с ключом-заглушкой:
- * экран файл не читает, только подписывает ссылку, а приём
- * с настоящими снимками проверен в {@code WorkScreenTest}.
+ * исключения — {@code viewport} (экран под телефон) и отметки
+ * {@code checked}/{@code selected} у отклонённой формы: выбранное в ней
+ * только в разметке и видно. Работы, кроме приёма формой, заводятся через
+ * репозиторий с ключом-заглушкой: экран файл не читает, только подписывает
+ * ссылку.
  *
  * Форма шлёт три параллельных списка с повторяющимися именами — так
  * шлёт браузер, и {@code Map} этого не выразит, поэтому поля идут
@@ -94,40 +103,84 @@ class MasteryScreenTest extends IntegrationTest {
         methodX = library.method();
         methodY = library.method();
         problem = library.problem(List.of(topicA, topicB), List.of(methodX, methodY), List.of(), ExamPart.SECOND);
-        other = library.problem(topicA, methodX);
+        // Своя пара у второй Задачи: иначе ячейка «A × X» стояла бы и в её форме,
+        // и каждое значение считалось бы дважды.
+        other = library.problem(library.topic(), library.method());
         assignment = issue(problem, other);
     }
 
-    /** Сценарий «До приёма Работы ячеек нет»: раздела на экране нет, экран по-прежнему под телефон. */
+    /** Ячейки в форме приёма: у каждой Задачи, все «без изменения»; экран по-прежнему под телефон. */
     @Test
-    void withoutAWorkThereIsNoMasterySection() {
+    void receiptFormsCarryTheCellsOfTheirProblems() {
         String body = teacher.get(screen()).body();
 
         assertThat(body)
                 .contains("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .doesNotContain("Владение")
-                .doesNotContain("Сохранить отметки");
+                .contains("Владение");
+        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("четыре ячейки и одна у второй Задачи").isEqualTo(5);
+        assertThat(count(body, ">без изменения<")).isEqualTo(5);
+        assertThat(count(body, "Принять Работу")).isEqualTo(2);
+        assertThat(body).doesNotContain("Вердикт и владение");
     }
 
-    /** Сценарий «Ячейки у принятой Работы»: четыре ячейки «неизвестно», форма одна — у Задачи с Работой. */
+    /** Сценарий «Приём с отметкой»: Работа и отметка одним действием, нетронутые ячейки прежние. */
     @Test
-    void acceptedWorkShowsFourUnknownCellsAndOneForm() {
+    void receiptWritesTheWorkAndTheChosenMark() {
+        Browser.Page posted = teacher.postMultipart(receiptOf(problem), cells(
+                        cell(topicA, methodX, "MASTERED"),
+                        cell(topicA, methodY, ""),
+                        cell(topicB, methodX, ""),
+                        cell(topicB, methodY, "")),
+                List.of(photo()));
+
+        assertThat(posted.redirectsTo(screen())).isTrue();
+        assertThat(works.findByAssignment(owner, assignment)).hasSize(1);
+        String body = teacher.get(screen()).body();
+        assertThat(count(body, "сейчас: владеет ·")).isEqualTo(1);
+        assertThat(count(body, UNKNOWN_SHOWN)).as("три нетронутые и одна у второй Задачи").isEqualTo(4);
+        assertThat(marks.countByStudent(owner, student)).isEqualTo(1);
+    }
+
+    /** Сценарий «Приём без файла не пишет отметок»: ни Работы, ни отметки, «верно» и «владеет» выбраны снова. */
+    @Test
+    void receiptWithoutAFileWritesNothingAndKeepsTheChoice() {
+        List<Map.Entry<String, String>> fields = new ArrayList<>(List.of(
+                Map.entry("verdict", "CORRECT"), Map.entry("note", "посмотрю позже")));
+        fields.addAll(cells(
+                cell(topicA, methodX, "MASTERED"),
+                cell(topicA, methodY, ""),
+                cell(topicB, methodX, ""),
+                cell(topicB, methodY, "")));
+
+        Browser.Page refused = teacher.postMultipart(receiptOf(problem), fields, List.of());
+
+        assertThat(refused.status()).isEqualTo(200);
+        assertThat(refused.body()).contains("Нужен хотя бы один файл").contains("посмотрю позже");
+        assertThat(works.findByAssignment(owner, assignment)).isEmpty();
+        assertThat(marks.countByStudent(owner, student)).isZero();
+        assertThat(count(refused.body(), Pattern.compile("value=\"CORRECT\"\\s+checked"))).isEqualTo(1);
+        assertThat(count(refused.body(), Pattern.compile("value=\"MASTERED\"\\s+selected"))).isEqualTo(1);
+    }
+
+    /** Сценарий «Один блок у принятой Работы»: «Вердикт и владение», без отдельного «Владения». */
+    @Test
+    void acceptedWorkHasOneVerdictAndMasteryBlock() {
         receive(assignment, problem);
 
         String body = teacher.get(screen()).body();
 
-        assertThat(body).contains("Владение").contains("без изменения");
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("четыре ячейки «неизвестно»").isEqualTo(4);
-        assertThat(count(body, "Сохранить отметки")).as("форма только у Задачи с Работой").isEqualTo(1);
+        assertThat(count(body, ">Вердикт и владение<")).isEqualTo(1);
+        assertThat(body).doesNotContain(">Владение</summary>").doesNotContain("Сохранить отметки");
+        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("четыре в блоке и одна в приёме второй").isEqualTo(5);
         assertThat(count(body, "Принять Работу")).as("у второй Задачи — форма приёма").isEqualTo(1);
     }
 
-    /** Сценарии «Выборочная простановка» и «Снятие отметки»: две меняются, две прежние; «неизвестно» снимает. */
+    /** Сценарии «Выборочная простановка» и «Снятие отметки» формой вердикта: две меняются, две прежние; «неизвестно» снимает. */
     @Test
     void savingTwoCellsLeavesTheOtherTwoAndUnknownClears() {
-        receive(assignment, problem);
+        StudentWorkId work = receive(assignment, problem);
 
-        Browser.Page posted = teacher.postForm("/mastery", form(
+        Browser.Page posted = teacher.postForm(verdictOf(work), review("",
                 cell(topicA, methodX, "MASTERED"),
                 cell(topicA, methodY, ""),
                 cell(topicB, methodX, "NOT_MASTERED"),
@@ -137,14 +190,14 @@ class MasteryScreenTest extends IntegrationTest {
         String body = teacher.get(screen()).body();
         assertThat(count(body, "сейчас: владеет ·")).isEqualTo(1);
         assertThat(count(body, "сейчас: не владеет ·")).isEqualTo(1);
-        assertThat(count(body, UNKNOWN_SHOWN)).as("две нетронутые").isEqualTo(2);
+        assertThat(count(body, UNKNOWN_SHOWN)).as("две нетронутые и одна у второй Задачи").isEqualTo(3);
         assertThat(marks.countByStudent(owner, student)).isEqualTo(2);
 
-        teacher.postForm("/mastery", form(cell(topicA, methodX, "UNKNOWN")));
+        teacher.postForm(verdictOf(work), review("", cell(topicA, methodX, "UNKNOWN")));
 
         body = teacher.get(screen()).body();
         assertThat(count(body, "сейчас: владеет ·")).isZero();
-        assertThat(count(body, UNKNOWN_SHOWN)).isEqualTo(3);
+        assertThat(count(body, UNKNOWN_SHOWN)).isEqualTo(4);
         assertThat(marks.countByStudent(owner, student)).as("строка снята, а не записана как UNKNOWN").isEqualTo(1);
     }
 
@@ -165,16 +218,20 @@ class MasteryScreenTest extends IntegrationTest {
         String body = teacher.get(screen()).body();
 
         assertThat(count(body, UNKNOWN_SHOWN + " решено 2 из 3")).as("«A × X»").isEqualTo(1);
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("остальные три").isEqualTo(3);
+        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("остальные три и одна у второй Задачи").isEqualTo(4);
     }
 
-    /** Сценарий «Вердикт не влияет на отметки»: «верно» меняет справку, но не ячейки (ADR-0014). */
+    /** Сценарий «Вердикт не влияет на отметки»: «верно» с нетронутыми ячейками меняет справку, но не ячейки (ADR-0014). */
     @Test
     void verdictChangesTheHintButNotTheCells() {
         StudentWorkId work = receive(assignment, problem);
-        teacher.postForm("/mastery", form(cell(topicA, methodX, "MASTERED")));
+        teacher.postForm(verdictOf(work), review("", cell(topicA, methodX, "MASTERED")));
 
-        teacher.postForm("/works/" + work.value() + "/verdict", Map.of("verdict", "CORRECT", "note", ""));
+        teacher.postForm(verdictOf(work), review("CORRECT",
+                cell(topicA, methodX, ""),
+                cell(topicA, methodY, ""),
+                cell(topicB, methodX, ""),
+                cell(topicB, methodY, "")));
 
         String body = teacher.get(screen()).body();
         assertThat(body).contains("Вердикт: верно");
@@ -183,17 +240,19 @@ class MasteryScreenTest extends IntegrationTest {
         assertThat(marks.countByStudent(owner, student)).isEqualTo(1);
     }
 
-    /** Отказ сервиса показывается на том же экране: пара не из разметки. */
+    /** Сценарий «Отказ в отметке не меняет вердикта»: пара не из разметки — тот же экран, вердикт прежний. */
     @Test
-    void refusalIsShownOnTheSameScreen() {
-        receive(assignment, problem);
+    void refusalIsShownOnTheSameScreenAndKeepsTheVerdict() {
+        StudentWorkId work = receive(assignment, problem);
         SolutionMethodId stranger = library.method();
 
-        Browser.Page refused = teacher.postForm("/mastery", form(cell(topicA, stranger, "MASTERED")));
+        Browser.Page refused = teacher.postForm(verdictOf(work), review("CORRECT", cell(topicA, stranger, "MASTERED")));
 
         assertThat(refused.status()).isEqualTo(200);
-        assertThat(refused.body()).contains("Ячейки нет").contains("Владение");
+        assertThat(refused.body()).contains("Ячейки нет").contains("Вердикт и владение");
+        assertThat(works.findByAssignment(owner, assignment).get(0).verdict()).as("вердикт прежний").isNull();
         assertThat(marks.countByStudent(owner, student)).isZero();
+        assertThat(teacher.get(screen()).body()).contains("не проверена");
     }
 
     private AssignmentId issue(ProblemId... problems) {
@@ -210,15 +269,42 @@ class MasteryScreenTest extends IntegrationTest {
         return "/works?assignment=" + assignment.value();
     }
 
+    private String receiptOf(ProblemId problem) {
+        return "/works?assignment=" + assignment.value() + "&problem=" + problem.value();
+    }
+
+    private static String verdictOf(StudentWorkId work) {
+        return "/works/" + work.value() + "/verdict";
+    }
+
+    /** Поля формы «Вердикт и владение»: вердикт, пустое примечание и ячейки. */
     @SafeVarargs
-    private final List<Map.Entry<String, String>> form(List<Map.Entry<String, String>>... cells) {
+    private static List<Map.Entry<String, String>> review(String verdict, List<Map.Entry<String, String>>... cells) {
         List<Map.Entry<String, String>> fields = new ArrayList<>();
-        fields.add(Map.entry("assignment", String.valueOf(assignment.value())));
-        fields.add(Map.entry("problem", String.valueOf(problem.value())));
+        fields.add(Map.entry("verdict", verdict));
+        fields.add(Map.entry("note", ""));
+        fields.addAll(cells(cells));
+        return fields;
+    }
+
+    @SafeVarargs
+    private static List<Map.Entry<String, String>> cells(List<Map.Entry<String, String>>... cells) {
+        List<Map.Entry<String, String>> fields = new ArrayList<>();
         for (List<Map.Entry<String, String>> cell : cells) {
             fields.addAll(cell);
         }
         return fields;
+    }
+
+    private static Browser.FilePart photo() {
+        try (InputStream in = MasteryScreenTest.class.getResourceAsStream("/ru/locus/file/rotated.jpg")) {
+            if (in == null) {
+                throw new IllegalStateException("Нет тестового ресурса rotated.jpg");
+            }
+            return new Browser.FilePart("files", "photo.jpg", FileType.JPEG, in.readAllBytes());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static List<Map.Entry<String, String>> cell(TaxonomyNodeId topic, SolutionMethodId method, String status) {
@@ -236,5 +322,9 @@ class MasteryScreenTest extends IntegrationTest {
             from += text.length();
         }
         return count;
+    }
+
+    private static int count(String body, Pattern pattern) {
+        return (int) pattern.matcher(body).results().count();
     }
 }
