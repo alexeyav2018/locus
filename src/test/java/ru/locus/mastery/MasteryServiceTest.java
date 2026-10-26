@@ -263,9 +263,11 @@ class MasteryServiceTest extends IntegrationTest {
 
         works.delete(owner, work);
 
-        MasteryCell first = service.cellsOf(assignment).get(problem).get(0);
-        assertThat(first.cell()).isEqualTo(new Cell(topicA, methodX));
-        assertThat(first.status()).as("ячейка показывает отметку и без Работы").isEqualTo(MASTERED);
+        MasteryCell marked = service.cellsOf(assignment).get(problem).stream()
+                .filter(cell -> cell.cell().equals(new Cell(topicA, methodX)))
+                .findFirst()
+                .orElseThrow();
+        assertThat(marked.status()).as("ячейка показывает отметку и без Работы").isEqualTo(MASTERED);
         assertThat(marks.findByStudent(owner, student)).containsEntry(new Cell(topicA, methodX), MASTERED);
     }
 

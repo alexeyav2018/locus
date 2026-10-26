@@ -51,23 +51,23 @@
 
 ## 3. Сервис Разминок и Владение по Разминке
 
-- [ ] 3.1 `Addressee.of` — публичная, javadoc типа — «адресат выдачи или Разминки» (design.md,
+- [x] 3.1 `Addressee.of` — публичная, javadoc типа — «адресат выдачи или Разминки» (design.md,
   решение 3); проверка — `get_diagnostics_for_file`
-- [ ] 3.2 `WarmupService`: `hold(Addressee, heldOn, problems)` (проверки до записи — design.md,
+- [x] 3.2 `WarmupService`: `hold(Addressee, heldOn, problems)` (проверки до записи — design.md,
   решение 3), `warmup(id)`, `list(student)`, `problemsOf`, `outcomesOf`, `delete(id)`; всё —
   `hasRole('TEACHER')`, владелец из `CurrentUser`; запись `Outcome` с `fromForm` (решение 7);
   проверка — `get_diagnostics_for_file`
-- [ ] 3.3 `MasteryService.cellsOfWarmup(WarmupId)` (объединение пар, порядок — решение 4)
+- [x] 3.3 `MasteryService.cellsOfWarmup(WarmupId)` (объединение пар, порядок — решение 4)
   и `markByWarmup(WarmupId, StudentId, List<Mark>)` (своя Разминка, участник, пара из Задач
   Разминки, все проверки до записи); `WarmupService.record(id, student, outcomes, marks)` —
   одна транзакция: проверки итогов → `markByWarmup` → запись итогов; проверка —
   `get_diagnostics_for_file`
-- [ ] 3.4 Ответчики `WarmupsOfProblem implements ProblemUsage` («вошла в Разминки (N)»)
+- [x] 3.4 Ответчики `WarmupsOfProblem implements ProblemUsage` («вошла в Разминки (N)»)
   и `WarmupsOfStudent implements StudentUsage` («участвовал в Разминках (N)») — только
   репозиторий и `CurrentUser`; javadoc `ProblemUsage` — о Разминках; `ProblemUsageDebtTest`
   и `StudentUsageDebtTest` — пятый и очередной ответчик названы; `WarmupsOfProblemTest`,
   `WarmupsOfStudentTest`; проверка — `mvn test -Dtest='*UsageDebtTest,WarmupsOf*Test'`
-- [ ] 3.5 `WarmupServiceTest`: Разминка Ученику и Группе (участники — только действующие,
+- [x] 3.5 `WarmupServiceTest`: Разминка Ученику и Группе (участники — только действующие,
   имя Группы текстом и после переименования), выбывший прямо и Группа без действующих —
   отказ, без Задач и повтор Задачи; итоги ставятся и пустая клетка не хранится; итог
   не участнику — отказ; «справился» отметку не ставит; отметка по Разминке без Работы
