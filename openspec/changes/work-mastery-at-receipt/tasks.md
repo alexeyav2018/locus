@@ -67,13 +67,13 @@
 
 ## 3. Документы, приёмка, версия
 
-- [ ] 3.1 `openspec/context/domain-model.md`, строка «Простановка отметки»: отметки ставятся
+- [x] 3.1 `openspec/context/domain-model.md`, строка «Простановка отметки»: отметки ставятся
   в форме приёма Работы или в форме её вердикта и сохраняются тем же действием, одной
   транзакцией (`work-mastery-at-receipt`); `CLAUDE.md`, абзац `mastery-marks`: `POST /mastery`
   заменить на «с `work-mastery-at-receipt` — вместе с приёмом и вердиктом»; проверка —
   абзацы на месте, ссылки целы
-- [ ] 3.2 Приёмка: `mvn clean package` зелёный
-- [ ] 3.3 Поднять версию в `pom.xml` до `3.17.0` и дописать сверху `CHANGELOG.md` строку
+- [x] 3.2 Приёмка: `mvn clean package` зелёный
+- [x] 3.3 Поднять версию в `pom.xml` до `3.17.0` и дописать сверху `CHANGELOG.md` строку
   из proposal.md, раздел «Версия»; проверка — `grep -n 3.17.0 pom.xml CHANGELOG.md`
 
 ## Workflow follow-up
