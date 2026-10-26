@@ -300,6 +300,78 @@ class AssignmentScreenTest extends IntegrationTest {
                 .contains("href=\"/assignments\"");
     }
 
+    /** Спека, «Задача выдана Группе»: строка с именем Группы и датой выдачи. */
+    @Test
+    void formNamesThePriorIssueToAGroup() {
+        String groupName = TestLibrary.unique("9Б");
+        GroupId group = groups.create(account.id(), groupName);
+        groups.setMembers(account.id(), group, List.of(student));
+        teacher.postForm("/assignments", issue(today().plusDays(7), "group", group.value()));
+
+        String body = teacher.get("/assignments/new?problem=" + first.value()).body();
+
+        assertThat(body).contains("Уже выдана: «" + groupName + "» — " + SHOWN.format(today()) + "<");
+    }
+
+    /** Спека, «Задача выдана Ученику лично»: строка с именем Ученика и датой выдачи. */
+    @Test
+    void formNamesThePriorIssueToAStudent() {
+        teacher.postForm("/assignments", issue(today().plusDays(7), "student", student.value()));
+
+        String body = teacher.get("/assignments/new?problem=" + first.value()).body();
+
+        assertThat(body).contains("Уже выдана: " + studentName + " — " + SHOWN.format(today()) + "<");
+    }
+
+    /** Спека, «Задача выдана другим Учителем» и «Задача не выдавалась»: строки нет. */
+    @Test
+    void issuesOfAnotherTeacherAndNeverIssuedProblemsGiveNoLine() {
+        TestAccounts.Account otherTeacher = accounts.settled(Role.TEACHER);
+        StudentId theirs = students.create(otherTeacher.id(), TestLibrary.unique("Сидорова Анна"));
+        assignments.create(otherTeacher.id(), theirs, null, today(), today().plusDays(7), TheoryScope.NONE,
+                List.of(first));
+
+        String body = teacher.get("/assignments/new?problem=" + first.value() + "&problem=" + second.value()).body();
+
+        assertThat(body).contains(hidden(first)).contains(hidden(second))
+                .doesNotContain("Уже выдана");
+    }
+
+    /** Спека, «Прежних выдач больше трёх»: три новейшие и число остальных. */
+    @Test
+    void moreThanThreePriorIssuesShowTheNewestThreeAndCountTheRest() {
+        for (int daysAgo = 1; daysAgo <= 5; daysAgo++) {
+            assignments.create(account.id(), student, null, today().minusDays(daysAgo), today().plusDays(7),
+                    TheoryScope.NONE, List.of(first));
+        }
+
+        String body = teacher.get("/assignments/new?problem=" + first.value()).body();
+
+        assertThat(body).contains("Уже выдана: "
+                + studentName + " — " + SHOWN.format(today().minusDays(1)) + "; "
+                + studentName + " — " + SHOWN.format(today().minusDays(2)) + "; "
+                + studentName + " — " + SHOWN.format(today().minusDays(3)) + " и ещё 2<");
+        assertThat(body).doesNotContain(SHOWN.format(today().minusDays(4)));
+    }
+
+    /** Спека, «Повторная выдача тому же адресату проходит»: вторая Раздача, прежняя остаётся. */
+    @Test
+    void repeatedIssueToTheSameGroupPassesAndMakesASecondBatch() {
+        String groupName = TestLibrary.unique("9Б");
+        GroupId group = groups.create(account.id(), groupName);
+        groups.setMembers(account.id(), group, List.of(student));
+
+        Browser.Page once = teacher.postForm("/assignments", issue(today().plusDays(7), "group", group.value()));
+        Browser.Page twice = teacher.postForm("/assignments", issue(today().plusDays(7), "group", group.value()));
+
+        assertThat(once.location()).matches(".*/assignments/batches/\\d+$");
+        assertThat(twice.location()).matches(".*/assignments/batches/\\d+$").isNotEqualTo(once.location());
+        assertThat(teacher.get(relative(once.location())).status()).isEqualTo(200);
+        String label = "«" + groupName + "» — " + SHOWN.format(today());
+        assertThat(teacher.get("/assignments/new?problem=" + first.value()).body())
+                .contains("Уже выдана: " + label + "; " + label + "<");
+    }
+
     private AssignmentId issued(StudentId to, LocalDate due) {
         String page = relative(teacher.postForm("/assignments", issue(due, "student", to.value())).location());
         return new AssignmentId(Long.parseLong(page.substring(page.lastIndexOf('/') + 1)));

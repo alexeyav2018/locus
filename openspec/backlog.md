@@ -160,7 +160,7 @@
 | `problem-form-unsaved-warning` | Т | `intake-unsaved-warning` | — | S | нет | не затрагивает | ✅ |
 | `intake-reread-evidence` | Д | `problem-intake` | — | S | нет | не затрагивает | на стенде |
 | `assistant-multiple-files` | Т | `assistant-chat`, `problem-intake` | — | M | нет | общее и личное | построено |
-| `assignment-repeat-hint` | Т | — | — | S | нет | личное | |
+| `assignment-repeat-hint` | Т | — | — | S | нет | личное | ✅ |
 | `work-mastery-at-receipt` | Т | — | — | S | нет | личное | |
 | `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
