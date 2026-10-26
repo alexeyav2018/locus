@@ -66,6 +66,9 @@ import ru.locus.user.UserId;
 @Service
 public class AssignmentService {
 
+    /** Сколько прежних выдач Задачи называет форма выдачи; прочие — числом. */
+    static final int PRIOR_ISSUES_SHOWN = 3;
+
     private final AssignmentRepository assignments;
     private final AssignmentBatchRepository batches;
     private final StudentService students;
@@ -213,6 +216,30 @@ public class AssignmentService {
     @PreAuthorize("hasRole('TEACHER')")
     public List<AssignmentBatch> batches() {
         return batches.findAll(owner());
+    }
+
+    /**
+     * Прежние выдачи Задач формы вошедшим Учителем — подсказка «уже выдана»,
+     * ключ — Задача; Задача без выдач в ответ не попадает.
+     *
+     * <p>Только подсказка: выдачу она не ограничивает, повтор той же Задачи
+     * тому же адресату проходит (решение владельца в карточке
+     * {@code assignment-repeat-hint}). Выдачи других Учителей не видны —
+     * владелец берётся у {@link CurrentUser}, как во всей области. Каждой
+     * Задаче названы {@value #PRIOR_ISSUES_SHOWN} новейшие выдачи, прочие
+     * сосчитаны.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    public Map<ProblemId, PriorIssues> priorIssues(List<ProblemId> problemIds) {
+        Map<ProblemId, List<PriorIssue>> byProblem = new LinkedHashMap<>();
+        for (PriorIssue issue : assignments.findPriorIssues(owner(), new LinkedHashSet<>(problemIds))) {
+            byProblem.computeIfAbsent(issue.problem(), problem -> new ArrayList<>()).add(issue);
+        }
+        Map<ProblemId, PriorIssues> hints = new LinkedHashMap<>();
+        byProblem.forEach((problem, issues) -> hints.put(problem, new PriorIssues(
+                issues.subList(0, Math.min(PRIOR_ISSUES_SHOWN, issues.size())),
+                Math.max(0, issues.size() - PRIOR_ISSUES_SHOWN))));
+        return hints;
     }
 
     /**

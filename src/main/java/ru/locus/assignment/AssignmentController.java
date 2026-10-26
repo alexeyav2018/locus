@@ -183,7 +183,9 @@ public class AssignmentController {
     }
 
     private String renderForm(List<Long> problemIds, Model model) {
-        model.addAttribute("problems", problems.problems(problemIds(problemIds)));
+        List<ProblemId> ids = problemIds(problemIds);
+        model.addAttribute("problems", problems.problems(ids));
+        model.addAttribute("priorIssues", assignments.priorIssues(ids));
         model.addAttribute("students", students.active());
         model.addAttribute("groups", groups.all());
         model.addAttribute("scopes", TheoryScope.values());

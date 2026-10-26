@@ -18,6 +18,12 @@
         (FoundProblem) — Учитель видит, что именно выдаёт. Задание хранит
         ссылки, а не копии: выданная Задача заморожена (ADR-0030), и здесь
         она такова, какова в библиотеке.
+
+        Под разметкой — «Уже выдана: …» по Заданиям вошедшего Учителя
+        (AssignmentService.priorIssues): кому и когда эта Задача уже
+        выдавалась, три новейшие и «и ещё N». Это подсказка, а не запрет:
+        повтор проходит без отказа и подтверждения. Показывается всем
+        адресатам сразу — выбранный на этой же форме до отправки неизвестен.
     */-->
 </head>
 <body>
@@ -53,6 +59,11 @@
                    th:text="'Методы: ' + ${#strings.listJoin(problem.methodNames, ', ')}">Методы: Замена переменной</p>
                 <p class="marks" th:if="${not #lists.isEmpty(problem.characteristicNames)}"
                    th:text="'Характеристики: ' + ${#strings.listJoin(problem.characteristicNames, ', ')}">Характеристики: Двойной угол</p>
+                <th:block th:with="hint=${priorIssues.get(problem.problem.id)}">
+                    <p class="marks marks--repeat" th:if="${hint != null}"
+                       th:text="'Уже выдана: ' + ${#strings.listJoin(hint.shown.![label()], '; ')}
+                                + (${hint.more > 0} ? ' и ещё ' + ${hint.more} : '')">Уже выдана: «9Б» — 25.10.2026</p>
+                </th:block>
             </li>
         </ul>
     </fieldset>

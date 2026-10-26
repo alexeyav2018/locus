@@ -382,6 +382,8 @@ details.more > .more-body > :last-child { margin-bottom: 0.25rem; }
 
 /* Разметка Задачи — мелким, приглушённым. */
 .marks { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; }
+/* «Уже выдана: …» на форме выдачи — заметить повтор, но это не ошибка. */
+.marks--repeat { color: var(--warn); }
 
 /* Таблица */
 .table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 1rem; }

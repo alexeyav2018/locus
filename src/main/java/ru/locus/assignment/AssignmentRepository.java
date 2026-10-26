@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -220,6 +221,58 @@ public class AssignmentRepository {
                 .params(owner.value(), student.value())
                 .query(Integer.class)
                 .single();
+    }
+
+    /**
+     * Прежние выдачи Задач владельцем — для подсказки «уже выдана» на форме
+     * выдачи; новые первыми.
+     *
+     * Две ветки одного запроса: выдача Раздачей — одна строка на пару
+     * «Задача × Раздача» с именем Группы, которое Раздача помнит сама,
+     * сколько бы Учеников в ней ни было; личная выдача — строка на Задание
+     * с именем Ученика по составному ключу {@code student(id, user_id)}.
+     * Владелец стоит в первой таблице каждой ветки и протянут равенством
+     * {@code user_id} через все соединения: чужое Задание с той же Задачей
+     * сюда не попадает. Задачи, ни разу не выданные владельцем, в ответе
+     * отсутствуют. Внутри одной даты порядок — сначала личные, затем
+     * Раздачи, каждые по убыванию номера: последовательности у них разные,
+     * и сравнивать номера между видами незачем.
+     */
+    public List<PriorIssue> findPriorIssues(UserId owner, Collection<ProblemId> problems) {
+        if (problems.isEmpty()) {
+            return List.of();
+        }
+        String among = String.join(", ", Collections.nCopies(problems.size(), "?"));
+        List<Object> params = new ArrayList<>();
+        params.add(owner.value());
+        problems.forEach(problem -> params.add(problem.value()));
+        params.add(owner.value());
+        problems.forEach(problem -> params.add(problem.value()));
+        return database.sql("""
+                        select problem_id, issued_on, addressee, by_batch
+                        from (
+                            select ap.problem_id, b.issued_on, b.group_name as addressee, true as by_batch, b.id as origin
+                            from assignment_problem ap
+                            join assignment a on a.id = ap.assignment_id and a.user_id = ap.user_id
+                            join assignment_batch b on b.id = a.assignment_batch_id and b.user_id = a.user_id
+                            where ap.user_id = ? and ap.problem_id in (%1$s)
+                            group by ap.problem_id, b.id, b.issued_on, b.group_name
+                            union all
+                            select ap.problem_id, a.issued_on, s.name, false, a.id
+                            from assignment_problem ap
+                            join assignment a on a.id = ap.assignment_id and a.user_id = ap.user_id
+                            join student s on s.id = a.student_id and s.user_id = a.user_id
+                            where ap.user_id = ? and a.assignment_batch_id is null and ap.problem_id in (%1$s)
+                        ) issue
+                        order by issued_on desc, by_batch, origin desc
+                        """.formatted(among))
+                .params(params)
+                .query((rs, rowNum) -> new PriorIssue(
+                        new ProblemId(rs.getLong("problem_id")),
+                        rs.getObject("issued_on", LocalDate.class),
+                        rs.getString("addressee"),
+                        rs.getBoolean("by_batch")))
+                .list();
     }
 
     /**

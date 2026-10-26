@@ -360,6 +360,52 @@ class AssignmentRepositoryTest extends IntegrationTest {
         assertThat(assignments.countByProblem(library.problem(topic))).isZero();
     }
 
+    @Test
+    void priorIssuesNameTheBatchOnceAndTheStudentByName() {
+        ProblemId problem = library.problem(topic);
+        ProblemId other = library.problem(topic);
+        String groupName = unique("9Б");
+        String studentName = unique("Иванов Пётр");
+        StudentId first = students.create(alice, unique("Петрова Анна"));
+        StudentId second = students.create(alice, unique("Сидоров Олег"));
+        StudentId alone = students.create(alice, studentName);
+        AssignmentBatchId batch = batches.create(alice, groupName, ISSUED);
+        assignments.create(alice, first, batch, ISSUED, DUE, TheoryScope.NONE, List.of(problem, other));
+        assignments.create(alice, second, batch, ISSUED, DUE, TheoryScope.NONE, List.of(problem, other));
+        assignments.create(alice, alone, null, ISSUED.plusDays(3), DUE, TheoryScope.NONE, List.of(problem));
+
+        List<PriorIssue> found = assignments.findPriorIssues(alice, List.of(problem));
+
+        assertThat(found).as("Раздача на двоих — одна выдача, новые первыми").containsExactly(
+                new PriorIssue(problem, ISSUED.plusDays(3), studentName, false),
+                new PriorIssue(problem, ISSUED, groupName, true));
+    }
+
+    @Test
+    void priorIssuesOfAnotherOwnerAreNotFound() {
+        ProblemId shared = library.problem(topic);
+        StudentId theirs = students.create(bob, unique("Сидорова Анна"));
+        assignments.create(bob, theirs, null, ISSUED, DUE, TheoryScope.NONE, List.of(shared));
+        AssignmentBatchId theirBatch = batches.create(bob, unique("9Б"), ISSUED);
+        assignments.create(bob, theirs, theirBatch, ISSUED, DUE, TheoryScope.NONE, List.of(shared));
+
+        assertThat(assignments.findPriorIssues(alice, List.of(shared))).isEmpty();
+        assertThat(assignments.findPriorIssues(bob, List.of(shared))).hasSize(2);
+    }
+
+    @Test
+    void priorIssuesOnlyOfTheAskedProblems() {
+        ProblemId asked = library.problem(topic);
+        ProblemId notAsked = library.problem(topic);
+        StudentId mine = students.create(alice, unique("Иванов Пётр"));
+        assignments.create(alice, mine, null, ISSUED, DUE, TheoryScope.NONE, List.of(notAsked));
+
+        assertThat(assignments.findPriorIssues(alice, List.of(asked, notAsked)))
+                .extracting(PriorIssue::problem)
+                .containsExactly(notAsked);
+        assertThat(assignments.findPriorIssues(alice, List.of())).isEmpty();
+    }
+
     private AssignmentId issue(UserId owner, LocalDate dueDate) {
         StudentId student = students.create(owner, unique("Иванов Пётр"));
         return assignments.create(owner, student, null, ISSUED, dueDate, TheoryScope.NONE,
