@@ -37,12 +37,12 @@
 
 ## 2. Справка из двух источников
 
-- [ ] 2.1 `Solved` переносится в `ru.locus.mastery` (javadoc — о Работах и Разминках),
+- [x] 2.1 `Solved` переносится в `ru.locus.mastery` (javadoc — о Работах и Разминках),
   `ProblemPair` заменяется на `mastery.Cell` и снимается (`safe_delete_symbol`);
   `StudentWorkRepository.countCheckedByPairs` и `WarmupRepository.countOutcomesByPairs` отдают
   `Map<Cell, Solved>` (design.md, решение 5); `StudentWorkRepositoryTest` — по новым типам;
   проверка — `get_diagnostics_for_file` по затронутым файлам
-- [ ] 2.2 `MasteryCell`: вместо `solved, checked` — `Solved works, Solved warmups`; `hint()` —
+- [x] 2.2 `MasteryCell`: вместо `solved, checked` — `Solved works, Solved warmups`; `hint()` —
   «Работы: N из M · разминки: K из L»; `MasteryService.cellsOf` читает обе карты (зависимость
   от `WarmupRepository`, javadoc класса); комментарий фрагмента `mastery-cells.html` — о новой
   справке; `MasteryCellTest`, `MasteryServiceTest`, `MasteryScreenTest` — новые подписи и случай

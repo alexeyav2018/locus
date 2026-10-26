@@ -34,6 +34,9 @@ import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
 import ru.locus.user.UserId;
+import ru.locus.warmup.WarmupId;
+import ru.locus.warmup.WarmupOutcome;
+import ru.locus.warmup.WarmupRepository;
 import ru.locus.work.StudentWorkId;
 import ru.locus.work.StudentWorkRepository;
 import ru.locus.work.Verdict;
@@ -67,6 +70,9 @@ class MasteryServiceTest extends IntegrationTest {
 
     @Autowired
     private StudentRepository students;
+
+    @Autowired
+    private WarmupRepository warmups;
 
     @Autowired
     private TestAccounts accounts;
@@ -119,7 +125,7 @@ class MasteryServiceTest extends IntegrationTest {
                 .as("Темы в порядке разметки, каждая со всеми Методами")
                 .containsExactly(topicA, topicA, topicB, topicB);
         assertThat(cells.get(problem)).extracting(MasteryCell::status).containsOnly(UNKNOWN);
-        assertThat(cells.get(problem)).extracting(MasteryCell::hint).containsOnly("решено 0 из 0");
+        assertThat(cells.get(problem)).extracting(MasteryCell::hint).containsOnly("Работы: 0 из 0 · разминки: 0 из 0");
         assertThat(cells.get(problem).get(0).topicPath()).isNotBlank();
         assertThat(cells.get(problem).get(0).methodName()).isNotBlank();
     }
@@ -280,8 +286,31 @@ class MasteryServiceTest extends IntegrationTest {
         Map<Cell, String> hints = new HashMap<>();
         service.cellsOf(assignment).get(problem).forEach(cell -> hints.put(cell.cell(), cell.hint()));
 
-        assertThat(hints.get(new Cell(topicA, methodX))).as("«A × X»").isEqualTo("решено 2 из 3");
-        assertThat(hints.get(new Cell(topicA, methodY))).as("«A × Y» — без проверенных").isEqualTo("решено 0 из 0");
+        assertThat(hints.get(new Cell(topicA, methodX))).as("«A × X»").isEqualTo("Работы: 2 из 3 · разминки: 0 из 0");
+        assertThat(hints.get(new Cell(topicA, methodY))).as("«A × Y» — без проверенных")
+                .isEqualTo("Работы: 0 из 0 · разминки: 0 из 0");
+    }
+
+    /**
+     * Сценарий «Справка по двум основаниям»: проверенная верная Работа
+     * и две Разминки с итогами «справился» и «не справился» по той же паре
+     * показываются порознь, а не суммой «2 из 3» (ADR-0061); пустая клетка
+     * третьей Разминки не считается.
+     */
+    @Test
+    void hintShowsWorksAndWarmupsApart() {
+        works.setVerdict(owner, receive(other), Verdict.CORRECT, "");
+        ProblemId atTheBoard = library.problem(topicA, methodX);
+        WarmupId monday = warmups.create(owner, LocalDate.of(2026, 10, 19), null, List.of(student), List.of(atTheBoard));
+        WarmupId tuesday = warmups.create(owner, LocalDate.of(2026, 10, 20), null, List.of(student), List.of(atTheBoard));
+        warmups.putOutcome(owner, monday, student, atTheBoard, WarmupOutcome.SUCCEEDED);
+        warmups.putOutcome(owner, tuesday, student, atTheBoard, WarmupOutcome.FAILED);
+        warmups.create(owner, LocalDate.of(2026, 10, 21), null, List.of(student), List.of(atTheBoard));
+
+        MasteryCell cell = service.cellsOf(assignment).get(other).get(0);
+
+        assertThat(cell.cell()).isEqualTo(new Cell(topicA, methodX));
+        assertThat(cell.hint()).isEqualTo("Работы: 1 из 1 · разминки: 1 из 2");
     }
 
     /** Сценарий «Простановка на чужом Задании»: неотличимо от несуществующего. */

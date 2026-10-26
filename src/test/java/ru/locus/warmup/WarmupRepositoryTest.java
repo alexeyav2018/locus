@@ -16,6 +16,8 @@ import ru.locus.IntegrationTest;
 import ru.locus.TestAccounts;
 import ru.locus.TestLibrary;
 import ru.locus.dictionary.SolutionMethodId;
+import ru.locus.mastery.Cell;
+import ru.locus.mastery.Solved;
 import ru.locus.problem.ExamPart;
 import ru.locus.problem.ProblemId;
 import ru.locus.problem.ProblemRepository;
@@ -24,8 +26,6 @@ import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
 import ru.locus.user.UserId;
-import ru.locus.work.ProblemPair;
-import ru.locus.work.Solved;
 
 /**
  * Задача 1.4: хранение Разминок — запись читается обратно с участниками
@@ -246,10 +246,10 @@ class WarmupRepositoryTest extends IntegrationTest {
         warmups.putOutcome(alice, id, student, narrow, WarmupOutcome.FAILED);
 
         assertThat(warmups.countOutcomesByPairs(alice, student)).containsOnly(
-                Map.entry(new ProblemPair(topic, method), new Solved(1, 2)),
-                Map.entry(new ProblemPair(topic, otherMethod), new Solved(1, 1)),
-                Map.entry(new ProblemPair(otherTopic, method), new Solved(1, 1)),
-                Map.entry(new ProblemPair(otherTopic, otherMethod), new Solved(1, 1)));
+                Map.entry(new Cell(topic, method), new Solved(1, 2)),
+                Map.entry(new Cell(topic, otherMethod), new Solved(1, 1)),
+                Map.entry(new Cell(otherTopic, method), new Solved(1, 1)),
+                Map.entry(new Cell(otherTopic, otherMethod), new Solved(1, 1)));
         assertThat(warmups.countOutcomesByPairs(bob, student)).as("чужой Ученик — пусто").isEmpty();
     }
 

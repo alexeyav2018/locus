@@ -12,12 +12,12 @@ import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import ru.locus.dictionary.SolutionMethodId;
+import ru.locus.mastery.Cell;
+import ru.locus.mastery.Solved;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.UserId;
-import ru.locus.work.ProblemPair;
-import ru.locus.work.Solved;
 
 /**
  * Хранение Разминок, их участников, состава и Итогов Разминки — область
@@ -224,8 +224,8 @@ public class WarmupRepository {
      * «справился». Пустые клетки не считаются — их нет в базе. Пары без
      * единого итога в ответ не попадают; чужой Ученик — пусто.
      */
-    public Map<ProblemPair, Solved> countOutcomesByPairs(UserId owner, StudentId student) {
-        Map<ProblemPair, Solved> solved = new LinkedHashMap<>();
+    public Map<Cell, Solved> countOutcomesByPairs(UserId owner, StudentId student) {
+        Map<Cell, Solved> solved = new LinkedHashMap<>();
         database.sql("""
                         select pt.topic_id, pm.solution_method_id,
                                count(*) filter (where o.outcome = ?) as succeeded,
@@ -239,7 +239,7 @@ public class WarmupRepository {
                         """)
                 .params(WarmupOutcome.SUCCEEDED.name(), owner.value(), student.value())
                 .query((rs, rowNum) -> Map.entry(
-                        new ProblemPair(new TaxonomyNodeId(rs.getLong("topic_id")),
+                        new Cell(new TaxonomyNodeId(rs.getLong("topic_id")),
                                 new SolutionMethodId(rs.getLong("solution_method_id"))),
                         new Solved(rs.getInt("succeeded"), rs.getInt("judged"))))
                 .list()

@@ -32,6 +32,9 @@ import ru.locus.student.StudentRepository;
 import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.user.Role;
 import ru.locus.user.UserId;
+import ru.locus.warmup.WarmupId;
+import ru.locus.warmup.WarmupOutcome;
+import ru.locus.warmup.WarmupRepository;
 import ru.locus.work.StudentWorkId;
 import ru.locus.work.StudentWorkRepository;
 import ru.locus.work.Verdict;
@@ -41,7 +44,7 @@ import ru.locus.work.Verdict;
  * в форме приёма у каждой Задачи, приём с отметкой одним действием, отказ
  * приёма без файла с выбранным на месте, один блок «Вердикт и владение»
  * у принятой Работы — выборочная простановка и снятие через «неизвестно»
- * его формой, справка «решено N из M», вердикт не трогает ячеек, отказ
+ * его формой, справка «Работы: N из M · разминки: K из L», вердикт не трогает ячеек, отказ
  * по паре не из разметки — на том же экране при прежнем вердикте.
  *
  * Сравнивается видимый человеку текст, а не разметка (antipatterns.md);
@@ -80,6 +83,9 @@ class MasteryScreenTest extends IntegrationTest {
     @Autowired
     private MasteryRepository marks;
 
+    @Autowired
+    private WarmupRepository warmups;
+
     private UserId owner;
     private Browser teacher;
     private StudentId student;
@@ -117,7 +123,7 @@ class MasteryScreenTest extends IntegrationTest {
         assertThat(body)
                 .contains("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .contains("Владение");
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("четыре ячейки и одна у второй Задачи").isEqualTo(5);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 0 из 0 · разминки: 0 из 0")).as("четыре ячейки и одна у второй Задачи").isEqualTo(5);
         assertThat(count(body, ">без изменения<")).isEqualTo(5);
         assertThat(count(body, "Принять Работу")).isEqualTo(2);
         assertThat(body).doesNotContain("Вердикт и владение");
@@ -171,7 +177,7 @@ class MasteryScreenTest extends IntegrationTest {
 
         assertThat(count(body, ">Вердикт и владение<")).isEqualTo(1);
         assertThat(body).doesNotContain(">Владение</summary>").doesNotContain("Сохранить отметки");
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("четыре в блоке и одна в приёме второй").isEqualTo(5);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 0 из 0 · разминки: 0 из 0")).as("четыре в блоке и одна в приёме второй").isEqualTo(5);
         assertThat(count(body, "Принять Работу")).as("у второй Задачи — форма приёма").isEqualTo(1);
     }
 
@@ -201,7 +207,7 @@ class MasteryScreenTest extends IntegrationTest {
         assertThat(marks.countByStudent(owner, student)).as("строка снята, а не записана как UNKNOWN").isEqualTo(1);
     }
 
-    /** Сценарий «Справка по проверенным Работам»: три проверенные и одна нет по другому Заданию — «решено 2 из 3». */
+    /** Сценарий «Справка считает проверенные Работы Ученика»: три проверенные и одна нет по другому Заданию. */
     @Test
     void hintCountsCheckedWorksOfAnotherAssignment() {
         receive(assignment, problem);
@@ -217,8 +223,29 @@ class MasteryScreenTest extends IntegrationTest {
 
         String body = teacher.get(screen()).body();
 
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 2 из 3")).as("«A × X»").isEqualTo(1);
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 0 из 0")).as("остальные три и одна у второй Задачи").isEqualTo(4);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 2 из 3 · разминки: 0 из 0")).as("«A × X»").isEqualTo(1);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 0 из 0 · разминки: 0 из 0")).as("остальные три и одна у второй Задачи").isEqualTo(4);
+    }
+
+    /**
+     * Сценарий «Справка считает итоги Разминок порознь»: верная Работа
+     * по Задаче и два итога Разминок — «справился» и «не справился» —
+     * по Задаче с парой «A × X», третья клетка пустая.
+     */
+    @Test
+    void hintShowsWarmupOutcomesApartFromWorks() {
+        works.setVerdict(owner, receive(assignment, problem), Verdict.CORRECT, "");
+        ProblemId atTheBoard = library.problem(topicA, methodX);
+        WarmupId monday = warmups.create(owner, LocalDate.of(2026, 10, 19), null, List.of(student), List.of(atTheBoard));
+        WarmupId tuesday = warmups.create(owner, LocalDate.of(2026, 10, 20), null, List.of(student), List.of(atTheBoard));
+        warmups.putOutcome(owner, monday, student, atTheBoard, WarmupOutcome.SUCCEEDED);
+        warmups.putOutcome(owner, tuesday, student, atTheBoard, WarmupOutcome.FAILED);
+        warmups.create(owner, LocalDate.of(2026, 10, 21), null, List.of(student), List.of(atTheBoard));
+
+        String body = teacher.get(screen()).body();
+
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 1 из 1 · разминки: 1 из 2")).as("«A × X»").isEqualTo(1);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 1 из 1 · разминки: 0 из 0")).as("прочие три пары Задачи").isEqualTo(3);
     }
 
     /** Сценарий «Вердикт не влияет на отметки»: «верно» с нетронутыми ячейками меняет справку, но не ячейки (ADR-0014). */
@@ -235,8 +262,8 @@ class MasteryScreenTest extends IntegrationTest {
 
         String body = teacher.get(screen()).body();
         assertThat(body).contains("Вердикт: верно");
-        assertThat(count(body, "сейчас: владеет · решено 1 из 1")).isEqualTo(1);
-        assertThat(count(body, UNKNOWN_SHOWN + " решено 1 из 1")).as("три ячейки так и не тронуты").isEqualTo(3);
+        assertThat(count(body, "сейчас: владеет · Работы: 1 из 1 · разминки: 0 из 0")).isEqualTo(1);
+        assertThat(count(body, UNKNOWN_SHOWN + " Работы: 1 из 1 · разминки: 0 из 0")).as("три ячейки так и не тронуты").isEqualTo(3);
         assertThat(marks.countByStudent(owner, student)).isEqualTo(1);
     }
 
