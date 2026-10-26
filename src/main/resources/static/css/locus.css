@@ -489,17 +489,18 @@ form#issue {
     border-top: 1px solid var(--border);
 }
 
-/* Работы: экран приёма — одна Задача, один блок */
-.problem {
+/* Работы: экран приёма — одна Задача, один блок; Разминка — один участник, один блок */
+.problem, .participant {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 1rem 1.1rem; margin: 0 0 1rem; box-shadow: var(--shadow);
 }
-.problem > h2 { margin-top: 0; }
-.problem form { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; margin: 0 0 1rem; }
+.problem > h2, .participant > h2 { margin-top: 0; }
+.problem form, .participant form { display: flex; flex-direction: column; align-items: stretch; gap: 0.35rem; margin: 0 0 1rem; }
 .problem form.inline { flex-direction: row; align-items: center; margin: 0; }
-.problem form input[type=date], .problem form textarea, .problem form select { max-width: none; }
-.problem .cell { margin: 0 0 0.75rem; padding: 0.6rem 0.75rem; background: var(--surface-2); border-radius: var(--radius-sm); }
-.problem .cell p { margin: 0 0 0.25rem; }
+.problem form input[type=date], .problem form textarea, .problem form select,
+.participant form select { max-width: none; }
+.problem .cell, .participant .cell { margin: 0 0 0.75rem; padding: 0.6rem 0.75rem; background: var(--surface-2); border-radius: var(--radius-sm); }
+.problem .cell p, .participant .cell p { margin: 0 0 0.25rem; }
 .files { list-style: none; padding: 0; margin: 0.35rem 0 0.75rem; display: grid; gap: 0.35rem; }
 .files li { display: flex; align-items: center; gap: 0.75rem; margin: 0; }
 .verdicts { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; }

@@ -1,5 +1,6 @@
 package ru.locus.warmup;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -59,19 +60,22 @@ public class WarmupService {
     private final ProblemService problems;
     private final MasteryService mastery;
     private final CurrentUser currentUser;
+    private final Clock clock;
 
     public WarmupService(WarmupRepository warmups,
                          StudentService students,
                          GroupService groups,
                          ProblemService problems,
                          MasteryService mastery,
-                         CurrentUser currentUser) {
+                         CurrentUser currentUser,
+                         Clock clock) {
         this.warmups = warmups;
         this.students = students;
         this.groups = groups;
         this.problems = problems;
         this.mastery = mastery;
         this.currentUser = currentUser;
+        this.clock = clock;
     }
 
     /**
@@ -223,6 +227,16 @@ public class WarmupService {
                 warmups.putOutcome(owner, warmup.id(), student, outcome.problem(), outcome.value());
             }
         }
+    }
+
+    /**
+     * Сегодняшняя дата по часам сервера — для поля «дата» формы заведения
+     * по умолчанию, как у даты получения Работы: «сегодня» в системе одно,
+     * у бина {@link Clock}.
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    public LocalDate today() {
+        return LocalDate.now(clock);
     }
 
     /**

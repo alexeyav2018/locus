@@ -231,6 +231,9 @@ public class ShellAdvice {
         if (path.startsWith(Addresses.ASSIGNMENTS)) {
             return "assignments";
         }
+        if (path.startsWith(Addresses.WARMUPS)) {
+            return "warmups";
+        }
         if (path.startsWith(Addresses.SCHEDULE)) {
             return "schedule";
         }

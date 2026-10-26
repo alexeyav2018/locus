@@ -80,17 +80,17 @@
 
 ## 4. Экраны
 
-- [ ] 4.1 `Addresses.WARMUPS`; `WarmupController`: `GET /warmups` (необязательный `student`),
+- [x] 4.1 `Addresses.WARMUPS`; `WarmupController`: `GET /warmups` (необязательный `student`),
   `GET /warmups/new`, `POST /warmups`, `GET /warmups/{id}`, `POST /warmups/{id}/students/{studentId}`
   (списки сырыми, отказ — сообщение, `EnteredOutcomes` и раскрытый блок участника),
   `POST /warmups/{id}/deletion`; возврат `from` по ADR-0060; `ShellAdvice` знает раздел
   `warmups`; проверка — `WarmupControllerIsThinTest` по образцу соседних зелёный
-- [ ] 4.2 Шаблоны `warmup/list.html`, `warmup/form.html`, `warmup/warmup.html` (design.md,
+- [x] 4.2 Шаблоны `warmup/list.html`, `warmup/form.html`, `warmup/warmup.html` (design.md,
   решение 6; фрагмент `mastery-cells` с `EnteredOutcomes`; без своих `<style>` и скриптов);
   в `problem/search.html` — «Провести Разминку» с `formaction`; в шапке — «Разминки» после
   «Задания», только Учителю; на карточке Ученика — плитка «Разминки Ученика»; проверка —
   страницы открываются (`mvn test -Dtest=WarmupScreenTest`)
-- [ ] 4.3 `WarmupScreenTest`: из поиска — форма с отмеченными Задачами и сегодняшней датой;
+- [x] 4.3 `WarmupScreenTest`: из поиска — форма с отмеченными Задачами и сегодняшней датой;
   заведение ведёт на страницу; итоги словами на виду и пустая клетка «—»; сохранение итогов
   и отметки одним действием; отказ по паре — сообщение, раскрыт блок участника, введённое
   выбрано; удаление — на список; пустой список говорит, что Разминка начинается с поиска;

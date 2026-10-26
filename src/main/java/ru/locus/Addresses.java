@@ -34,6 +34,7 @@ public final class Addresses {
     public static final String STUDENTS = "/students";
     public static final String GROUPS = "/groups";
     public static final String ASSIGNMENTS = "/assignments";
+    public static final String WARMUPS = "/warmups";
     public static final String WORKS = "/works";
     public static final String MASTERY = "/mastery";
     public static final String SCHEDULE = "/schedule";

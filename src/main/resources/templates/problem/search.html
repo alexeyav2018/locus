@@ -153,11 +153,14 @@
         </ul>
         <!--/* Переход к выдаче — GET: это переход к форме, а не действие
                (design.md, «Экраны»). Показывается только Учителю: у прочих
-               Учеников нет, и выдавать некому. */-->
+               Учеников нет, и выдавать некому. Те же отмеченные Задачи
+               ведут и к Разминке (ADR-0061) — второй кнопкой с formaction:
+               отметки и возврат уходят теми же полями. */-->
         <form method="get" th:action="@{/assignments/new}" id="issue" th:if="${teacher}">
             <input type="hidden" name="from" th:value="${shell.here}">
             <button type="submit" class="btn-primary">Выдать отмеченные</button>
-            <span class="muted small">Отметьте Задачи галочками — выдача пойдёт на следующем шаге.</span>
+            <button type="submit" th:formaction="@{/warmups/new}">Провести Разминку</button>
+            <span class="muted small">Отметьте Задачи галочками — выдача или Разминка пойдёт на следующем шаге.</span>
         </form>
     </div>
 </div>
