@@ -56,12 +56,12 @@
 
 ## 4. Хуки, маршруты и журнал
 
-- [ ] 4.1 Завести `.claude/settings.json` с хуками `PostToolUse`
+- [x] 4.1 Завести `.claude/settings.json` с хуками `PostToolUse`
       (`Edit|Write|MultiEdit|Bash`) и `SessionStart`, зовущими проверялку
       навыка; проверить, что сломанная правка бэклога видна в тот же ход
-- [ ] 4.2 `CLAUDE.md`, «Ведение бэклога»: метод и формат — в навыке
+- [x] 4.2 `CLAUDE.md`, «Ведение бэклога»: метод и формат — в навыке
       `backlog-maintenance`, бэклог Локуса формата 2; пересказ дуг убрать
-- [ ] 4.3 `.claude/backlog-batch/task-prompt.md` — правило выбора
+- [x] 4.3 `.claude/backlog-batch/task-prompt.md` — правило выбора
       и значения «Статуса» по ссылке на навык
-- [ ] 4.4 `python3 openspec/context/adr/build_index.py` и `--check` —
+- [x] 4.4 `python3 openspec/context/adr/build_index.py` и `--check` —
       индекс журнала с ADR-0062
