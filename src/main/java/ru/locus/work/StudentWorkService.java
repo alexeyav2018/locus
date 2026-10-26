@@ -17,6 +17,8 @@ import ru.locus.file.FileKey;
 import ru.locus.file.FileStorage;
 import ru.locus.file.FileType;
 import ru.locus.file.ImageCompression;
+import ru.locus.mastery.Mark;
+import ru.locus.mastery.MasteryService;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.Student;
 import ru.locus.student.StudentId;
@@ -52,6 +54,12 @@ import ru.locus.user.UserId;
  * до первой укладки, укладка — до записи, при неудаче записи уложенное
  * убирается (standards.md, «Файлы»).
  *
+ * <p>Отметки Владения пишутся вместе с приёмом и с вердиктом — одним
+ * действием и одной транзакцией (`work-mastery-at-receipt`): записывает их
+ * {@link MasteryService#mark} после записи Работы, и отказ любой из двух
+ * частей откатывает обе. Обратной зависимости нет: сервис отметок читает
+ * репозиторий Работ, а не этот сервис.
+ *
  * <p>«Сегодня» для даты получения по умолчанию — у бина {@link Clock},
  * как у Заданий.
  */
@@ -63,6 +71,7 @@ public class StudentWorkService {
     private final StudentService students;
     private final FileStorage storage;
     private final ImageCompression compression;
+    private final MasteryService mastery;
     private final CurrentUser currentUser;
     private final Clock clock;
 
@@ -71,6 +80,7 @@ public class StudentWorkService {
                               StudentService students,
                               FileStorage storage,
                               ImageCompression compression,
+                              MasteryService mastery,
                               CurrentUser currentUser,
                               Clock clock) {
         this.works = works;
@@ -78,13 +88,15 @@ public class StudentWorkService {
         this.students = students;
         this.storage = storage;
         this.compression = compression;
+        this.mastery = mastery;
         this.currentUser = currentUser;
         this.clock = clock;
     }
 
     /**
      * Принимает Работу по Задаче своего Задания: файлы, дата получения,
-     * вердикт и примечание по желанию.
+     * вердикт и примечание по желанию — и тем же действием отметки
+     * Владения по ячейкам её Задачи.
      *
      * <p>Проверки — до первого обращения к хранилищу: Задание своё
      * (чужое — {@link ru.locus.assignment.AssignmentNotFoundException}),
@@ -97,8 +109,16 @@ public class StudentWorkService {
      * (ADR-0038); это ровно тот случай, когда запись падает после
      * укладки, и уложенные ключи убираются.
      *
+     * <p>Отметки ставятся после записи Работы в той же транзакции: проверка
+     * {@link MasteryService#mark} «по Задаче принята Работа» видит только
+     * что вставленную строку. Её отказ (пара не из разметки — испорченная
+     * форма) убирает уложенные ключи, как сбой записи, и откатывает Работу:
+     * ни Работы, ни отметок.
+     *
      * @param receivedOn дата получения; {@code null} — сегодня
      * @param verdict    {@code null} — принять без вердикта, «не проверена»
+     * @param marks      отметки по ячейкам Задачи; «без изменения» — {@code null}
+     *                   у {@link Mark#status()}, пустой список — без отметок
      */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
@@ -107,7 +127,8 @@ public class StudentWorkService {
                                  LocalDate receivedOn,
                                  Verdict verdict,
                                  String note,
-                                 List<UploadedWorkFile> files) {
+                                 List<UploadedWorkFile> files,
+                                 List<Mark> marks) {
         Assignment assignment = assignments.assignment(assignmentId).assignment();
         if (!assignment.problems().contains(problemId)) {
             throw new IllegalArgumentException("Такой Задачи в Задании нет");
@@ -116,7 +137,9 @@ public class StudentWorkService {
         LocalDate received = receivedOn == null ? LocalDate.now(clock) : receivedOn;
         List<FileKey> keys = stored(accepted);
         try {
-            return works.create(owner(), assignment.id(), problemId, received, verdict, note, keys);
+            StudentWorkId id = works.create(owner(), assignment.id(), problemId, received, verdict, note, keys);
+            mastery.mark(assignment.id(), problemId, marks);
+            return id;
         } catch (DuplicateKeyException duplicate) {
             discard(keys);
             throw new IllegalArgumentException("Работа по этой Задаче уже принята: файлы добавляются к ней");
@@ -212,16 +235,20 @@ public class StudentWorkService {
     /**
      * Ставит, меняет или снимает вердикт вместе с примечанием — в любой
      * момент после приёма (ADR-0038). Примечание без вердикта законно:
-     * «посмотрю позже».
+     * «посмотрю позже». Тем же действием — отметки Владения по ячейкам
+     * Задачи Работы, в той же транзакции: отказ {@link MasteryService#mark}
+     * оставляет и вердикт прежним.
      *
      * @param verdict {@code null} — снять: Работа снова «не проверена»
+     * @param marks   отметки по ячейкам Задачи; пустой список — без отметок
      */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
-    public void setVerdict(StudentWorkId id, Verdict verdict, String note) {
+    public void setVerdict(StudentWorkId id, Verdict verdict, String note, List<Mark> marks) {
         UserId owner = owner();
         StudentWork work = existing(owner, id);
         works.setVerdict(owner, work.id(), verdict, note == null ? "" : note.strip());
+        mastery.mark(work.assignment(), work.problem(), marks);
     }
 
     /**

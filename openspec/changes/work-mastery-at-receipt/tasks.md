@@ -12,24 +12,24 @@
 
 ## 1. Сервисный слой: ячейки у всех Задач, приём и вердикт с отметками
 
-- [ ] 1.1 `MasteryService.cellsOf` — ячейки у **всех** Задач состава Задания в порядке выдачи,
+- [x] 1.1 `MasteryService.cellsOf` — ячейки у **всех** Задач состава Задания в порядке выдачи,
   не только с принятой Работой (design.md, решение 4); javadoc класса и метода — без «у Задачи
   без Работы ячеек нет»; `MasteryServiceTest`: ожидание «ячеек без Работы нет» заменить
   на «ячейки есть и у Задачи без Работы»; проверка — `get_diagnostics_for_file`
-- [ ] 1.2 Фабрика `Mark.fromForm(String[] topics, String[] methods, String[] statuses)` —
+- [x] 1.2 Фабрика `Mark.fromForm(String[] topics, String[] methods, String[] statuses)` —
   перенос `MasteryController.marksFrom` (разошедшиеся длины — `IllegalArgumentException`
   «Форма ячеек повреждена…», пустое значение — «без изменения»), `MasteryController.mark`
   зовёт её (адрес пока на месте); проверка — `get_diagnostics_for_file`
-- [ ] 1.3 `StudentWorkService`: зависимость от `MasteryService`; `receive(…, List<Mark> marks)` —
+- [x] 1.3 `StudentWorkService`: зависимость от `MasteryService`; `receive(…, List<Mark> marks)` —
   после `works.create` зовёт `mastery.mark(assignment, problem, marks)` внутри того же `try`,
   отказ убирает уложенные ключи и откатывает Работу; `setVerdict(id, verdict, note, List<Mark> marks)` —
   `works.setVerdict`, затем `mastery.mark(work.assignment(), work.problem(), marks)` (design.md,
   решения 1 и 2); javadoc обоих; `StudentWorkController` пока передаёт `List.of()`; старые
   сигнатуры не сохраняются; проверка — `get_diagnostics_for_file` по обоим файлам
-- [ ] 1.4 Вызовы `service.receive(` и `service.setVerdict(` в `StudentWorkServiceTest`
+- [x] 1.4 Вызовы `service.receive(` и `service.setVerdict(` в `StudentWorkServiceTest`
   и `WorkFilesTest` — с `List.of()` последним аргументом (скриптом с проверкой, что каждое
   место найдено); проверка — `get_diagnostics_for_file`
-- [ ] 1.5 `StudentWorkServiceTest`: приём с отметкой «А × X → владеет» пишет Работу и отметку,
+- [x] 1.5 `StudentWorkServiceTest`: приём с отметкой «А × X → владеет» пишет Работу и отметку,
   «без изменения» ячейку не трогает; приём без файла с отметкой — ни Работы, ни отметки;
   приём с парой не из разметки — ни Работы, ни отметки; вердикт с отметкой пишет оба;
   вердикт с парой не из разметки — вердикт прежний, отметок нет. `WorkFilesTest`: приём

@@ -99,7 +99,7 @@ public class StudentWorkController {
                           Model model) {
         AssignmentId assignmentId = new AssignmentId(assignment);
         try {
-            works.receive(assignmentId, new ProblemId(problem), receivedOn, verdict, note, uploaded(files));
+            works.receive(assignmentId, new ProblemId(problem), receivedOn, verdict, note, uploaded(files), List.of());
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
             return renderAssignment(assignmentId, model);
@@ -180,7 +180,7 @@ public class StudentWorkController {
                              @RequestParam(required = false) String note) {
         StudentWorkId workId = new StudentWorkId(id);
         AssignmentId assignmentId = works.work(workId).assignment();
-        works.setVerdict(workId, verdict, note);
+        works.setVerdict(workId, verdict, note, List.of());
         return atAssignment(assignmentId);
     }
 

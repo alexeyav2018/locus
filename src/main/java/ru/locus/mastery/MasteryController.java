@@ -1,8 +1,6 @@
 package ru.locus.mastery;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,10 +8,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.locus.Addresses;
 import ru.locus.assignment.AssignmentId;
-import ru.locus.dictionary.SolutionMethodId;
 import ru.locus.problem.ProblemId;
 import ru.locus.student.StudentId;
-import ru.locus.taxonomy.TaxonomyNodeId;
 import ru.locus.work.AssignmentScreen;
 
 /**
@@ -73,34 +69,13 @@ public class MasteryController {
                        Model model) {
         AssignmentId assignmentId = new AssignmentId(assignment);
         try {
-            mastery.mark(assignmentId, new ProblemId(problem), marksFrom(request));
+            mastery.mark(assignmentId, new ProblemId(problem),
+                    Mark.fromForm(values(request, "topic"), values(request, "method"), values(request, "status")));
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
             return screen.render(assignmentId, model);
         }
         return AssignmentScreen.redirectTo(assignmentId);
-    }
-
-    /**
-     * Три параллельных списка формы — в отметки по индексу. Разошедшиеся
-     * длины — испорченная форма, а не отказ сервиса; неизвестное значение
-     * шкалы отвергает {@link MasteryStatus#valueOf}.
-     */
-    private static List<Mark> marksFrom(HttpServletRequest request) {
-        String[] topics = values(request, "topic");
-        String[] methods = values(request, "method");
-        String[] statuses = values(request, "status");
-        if (topics.length != methods.length || topics.length != statuses.length) {
-            throw new IllegalArgumentException("Форма ячеек повреждена: Темы, Методы и значения не сходятся по числу");
-        }
-        List<Mark> marks = new ArrayList<>();
-        for (int i = 0; i < topics.length; i++) {
-            MasteryStatus status = statuses[i].isBlank() ? null : MasteryStatus.valueOf(statuses[i]);
-            marks.add(new Mark(new TaxonomyNodeId(Long.parseLong(topics[i])),
-                               new SolutionMethodId(Long.parseLong(methods[i])),
-                               status));
-        }
-        return marks;
     }
 
     private static String[] values(HttpServletRequest request, String name) {
