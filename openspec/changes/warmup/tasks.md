@@ -99,12 +99,12 @@
 
 ## 5. Документы, приёмка, версия
 
-- [ ] 5.1 `glossary.md`, `domain-model.md`, `scenarios.md`, `ux-concept.md` — как перечислено
+- [x] 5.1 `glossary.md`, `domain-model.md`, `scenarios.md`, `ux-concept.md` — как перечислено
   в начале файла; `CLAUDE.md` — абзац статуса `warmup` после `intake-answer-links`, заголовок
   «Статус» дополнить разминкой, «двадцать одна возможность» → «двадцать две» с `warmups`,
   строка ADR-0061 в «Ключевых решениях»; проверка — ссылки целы, термины совпадают со словарём
-- [ ] 5.2 Приёмка: `mvn clean package` зелёный
-- [ ] 5.3 Поднять версию в `pom.xml` до `3.18.0` и дописать сверху `CHANGELOG.md` строку
+- [x] 5.2 Приёмка: `mvn clean package` зелёный
+- [x] 5.3 Поднять версию в `pom.xml` до `3.18.0` и дописать сверху `CHANGELOG.md` строку
   из proposal.md, раздел «Версия»; проверка — `grep -n 3.18.0 pom.xml CHANGELOG.md`
 
 ## Workflow follow-up
