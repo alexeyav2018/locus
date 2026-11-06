@@ -40,12 +40,12 @@ public class AssistantService {
     private final Clock clock;
     private final ObjectProvider<TurnAttachments> attachments;
     private final ObjectProvider<AwaitingReview> reviews;
-
-    private volatile AssistantAvailability availability = AssistantAvailability.notChecked();
+    private final AvailabilityCheck availability;
 
     public AssistantService(AssistantRepository repository, TurnRunner runner, RunningTurns running,
             CurrentUser currentUser, TransactionTemplate transactions, Clock clock,
-            ObjectProvider<TurnAttachments> attachments, ObjectProvider<AwaitingReview> reviews) {
+            ObjectProvider<TurnAttachments> attachments, ObjectProvider<AwaitingReview> reviews,
+            AvailabilityCheck availability) {
         this.repository = repository;
         this.runner = runner;
         this.running = running;
@@ -54,6 +54,7 @@ public class AssistantService {
         this.clock = clock;
         this.attachments = attachments;
         this.reviews = reviews;
+        this.availability = availability;
     }
 
     /**
@@ -67,14 +68,14 @@ public class AssistantService {
         return review == null ? Optional.empty() : review.awaiting();
     }
 
-    /** Доступен ли Помощник — итог проверки при старте. */
+    /** Доступен ли Помощник; недоступный проверяется заново ({@link AvailabilityCheck}). */
     public AssistantAvailability availability() {
-        return availability;
+        return availability.current();
     }
 
-    /** Итог проверки при старте ({@link AgentStartup}). */
-    void availability(AssistantAvailability checked) {
-        this.availability = checked;
+    /** Прежний итог проверки — для ответа на действие, которое только что проверило. */
+    public AssistantAvailability lastAvailability() {
+        return availability.last();
     }
 
     /**
@@ -112,7 +113,7 @@ public class AssistantService {
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMINISTRATOR')")
     public AssistantTurn startTurn(Optional<AssistantConversationId> conversation, String prompt,
             List<TurnAttachment> files) {
-        AssistantAvailability current = availability;
+        AssistantAvailability current = availability.current();
         if (!current.available()) {
             throw new AssistantUnavailableException(current.cause());
         }

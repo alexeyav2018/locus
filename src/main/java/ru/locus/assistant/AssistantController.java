@@ -175,7 +175,7 @@ public class AssistantController {
         String back = shown.map(conversation -> conversationAddress(conversation.id())).orElse(Addresses.ASSISTANT);
         boolean runningHere = running.isPresent() && shown.isPresent()
                 && running.get().conversation().equals(shown.get().id());
-        model.addAttribute("availability", service.availability());
+        model.addAttribute("availability", get ? service.availability() : service.lastAvailability());
         model.addAttribute("awaiting", service.awaitingReview().orElse(null));
         model.addAttribute("conversation", shown.orElse(null));
         model.addAttribute("turns", shown

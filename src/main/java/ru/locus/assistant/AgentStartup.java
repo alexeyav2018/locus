@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Помощник при старте Локуса (design.md agent-runner, Р3, Р10): сначала
  * уборка — Реплики, оставшиеся в «работаю», становятся «прервано
- * перезапуском», их процессов больше нет; затем проверка доступности.
+ * перезапуском», их процессов больше нет; затем первая проверка доступности.
  * Образец — уборка черновиков сборки ({@code AssemblyDraftConfiguration}).
  *
  * <p>Старт не прерывается ни при каком итоге: без Помощника Локус работает.
@@ -24,17 +24,12 @@ public class AgentStartup implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(AgentStartup.class);
 
     private final AssistantRepository repository;
-    private final AssistantService service;
-    private final AgentProperties properties;
-    private final AgentEnvironment environment;
+    private final AvailabilityCheck availability;
     private final Clock clock;
 
-    public AgentStartup(AssistantRepository repository, AssistantService service, AgentProperties properties,
-            AgentEnvironment environment, Clock clock) {
+    public AgentStartup(AssistantRepository repository, AvailabilityCheck availability, Clock clock) {
         this.repository = repository;
-        this.service = service;
-        this.properties = properties;
-        this.environment = environment;
+        this.availability = availability;
         this.clock = clock;
     }
 
@@ -44,13 +39,6 @@ public class AgentStartup implements ApplicationRunner {
         if (interrupted > 0) {
             log.info("Реплик Помощника, прерванных перезапуском: {}", interrupted);
         }
-        AssistantAvailability availability = AssistantAvailability.check(properties.executable(),
-                properties.version(), environment);
-        service.availability(availability);
-        if (availability.available()) {
-            log.info("Помощник доступен: Claude Code {}", availability.version());
-        } else {
-            log.warn("Помощник недоступен: {}", availability.cause());
-        }
+        availability.current();
     }
 }

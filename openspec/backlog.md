@@ -107,7 +107,7 @@
 | `assignment-repeat-hint` | Т | — | — | S | нет | личное | ✅ |
 | `work-mastery-at-receipt` | Т | — | — | S | нет | личное | ✅ |
 | `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | на стенде |
-| `assistant-availability-recheck` | Б | — | — | S | нет | не затрагивает | |
+| `assistant-availability-recheck` | Б | — | — | S | нет | не затрагивает | ✅ |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки
@@ -2733,6 +2733,11 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `assistant-availability-recheck` · Б · S · не ломает
+
+> ✅ Выполнено 06.11.2026, версия 3.19.0. Change:
+> [2026-11-06-assistant-availability-recheck](changes/archive/2026-11-06-assistant-availability-recheck/).
+> Выбран подход (а): обращение ждёт итога проверки, вторая проверка разом
+> не идёт и не ждёт (`tryLock`); предел 10 с не менялся.
 
 **Симптом.** Учитель 06.11.2026: Помощник не работает, запрос отклоняется
 «Помощник недоступен», хотя команда Claude Code на стенде исправна.
