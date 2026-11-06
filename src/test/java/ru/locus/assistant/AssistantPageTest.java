@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -376,6 +377,64 @@ class AssistantPageTest extends IntegrationTest {
         }
     }
 
+    /** Сценарий «Страница возвращает Помощника»: путь пуст при старте контекста, команда появляется в тесте. */
+    @Nested
+    @TestPropertySource(properties = "locus.agent.command=target/claude-repaired-by-page")
+    class RepairedBeforeThePageIsOpened {
+
+        @LocalServerPort
+        private int port;
+
+        @Autowired
+        private TestAccounts accounts;
+
+        @Test
+        void pageBringsTheAssistantBackWithoutRestart() throws IOException {
+            Browser browser = loggedIn(port, accounts.settled(Role.TEACHER));
+            assertThat(browser.get(Addresses.ASSISTANT).body())
+                    .contains("Помощник недоступен: команда Claude Code не найдена");
+
+            Path command = repair("target/claude-repaired-by-page");
+            try {
+                assertThat(browser.get(Addresses.ASSISTANT).body())
+                        .contains("Помощник доступен: Claude Code")
+                        .doesNotContain("Помощник недоступен")
+                        .contains(FORM);
+            } finally {
+                Files.delete(command);
+            }
+        }
+    }
+
+    /** Сценарии «Запрос возвращает Помощника» и «Сбой продолжается». */
+    @Nested
+    @TestPropertySource(properties = "locus.agent.command=target/claude-repaired-by-request")
+    class RepairedBeforeTheRequest {
+
+        @LocalServerPort
+        private int port;
+
+        @Autowired
+        private TestAccounts accounts;
+
+        @Test
+        void requestBringsTheAssistantBackWithoutRestart() throws IOException {
+            Browser browser = loggedIn(port, accounts.settled(Role.TEACHER));
+
+            Browser.Page refused = browser.postForm(TURNS, Map.of("prompt", "ответ: что на листе?"));
+            assertThat(refused.status()).isEqualTo(200);
+            assertThat(refused.body()).contains("команда Claude Code не найдена").doesNotContain("id=\"turn-");
+
+            Path command = repair("target/claude-repaired-by-request");
+            try {
+                Turn turn = send(browser, "ответ: что на листе?");
+                assertThat(finished(browser, turn)).contains("Помощник доступен: Claude Code");
+            } finally {
+                Files.delete(command);
+            }
+        }
+    }
+
     /**
      * Сценарий «Сверх предела загрузки» — на пределе контейнера в килобайты,
      * чтобы не гонять по сети сотню мегабайт. Запрос отклоняет контейнер,
@@ -420,6 +479,15 @@ class AssistantPageTest extends IntegrationTest {
      *
      * @param page адрес её Разговора, без якоря
      */
+    /** Кладёт по пути рабочую команду — обёртку двойника: свои заготовки он ищет рядом с настоящим путём. */
+    private static Path repair(String path) throws IOException {
+        Path command = Path.of(path).toAbsolutePath();
+        Path repaired = Path.of("src/test/resources/assistant/claude-double").toAbsolutePath();
+        Files.writeString(command, "#!/bin/sh\nexec \"" + repaired + "\" \"$@\"\n");
+        Files.setPosixFilePermissions(command, PosixFilePermissions.fromString("rwxr-xr-x"));
+        return command;
+    }
+
     private record Turn(String page, long conversation, long id) {
     }
 

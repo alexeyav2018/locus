@@ -15,11 +15,11 @@ import java.util.concurrent.TimeUnit;
  * Доступен ли Помощник, и если нет — почему (спека {@code assistant-tools},
  * «Помощник без команды недоступен с причиной»; design.md agent-runner, Р6, Р10).
  *
- * <p>Проверка одна, при старте: команда есть и отвечает на {@code --version}
+ * <p>Проверка: команда есть и отвечает на {@code --version}
  * за {@link #VERSION_TIMEOUT}, первое слово ответа — закреплённая версия,
- * в окружении есть ключ API или токен подписки. Повторно не проверяется:
- * Claude Code ставится с остановкой стенда (ADR-0024). При любом итоге Локус
- * поднимается — недоступен только Помощник.
+ * в окружении есть ключ API или токен подписки. Когда проверять и где лежит
+ * итог, решает {@link AvailabilityCheck}. При любом итоге Локус поднимается —
+ * недоступен только Помощник.
  *
  * @param available доступен ли Помощник
  * @param version   версия команды, если она ответила
@@ -30,7 +30,7 @@ public record AssistantAvailability(boolean available, String version, String ca
     /** Сколько ждать ответа команды на {@code --version}. */
     static final Duration VERSION_TIMEOUT = Duration.ofSeconds(10);
 
-    /** До проверки при старте Помощник недоступен. */
+    /** До первой проверки Помощник недоступен. */
     public static AssistantAvailability notChecked() {
         return new AssistantAvailability(false, null, "доступность Помощника ещё не проверена");
     }
