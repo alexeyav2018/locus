@@ -58,16 +58,16 @@
 
 ## 3. Помощник
 
-- [ ] 3.1 `ProblemTools.findProblems`: свойство `numbers` (массив целых),
+- [x] 3.1 `ProblemTools.findProblems`: свойство `numbers` (массив целых),
   при нём — `ProblemNumbers.of` и `byNumbers`; ответ всегда объект
   `{problems, missing}`; описание инструмента — оба способа и что номера
   отменяют условия.
-- [ ] 3.2 `LibraryToolsTest`: прежние проверки читают `problems`
+- [x] 3.2 `LibraryToolsTest`: прежние проверки читают `problems`
   из объекта; новая — сценарий «Поиск по номерам» (12, 7, 3 и `missing`
   [999] при узле); пустой `numbers` — отказ. `EveryToolAnswersTheClientTest`
   и `AssistantIsFilteredByOwnerTest` — поправить, если разбирают ответ
   `find_problems`. Проверка: `mvn test -Dtest='LibraryToolsTest,EveryToolAnswersTheClientTest,AssistantIsFilteredByOwnerTest'`.
-- [ ] 3.3 `agent/CLAUDE.md`: строка о `find_problems` — «по разметке
+- [x] 3.3 `agent/CLAUDE.md`: строка о `find_problems` — «по разметке
   или по списку номеров».
 
 ## 4. Документы, версия, приёмка
