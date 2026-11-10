@@ -117,7 +117,8 @@ public class ProblemRepository {
     }
 
     /**
-     * Задачи, размеченные указанной Темой, по номеру.
+     * Задачи, размеченные указанной Темой, по убыванию номера — новые
+     * сверху, как у поиска (спека {@code problem-catalog}).
      *
      * Обхода поддерева здесь нет намеренно: список отвечает на вопрос «что
      * лежит на этой Теме», а поиск по всей библиотеке придёт
@@ -129,7 +130,7 @@ public class ProblemRepository {
                         from problem p
                         join problem_topic pt on pt.problem_id = p.id
                         where pt.topic_id = ?
-                        order by p.id
+                        order by p.id desc
                         """)
                 .param(topic.value())
                 .query(ProblemRepository::row)
@@ -140,7 +141,7 @@ public class ProblemRepository {
     /**
      * Задачи по списку номеров — одним запросом, а не по одному на номер.
      *
-     * Порядок ответа — по номеру, как у {@link #findByTopic}: запрос
+     * Порядок ответа — по убыванию номера, как у {@link #findByTopic}: запрос
      * не знает порядка, в котором номера пришли, и восстанавливает его
      * тот, кто спрашивал ({@code ProblemService.problems}). Отсутствующий
      * номер строки не даёт — ответ короче запроса, и отличить «нет такой»
@@ -156,7 +157,7 @@ public class ProblemRepository {
                         from problem p
                         where p.id in (""" + placeholders(ids.size()) + """
                         )
-                        order by p.id
+                        order by p.id desc
                         """)
                 .params(ids.stream().map(ProblemId::value).toList())
                 .query(ProblemRepository::row)
@@ -228,7 +229,7 @@ public class ProblemRepository {
             sql.append(" and p.exam_part = ?");
             parameters.add(part.name());
         }
-        sql.append(" order by p.id");
+        sql.append(" order by p.id desc");
 
         List<Row> rows = database.sql(sql.toString())
                 .params(parameters)

@@ -68,16 +68,16 @@ class ProblemRepositoryTest extends IntegrationTest {
                 .isGreaterThan(first.value());
     }
 
-    /** Сценарий «Список Задач Темы»: порядок — по номеру. */
+    /** Сценарий «Порядок списка Темы»: по убыванию номера. */
     @Test
-    void problemsOfATopicComeByNumber() {
+    void problemsOfATopicComeByDescendingNumber() {
         TaxonomyNodeId topic = library.topic();
         ProblemId first = library.problem(topic);
         ProblemId second = library.problem(topic);
 
         assertThat(problems.findByTopic(topic))
                 .extracting(Problem::id)
-                .containsExactly(first, second);
+                .containsExactly(second, first);
     }
 
     /** Сценарий «Тема без Задач». */
@@ -137,7 +137,7 @@ class ProblemRepositoryTest extends IntegrationTest {
 
         assertThat(problems.findById(both).orElseThrow().topics()).containsExactly(to);
         assertThat(problems.findById(onlyFrom).orElseThrow().topics()).containsExactly(to);
-        assertThat(problems.findByTopic(to)).extracting(Problem::id).containsExactly(both, onlyFrom);
+        assertThat(problems.findByTopic(to)).extracting(Problem::id).containsExactly(onlyFrom, both);
     }
 
     /** Поштучное распределение: правится только названная Задача. */

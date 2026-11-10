@@ -143,7 +143,47 @@ class ProblemSearchTest extends IntegrationTest {
         List<FoundProblem> found = problems.search(new ProblemFilter(topic,
                 List.of(first, second), MatchMode.ANY, List.of(), null, null));
 
-        assertThat(ids(found)).containsExactly(both, onlyFirst);
+        assertThat(ids(found)).containsExactly(onlyFirst, both);
+    }
+
+    /** Сценарий «Порядок результата»: поиск по разметке — по убыванию номера. */
+    @Test
+    void searchByMarkupGoesByDescendingNumber() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId first = problem(topic);
+        ProblemId second = problem(topic);
+        ProblemId third = problem(topic);
+
+        assertThat(ids(problems.search(nodeFilter(topic)))).containsExactly(third, second, first);
+    }
+
+    /**
+     * Сценарий «Номера в любой смеси разделителей» и «Номера нет
+     * в библиотеке» (ADR-0064): найденные — по убыванию номера,
+     * ненайденный назван, а не отказ.
+     */
+    @Test
+    void byNumbersFindsExactlyThoseAndNamesTheMissing() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId first = problem(topic);
+        ProblemId second = problem(topic);
+        ProblemId third = problem(topic);
+        long absent = third.value() + 1_000_000;
+
+        NumberedProblems result = problems.byNumbers(ProblemNumbers.parse(
+                first.value() + ", " + third.value() + ";" + absent + "\n" + second.value() + " " + first.value()));
+
+        assertThat(ids(result.found())).containsExactly(third, second, first);
+        assertThat(result.missing()).containsExactly(absent);
+    }
+
+    /** Ни одного найденного — пустой список и все номера названы, отказа нет. */
+    @Test
+    void byNumbersWithNothingFoundNamesEveryNumber() {
+        NumberedProblems result = problems.byNumbers(ProblemNumbers.of(List.of(0L, 999_999_999L)));
+
+        assertThat(result.found()).isEmpty();
+        assertThat(result.missing()).containsExactly(999_999_999L, 0L);
     }
 
     /**

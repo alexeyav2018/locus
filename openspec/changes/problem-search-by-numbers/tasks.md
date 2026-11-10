@@ -11,7 +11,7 @@
 
 ## 1. Разбор номеров, отбор и порядок
 
-- [ ] 1.1 `ProblemNumbers` (`ru.locus.problem`): `parse(String)` —
+- [x] 1.1 `ProblemNumbers` (`ru.locus.problem`): `parse(String)` —
   разделители `[\s,;]+`, кусок только из цифр и в пределах `long`,
   иначе отказ «Не разобрано: «…»» со всеми неразобранными кусками;
   `of(List<Long>)`; повтор снимается; пустой — отказ «Не задано ни одного
@@ -19,15 +19,15 @@
   `ProblemNumbersTest`: «12, 3;7» с переводом строки, «3 3 3», «3, пять»,
   «3-7», пустая строка и пробелы, переполнение `long`, `of(List.of())`.
   Проверка: `mvn test -Dtest=ProblemNumbersTest`.
-- [ ] 1.2 `ProblemRepository`: `order by p.id desc` в `findByTopic`,
+- [x] 1.2 `ProblemRepository`: `order by p.id desc` в `findByTopic`,
   `findByIds`, `search`; javadoc — «по убыванию номера». Проверить,
   что `ProblemService.problems(ids)` и перестройка (`ProblemService`,
   вызов `findByTopic` около `:624`) от порядка не зависят.
-- [ ] 1.3 `ProblemService.byNumbers(ProblemNumbers)` → запись
+- [x] 1.3 `ProblemService.byNumbers(ProblemNumbers)` → запись
   `NumberedProblems(found, missing)`: `findByIds`, `named`, ненайденные
   по убыванию; без `@PreAuthorize`, без владельца; javadoc —
   ADR-0064 и отличие от `problems(ids)`.
-- [ ] 1.4 Тесты сервиса и репозитория: `ProblemSearchTest` —
+- [x] 1.4 Тесты сервиса и репозитория: `ProblemSearchTest` —
   `byNumbers` (порядок 12, 7, 3; ненайденный назван; повтор);
   поиск по разметке по убыванию. Поправить проверки, опиравшиеся
   на возрастание, в `ProblemSearchTest`, `ProblemSearchRepositoryTest`
