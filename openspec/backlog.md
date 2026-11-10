@@ -108,7 +108,7 @@
 | `work-mastery-at-receipt` | Т | — | — | S | нет | личное | ✅ |
 | `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | на стенде |
 | `assistant-availability-recheck` | Б | — | — | S | нет | не затрагивает | ✅ |
-| `issue-button-label` | Т | — | — | XS | нет | не затрагивает | |
+| `issue-button-label` | Т | — | — | XS | нет | не затрагивает | ✅ |
 | `problem-search-by-numbers` | Т | `library-search` | — | M | нет | общее | |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
@@ -2792,6 +2792,8 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `issue-button-label` · Т · XS · не ломает
+
+> ✅ Выполнено 10.11.2026, версия 3.20.1. Change: [2026-11-10-issue-button-label](changes/archive/2026-11-10-issue-button-label/). Надпись кнопки и подсказка пустого списка Заданий — «Выдать ДЗ»; словарь не менялся: надпись не термин (`design.md`).
 
 **Зачем.** Просьба владельца 09.11.2026: кнопка выдачи на экране поиска
 называется «Выдать отмеченные» — учителю привычнее «Выдать ДЗ».
