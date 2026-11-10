@@ -153,13 +153,13 @@ class WorkScreenTest extends IntegrationTest {
         Browser.Page refused = teacher.postForm(
                 "/works/" + id.value() + "/files/" + files.get(2).id().value() + "/deletion", Map.of());
         assertThat(refused.status()).isEqualTo(200);
-        assertThat(refused.body()).contains("Работа без файла не существует");
+        assertThat(refused.body()).contains("Последний файл не удаляется: удалите Работу целиком");
         assertThat(fileLinks(refused.body())).as("файл остался").isEqualTo(1);
     }
 
-    /** Сценарии «Удаление Работы» и «Работа без файла». */
+    /** Сценарий «Удаление Работы». */
     @Test
-    void deletedWorkGivesTheFormBackAndEmptyReceiptIsRefused() {
+    void deletedWorkGivesTheFormBack() {
         receive(first, twoPhotos());
         StudentWorkId id = onlyWork();
 
@@ -167,11 +167,59 @@ class WorkScreenTest extends IntegrationTest {
         String body = teacher.get(screen()).body();
         assertThat(count(body, "Принять Работу")).as("снова две формы приёма").isEqualTo(2);
         assertThat(fileLinks(body)).isZero();
+    }
 
-        Browser.Page refused = receive(first, List.of());
-        assertThat(refused.status()).isEqualTo(200);
-        assertThat(refused.body()).contains("Нужен хотя бы один файл");
-        assertThat(works.findByAssignment(account.id(), assignment)).isEmpty();
+    /**
+     * Сценарии «Работа без файла» и «Работа без файла на экране приёма»
+     * (ADR-0063). Поле файлов отправляется пустой частью — так его шлёт
+     * браузер, когда ничего не выбрано.
+     */
+    @Test
+    void workWithoutFileIsReceivedAndMarked() {
+        Browser.Page posted = teacher.postMultipart(
+                "/works?assignment=" + assignment.value() + "&problem=" + first.value(),
+                Map.of("verdict", "CORRECT"), List.of(emptyField()));
+
+        assertThat(posted.redirectsTo(screen())).as("приём без файла принят").isTrue();
+        StudentWork work = works.findById(account.id(), onlyWork()).orElseThrow();
+        assertThat(work.files()).isEmpty();
+        String body = teacher.get(screen()).body();
+        assertThat(body)
+                .contains("Вердикт: верно")
+                .contains("без файла")
+                .contains("Приложить файлы")
+                .doesNotContain("Удалить файл")
+                .doesNotContain("файл 1");
+        assertThat(fileLinks(body)).isZero();
+        assertThat(body).as("без attach блок не раскрыт").doesNotContain("open=\"open\"");
+    }
+
+    /**
+     * Сценарии «Работа без файла в списке Работ Ученика» и «Файлы к Работе
+     * без файла»: ссылка «Приложить файлы» ведёт на экран приёма с раскрытым
+     * блоком этой Работы; после дополнения пометки и ссылки нет.
+     */
+    @Test
+    void attachingFilesLaterRemovesTheMark() {
+        receive(first, List.of());
+        StudentWorkId id = onlyWork();
+
+        String list = teacher.get("/works?student=" + student.value()).body();
+        assertThat(list).contains("без файла").contains("Приложить файлы");
+        String link = "/works?assignment=" + assignment.value() + "&amp;attach=" + id.value();
+        assertThat(list).contains(link).contains("#work-" + id.value());
+
+        String opened = teacher.get(screen() + "&attach=" + id.value()).body();
+        assertThat(opened).contains("id=\"work-" + id.value() + "\"");
+        assertThat(count(opened, "open=\"open\"")).as("раскрыт ровно блок дополнения").isEqualTo(1);
+        assertThat(opened.indexOf("open=\"open\"")).isLessThan(opened.indexOf("<summary>Приложить файлы</summary>"));
+
+        teacher.postMultipart("/works/" + id.value() + "/files", Map.of(), List.of(photo()));
+        String body = teacher.get(screen()).body();
+        assertThat(body).doesNotContain("без файла").doesNotContain("Приложить файлы").contains("файл 1");
+        assertThat(teacher.get("/works?student=" + student.value()).body())
+                .doesNotContain("без файла")
+                .doesNotContain("Приложить файлы");
     }
 
     /** Сценарий «Работы Ученика»: две Работы по двум Заданиям, новые первыми, ссылки на экран приёма. */
@@ -230,6 +278,10 @@ class WorkScreenTest extends IntegrationTest {
 
     private static List<Browser.FilePart> twoPhotos() {
         return List.of(photo(), photo());
+    }
+
+    private static Browser.FilePart emptyField() {
+        return new Browser.FilePart("files", "", "application/octet-stream", new byte[0]);
     }
 
     private static Browser.FilePart photo() {

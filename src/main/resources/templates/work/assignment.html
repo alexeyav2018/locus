@@ -3,8 +3,8 @@
 <head>
     <th:block th:replace="~{fragments/shell :: head}"/>
     <!--/* Экран рассчитан на телефон: снимки решений учитель загружает
-           там же, где их получил, — в мессенджере на телефоне (ADR-0015,
-           предпосылка П2). viewport — чтобы страница масштабировалась под
+           там же, где их получил, — в мессенджере на телефоне.
+           Файл при этом необязателен (ADR-0063). viewport — чтобы страница масштабировалась под
            ширину устройства; ниже — ни таблиц, ни фиксированных ширин. */-->
     <title>Приём Работ — Locus</title>
     <!--/*
@@ -16,8 +16,13 @@
         присылка — «добавить файлы» к ней, а не вторая форма приёма.
         Вердикт отделён от приёма: Работа без вердикта показана как
         «не проверена», и это единственный способ о ней узнать —
-        уведомлений нет (ADR-0017). Последний файл не удаляется: Работа
-        без файла не существует, удаляется Работа целиком.
+        уведомлений нет (ADR-0017). Файл необязателен (ADR-0063): Работа,
+        увиденная вживую, принимается без файла, показывается пометкой
+        «без файла», и её блок «Файлы» называется «Приложить файлы» —
+        в нём только форма дополнения. Блок раскрыт и при параметре
+        attach, равном этой Работе: так на него ведёт ссылка из списка
+        Работ Ученика. У Работы с файлами последний файл не удаляется —
+        удаляется Работа целиком.
 
         Файлы — только по временной подписанной ссылке (ADR-0021): ключ
         хранилища в разметку не попадает, ссылка считается при показе
@@ -73,16 +78,17 @@
 
     <!--/* Работа принята: на виду дата, вердикт или «не проверена», примечание
            и файлы; всё остальное — блоками, по одному на Задачу. */-->
-    <div th:if="${work != null}">
+    <div th:if="${work != null}" th:id="'work-' + ${work.id.value}">
         <div class="row" style="margin-bottom:.5rem">
             <span th:text="'получена ' + ${#temporals.format(work.receivedOn, 'dd.MM.yyyy')}">получена 03.09.2026</span>
             <span class="badge"
                   th:classappend="${work.checked} ? (${work.verdict.name() == 'CORRECT'} ? 'badge--ok' : 'badge--bad') : 'badge--warn'"
                   th:text="${work.checked} ? 'Вердикт: ' + ${work.verdict.title} : 'не проверена'">Вердикт: верно</span>
+            <span class="badge badge--warn" th:unless="${work.hasFiles()}" th:text="'без файла'">без файла</span>
         </div>
         <p th:if="${work.hasNote}" th:text="'Примечание: ' + ${work.note}">Примечание: потерян корень</p>
 
-        <ul class="files">
+        <ul class="files" th:if="${work.hasFiles()}">
             <li th:each="linked, stat : ${files.get(problem.problem.id)}">
                 <a th:href="@{/works/{id}/files/{fileId}(id=${work.id.value},fileId=${linked.file.id.value},from=${shell.here})}"
                    th:text="'файл ' + ${stat.count}">файл 1</a>
@@ -124,10 +130,11 @@
             </details>
 
             <details class="more" th:name="'work-' + ${problem.problem.id.value}"
-                     th:attr="open=${shell.openedUnder('/works/' + work.id.value + '/files')} ? 'open'">
-                <summary>Файлы</summary>
+                     th:with="attached=${#strings.equals(param.attach, '' + work.id.value)}"
+                     th:attr="open=${shell.openedUnder('/works/' + work.id.value + '/files') or attached} ? 'open'">
+                <summary th:text="${work.hasFiles()} ? 'Файлы' : 'Приложить файлы'">Файлы</summary>
                 <div class="more-body">
-                    <ul class="files">
+                    <ul class="files" th:if="${work.hasFiles()}">
                         <li th:each="linked, stat : ${files.get(problem.problem.id)}">
                             <span th:text="'файл ' + ${stat.count}">файл 1</span>
                             <form class="inline" method="post" data-confirm="Это действие необратимо."
@@ -175,6 +182,7 @@
                 <label>Файлы решения
                     <input type="file" name="files" multiple accept="image/*,application/pdf">
                 </label>
+                <p class="hint">Решение видели вживую — поле можно оставить пустым и приложить файлы позже.</p>
                 <label>Дата получения
                     <input type="date" name="receivedOn"
                            th:value="${mine and entered.receivedOn != null} ? ${entered.receivedOn} : ${today}">

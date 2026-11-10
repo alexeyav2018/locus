@@ -42,7 +42,8 @@ import ru.locus.work.Verdict;
 /**
  * Ячейки Владения на экране приёма (`work-mastery-at-receipt`): ячейки
  * в форме приёма у каждой Задачи, приём с отметкой одним действием, отказ
- * приёма без файла с выбранным на месте, один блок «Вердикт и владение»
+ * приёма с файлом не того типа с выбранным на месте, приём без файла
+ * с отметкой (ADR-0063), один блок «Вердикт и владение»
  * у принятой Работы — выборочная простановка и снятие через «неизвестно»
  * его формой, справка «Работы: N из M · разминки: K из L», вердикт не трогает ячеек, отказ
  * по паре не из разметки — на том же экране при прежнем вердикте.
@@ -147,9 +148,9 @@ class MasteryScreenTest extends IntegrationTest {
         assertThat(marks.countByStudent(owner, student)).isEqualTo(1);
     }
 
-    /** Сценарий «Приём без файла не пишет отметок»: ни Работы, ни отметки, «верно» и «владеет» выбраны снова. */
+    /** Сценарий «Отказ приёма не пишет отметок»: файл не того типа — ни Работы, ни отметки, «верно» и «владеет» выбраны снова. */
     @Test
-    void receiptWithoutAFileWritesNothingAndKeepsTheChoice() {
+    void refusedReceiptWritesNothingAndKeepsTheChoice() {
         List<Map.Entry<String, String>> fields = new ArrayList<>(List.of(
                 Map.entry("verdict", "CORRECT"), Map.entry("note", "посмотрю позже")));
         fields.addAll(cells(
@@ -158,14 +159,38 @@ class MasteryScreenTest extends IntegrationTest {
                 cell(topicB, methodX, ""),
                 cell(topicB, methodY, "")));
 
-        Browser.Page refused = teacher.postMultipart(receiptOf(problem), fields, List.of());
+        Browser.Page refused = teacher.postMultipart(receiptOf(problem), fields,
+                List.of(new Browser.FilePart("files", "notes.txt", "text/plain", "текст".getBytes())));
 
         assertThat(refused.status()).isEqualTo(200);
-        assertThat(refused.body()).contains("Нужен хотя бы один файл").contains("посмотрю позже");
+        assertThat(refused.body()).contains("Принимаются изображения и PDF").contains("посмотрю позже");
         assertThat(works.findByAssignment(owner, assignment)).isEmpty();
         assertThat(marks.countByStudent(owner, student)).isZero();
         assertThat(count(refused.body(), Pattern.compile("value=\"CORRECT\"\\s+checked"))).isEqualTo(1);
         assertThat(count(refused.body(), Pattern.compile("value=\"MASTERED\"\\s+selected"))).isEqualTo(1);
+    }
+
+    /**
+     * Сценарий «Приём без файла с вердиктом и отметкой» (ADR-0063): Работа без файлов
+     * и отметка записаны одним действием, справка у ячейки считает Работу.
+     */
+    @Test
+    void receiptWithoutAFileWritesTheWorkAndTheMark() {
+        List<Map.Entry<String, String>> fields = new ArrayList<>(List.of(Map.entry("verdict", "CORRECT")));
+        fields.addAll(cells(
+                cell(topicA, methodX, "MASTERED"),
+                cell(topicA, methodY, ""),
+                cell(topicB, methodX, ""),
+                cell(topicB, methodY, "")));
+
+        Browser.Page posted = teacher.postMultipart(receiptOf(problem), fields, List.of());
+
+        assertThat(posted.redirectsTo(screen())).isTrue();
+        assertThat(works.findByAssignment(owner, assignment)).singleElement()
+                .satisfies(work -> assertThat(work.files()).isEmpty());
+        assertThat(marks.countByStudent(owner, student)).isEqualTo(1);
+        String body = teacher.get(screen()).body();
+        assertThat(count(body, "сейчас: владеет · Работы: 1 из 1 · разминки: 0 из 0")).isEqualTo(1);
     }
 
     /** Сценарий «Один блок у принятой Работы»: «Вердикт и владение», без отдельного «Владения». */
