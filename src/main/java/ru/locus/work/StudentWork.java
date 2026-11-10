@@ -9,7 +9,7 @@ import ru.locus.user.UserId;
 /**
  * Работа — решение одной Задачи одного Задания, принятое Учителем
  * от Ученика: файлы, дата получения, вердикт и примечание
- * (ADR-0014, ADR-0015, ADR-0038).
+ * (ADR-0014, ADR-0038, ADR-0063).
  *
  * <p>Ученика у Работы нет — он у Задания. Работа существует только
  * на паре «Задание × Задача», и Ученик Задания — единственный, от кого
@@ -24,8 +24,11 @@ import ru.locus.user.UserId;
  * приёма и при приёме не обязателен: учитель переносит снимки с телефона
  * тогда, когда они пришли, а проверяет — когда сядет за стол.
  *
- * <p>Файлов хотя бы один: Работа без скана не существует (ADR-0015).
- * Порядок — порядок загрузки, {@link StudentWorkFile#position}, и запись
+ * <p>Файлов ноль и больше: решение, увиденное вживую или не перенесённое
+ * со снимка, принимается без файла и остаётся полноценной Работой —
+ * основанием отметки служит суждение учителя (ADR-0063). «Без файла» —
+ * пустой список, а не хранимый признак: признак разошёлся бы с таблицей
+ * файлов молча. Порядок — порядок загрузки, {@link StudentWorkFile#position}, и запись
  * требует, чтобы список пришёл в этом порядке: перемешанный список
  * ничем себя не выдаст, а страницы решения пойдут вразнобой.
  *
@@ -35,7 +38,8 @@ import ru.locus.user.UserId;
  * @param verdict {@code null} — Работа не проверена
  * @param note    примечание; {@code null} приводится к пустой строке,
  *                края обрезаются
- * @param files   файлы Работы, 1..n, в порядке {@code position}
+ * @param files   файлы Работы, 0..n, в порядке {@code position};
+ *                {@code null} — ошибка вызывающего, а не «без файла»
  */
 public record StudentWork(StudentWorkId id,
                           UserId owner,
@@ -59,8 +63,8 @@ public record StudentWork(StudentWorkId id,
         if (receivedOn == null) {
             throw new IllegalArgumentException("У Работы должна быть дата получения");
         }
-        if (files == null || files.isEmpty()) {
-            throw new IllegalArgumentException("Работе нужен хотя бы один файл");
+        if (files == null) {
+            throw new IllegalArgumentException("У Работы должен быть список файлов, пусть пустой");
         }
         for (int i = 1; i < files.size(); i++) {
             if (files.get(i).position() <= files.get(i - 1).position()) {
@@ -74,6 +78,11 @@ public record StudentWork(StudentWorkId id,
     /** Есть ли вердикт; без него Работа показывается как «не проверена». */
     public boolean isChecked() {
         return verdict != null;
+    }
+
+    /** Есть ли у Работы файлы; без них она показывается с пометкой «без файла» (ADR-0063). */
+    public boolean hasFiles() {
+        return !files.isEmpty();
     }
 
     public boolean hasNote() {

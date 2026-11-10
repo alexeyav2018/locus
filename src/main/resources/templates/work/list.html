@@ -2,12 +2,14 @@
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:replace="~{fragments/shell :: head}"/>
-    <!--/* Как и экран приёма — под телефон (ADR-0015). */-->
+    <!--/* Как и экран приёма — под телефон. */-->
     <title>Работы Ученика — Locus</title>
     <!--/*
         Работы одного Ученика, новые первыми: дата получения, вердикт или
         «не проверена», номер Задачи, ссылка на экран приёма Задания —
-        «вернуться к прошлым работам» (ADR-0015). Список уже отфильтрован
+        «вернуться к прошлым работам». У Работы без файла (ADR-0063) — пометка
+        «без файла» и ссылка «Приложить файлы»: на экран приёма Задания
+        с раскрытым блоком дополнения этой Работы (параметр attach и якорь). Список уже отфильтрован
         по владельцу — шаблон о владельце не знает и знать не должен.
 
         Без таблицы: на узком экране строка из четырёх колонок не помещается,
@@ -34,6 +36,9 @@
         <span class="badge badge--ok" th:if="${work.checked and work.verdict.name() == 'CORRECT'}" th:text="${work.verdict.title}">верно</span>
         <span class="badge badge--bad" th:if="${work.checked and work.verdict.name() != 'CORRECT'}" th:text="${work.verdict.title}">неверно</span>
         <span class="badge badge--warn" th:unless="${work.checked}" th:text="'не проверена'">не проверена</span>
+        <span class="badge badge--warn" th:unless="${work.hasFiles()}" th:text="'без файла'">без файла</span>
+        <a class="btn btn-sm" th:unless="${work.hasFiles()}"
+           th:href="@{/works(assignment=${work.assignment.value},attach=${work.id.value},from=${shell.here})} + '#work-' + ${work.id.value}">Приложить файлы</a>
         <a class="btn btn-sm" th:href="@{/works(assignment=${work.assignment.value},from=${shell.here})}">к Заданию</a>
     </li>
 </ul>

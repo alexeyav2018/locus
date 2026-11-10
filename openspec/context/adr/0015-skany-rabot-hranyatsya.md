@@ -1,11 +1,11 @@
 ---
 id: 15
 title: Сканы работ хранятся обязательно
-status: Принято
+status: Заменено
 date: 2026-09-05
 area: продукт
 supersedes: []
-superseded_by: []
+superseded_by: [63]
 ---
 
 # ADR-0015. Сканы работ хранятся обязательно
