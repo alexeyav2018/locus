@@ -36,7 +36,7 @@ import ru.locus.user.UserId;
 
 /**
  * Задача 5.1: правила приёма, вердикта, файлов и удаления Работы
- * (ADR-0015, ADR-0038) — на сервисе, с вошедшим Учителем.
+ * (ADR-0038, ADR-0063) — на сервисе, с вошедшим Учителем.
  *
  * Хранилище здесь настоящее (локальное), но содержимое по ссылкам
  * не проверяется — это {@code WorkFilesTest}. Здесь — состав Работы после
@@ -113,15 +113,40 @@ class StudentWorkServiceTest extends IntegrationTest {
         assertThat(service.work(id).receivedOn()).isEqualTo(today().minusDays(2));
     }
 
-    /** Сценарий «Работа без файла»: пустые поля формы — не файлы. */
+    /**
+     * Сценарий «Работа без файла» (ADR-0063): пустые поля формы — не файлы,
+     * и без них Работа принимается с вердиктом и сегодняшней датой.
+     */
     @Test
-    void workWithoutFilesIsRefused() {
-        assertThatThrownBy(() -> service.receive(assignment, first, null, null, "", List.of(), List.of()))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
-        assertThatThrownBy(() -> service.receive(assignment, first, null, null, "",
-                List.of(new UploadedWorkFile(new byte[0], FileType.JPEG)), List.of()))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
-        assertThat(service.ofAssignment(assignment)).isEmpty();
+    void workWithoutFilesIsReceived() {
+        StudentWorkId id = service.receive(assignment, first, null, Verdict.CORRECT, "",
+                List.of(new UploadedWorkFile(new byte[0], FileType.JPEG)), List.of());
+        StudentWorkId bare = service.receive(assignment, second, null, null, "", List.of(), List.of());
+
+        StudentWork work = service.work(id);
+        assertThat(work.hasFiles()).isFalse();
+        assertThat(work.verdict()).isEqualTo(Verdict.CORRECT);
+        assertThat(work.receivedOn()).isEqualTo(today());
+        assertThat(service.filesOf(work)).isEmpty();
+        assertThat(service.work(bare).hasFiles()).isFalse();
+        assertThat(service.ofAssignment(assignment)).containsOnlyKeys(first, second);
+    }
+
+    /**
+     * Сценарий «Работа без файла снимает „не сдано“»: и держит Задание
+     * и Ученика от удаления, как любая Работа (ADR-0063).
+     */
+    @Test
+    void workWithoutFilesClearsNotSubmittedAndHoldsAssignmentAndStudent() {
+        AssignmentId overdue = assignments.issueToStudent(student, List.of(first), today().minusDays(1), TheoryScope.NONE);
+
+        service.receive(overdue, first, null, null, "", List.of(), List.of());
+
+        assertThat(assignments.assignment(overdue).notSubmitted()).isFalse();
+        assertThatThrownBy(() -> assignments.delete(overdue))
+                .isInstanceOf(ru.locus.assignment.AssignmentInUseException.class);
+        assertThatThrownBy(() -> students.delete(student))
+                .isInstanceOf(ru.locus.student.StudentInUseException.class).hasMessageContaining("Работ");
     }
 
     /** Сценарий «Вторая Работа на той же Задаче Задания». */
@@ -194,15 +219,30 @@ class StudentWorkServiceTest extends IntegrationTest {
                 .containsExactlyEntriesOf(Map.of(new Cell(marked.topic(), marked.x()), MasteryStatus.MASTERED));
     }
 
-    /** Сценарий «Приём без файла не пишет отметок». */
+    /** Сценарий «Приём без файла с вердиктом и отметкой» (ADR-0063). */
+    @Test
+    void receiptWithoutFilesWritesTheVerdictAndTheMark() {
+        Marked marked = marked();
+
+        StudentWorkId id = service.receive(marked.assignment(), marked.problem(), null, Verdict.CORRECT, "", List.of(),
+                List.of(new Mark(marked.topic(), marked.x(), MasteryStatus.MASTERED)));
+
+        assertThat(service.work(id).hasFiles()).isFalse();
+        assertThat(service.work(id).verdict()).isEqualTo(Verdict.CORRECT);
+        assertThat(marks.findByStudent(owner, student))
+                .containsExactlyEntriesOf(Map.of(new Cell(marked.topic(), marked.x()), MasteryStatus.MASTERED));
+    }
+
+    /** Сценарий «Отказ приёма не пишет отметок»: повод — файл неподдерживаемого типа. */
     @Test
     void refusedReceiptWritesNoMarks() {
         Marked marked = marked();
 
-        assertThatThrownBy(() -> service.receive(marked.assignment(), marked.problem(), null, null, "", List.of(),
+        assertThatThrownBy(() -> service.receive(marked.assignment(), marked.problem(), null, Verdict.CORRECT, "",
+                List.of(new UploadedWorkFile("решение".getBytes(), "text/plain")),
                 List.of(new Mark(marked.topic(), marked.x(), MasteryStatus.MASTERED))))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Нужен хотя бы один файл");
+                .hasMessageContaining("Принимаются изображения и PDF");
 
         assertThat(service.ofAssignment(marked.assignment())).isEmpty();
         assertThat(marks.findByStudent(owner, student)).isEmpty();
@@ -273,6 +313,24 @@ class StudentWorkServiceTest extends IntegrationTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
     }
 
+    /** Сценарий «Файлы к Работе без файла»: позиции с 1, вердикт и дата прежние. */
+    @Test
+    void filesAreAttachedToAWorkWithoutFiles() {
+        StudentWorkId id = service.receive(assignment, first, today().minusDays(1), Verdict.INCORRECT, "устно",
+                List.of(), List.of());
+
+        assertThatThrownBy(() -> service.addFiles(id, List.of()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
+        service.addFiles(id, List.of(jpeg()));
+
+        StudentWork work = service.work(id);
+        assertThat(work.hasFiles()).isTrue();
+        assertThat(work.files()).extracting(StudentWorkFile::position).containsExactly(1);
+        assertThat(work.verdict()).isEqualTo(Verdict.INCORRECT);
+        assertThat(work.note()).isEqualTo("устно");
+        assertThat(work.receivedOn()).isEqualTo(today().minusDays(1));
+    }
+
     /** Сценарии «Удаление файла» и «Последний файл не удаляется». */
     @Test
     void fileIsDeletedExceptTheLastOne() {
@@ -286,7 +344,7 @@ class StudentWorkServiceTest extends IntegrationTest {
 
         assertThatThrownBy(() -> service.deleteFile(id, left.get(0).id()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Работа без файла не существует")
+                .hasMessageContaining("Последний файл не удаляется")
                 .hasMessageContaining("целиком");
         assertThat(service.work(id).files()).hasSize(1);
         assertThatThrownBy(() -> service.deleteFile(id, new StudentWorkFileId(999_999)))

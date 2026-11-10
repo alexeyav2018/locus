@@ -71,13 +71,20 @@ class StudentWorkTest {
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("дата получения");
     }
 
-    /** Работа без файла не существует (ADR-0015, ADR-0038). */
+    /** Работа без файла — полноценная Работа (ADR-0063): пустой список допустим. */
     @Test
-    void workNeedsAtLeastOneFile() {
-        assertThatThrownBy(() -> new StudentWork(ID, OWNER, ASSIGNMENT, PROBLEM, RECEIVED, null, "", List.of()))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
+    void workWithoutFilesExists() {
+        StudentWork work = new StudentWork(ID, OWNER, ASSIGNMENT, PROBLEM, RECEIVED, Verdict.CORRECT, "", List.of());
+        assertThat(work.hasFiles()).isFalse();
+        assertThat(work.files()).isEmpty();
+        assertThat(new StudentWork(ID, OWNER, ASSIGNMENT, PROBLEM, RECEIVED, null, "", List.of(FIRST)).hasFiles()).isTrue();
+    }
+
+    /** {@code null} вместо списка — ошибка вызывающего, а не «без файла». */
+    @Test
+    void filesListIsRequired() {
         assertThatThrownBy(() -> new StudentWork(ID, OWNER, ASSIGNMENT, PROBLEM, RECEIVED, null, "", null))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("хотя бы один файл");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("список файлов");
     }
 
     /** Перемешанные страницы ничем себя не выдадут — запись отказывает, а не сортирует молча. */

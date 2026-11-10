@@ -10,23 +10,23 @@
 
 ## 1. Модель и сервис
 
-- [ ] 1.1 `StudentWork`: снять отказ на пустом списке файлов, порядок
+- [x] 1.1 `StudentWork`: снять отказ на пустом списке файлов, порядок
   `position` проверять как прежде, добавить `hasFiles()`; javadoc —
   ссылка на ADR-0063 вместо «Работа без скана не существует».
   `StudentWorkTest`: пустой список допустим, `hasFiles()` ложно; `null`
-  приводится к пустому либо отклоняется — как решено в коде, тестом
-  закреплено. Проверка: `mvn test -Dtest=StudentWorkTest`.
-- [ ] 1.2 `StudentWorkService`: `accepted` делится на отбор с проверкой
+  отклоняется (ошибка вызывающего, а не «без файла») — закреплено
+  `filesListIsRequired`. Проверка: `mvn test -Dtest=StudentWorkTest`.
+- [x] 1.2 `StudentWorkService`: `accepted` делится на отбор с проверкой
   типа (общий) и требование непустого (только `addFiles`); `receive`
   с пустым набором не обращается к хранилищу и пишет Работу без файлов
   с вердиктом и отметками; текст отказа `deleteFile` — «Последний файл
   не удаляется: удалите Работу целиком»; javadoc класса и методов —
   ADR-0063. Проверка: `get_diagnostics`/компиляция.
-- [ ] 1.3 `StudentWorkRepository.create` с пустым списком ключей
+- [x] 1.3 `StudentWorkRepository.create` с пустым списком ключей
   и чтение Работы без файлов: тест в `StudentWorkRepositoryTest`
   (запись и `findById`, `findByAssignment`, `findByStudent` отдают Работу
   с пустым `files`). Проверка: `mvn test -Dtest=StudentWorkRepositoryTest`.
-- [ ] 1.4 `StudentWorkServiceTest`: приём без файла с вердиктом — Работа
+- [x] 1.4 `StudentWorkServiceTest`: приём без файла с вердиктом — Работа
   есть, файлов ноль, хранилище не тронуто; приём без файла снимает
   «не сдано» и держит Задание и Ученика (`AssignmentWork`, `StudentUsage`);
   `addFiles` к Работе без файла кладёт файлы с позиции 1, пустое

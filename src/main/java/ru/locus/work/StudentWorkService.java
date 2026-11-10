@@ -29,7 +29,11 @@ import ru.locus.user.UserId;
 /**
  * Ведение Работ: приём файлов по Задаче Задания, вердикт и примечание,
  * добавление и удаление файлов, удаление Работы, Работы по Заданию
- * и по Ученику (ADR-0015, ADR-0038).
+ * и по Ученику (ADR-0038, ADR-0063).
+ *
+ * <p>Файл при приёме необязателен (ADR-0063): решение, увиденное вживую,
+ * принимается без файла тем же действием, а файлы прикладываются позже
+ * дополнением. Последний файл у Работы с файлами не удаляется.
  *
  * <p>Права проверяются здесь, а не в контроллере и не на адресах
  * (standards.md, «Слои и границы»); каждая операция — только Учителю,
@@ -94,14 +98,14 @@ public class StudentWorkService {
     }
 
     /**
-     * Принимает Работу по Задаче своего Задания: файлы, дата получения,
-     * вердикт и примечание по желанию — и тем же действием отметки
+     * Принимает Работу по Задаче своего Задания: файлы (ноль и больше,
+     * ADR-0063), дата получения, вердикт и примечание по желанию — и тем же действием отметки
      * Владения по ячейкам её Задачи.
      *
      * <p>Проверки — до первого обращения к хранилищу: Задание своё
      * (чужое — {@link ru.locus.assignment.AssignmentNotFoundException}),
-     * Задача в составе, файлов после отбрасывания пустых хотя бы один,
-     * тип каждого — изображение или PDF. Отказ по типу одного файла
+     * Задача в составе, тип каждого непустого файла — изображение или PDF.
+     * Без файлов хранилище не трогается вовсе. Отказ по типу одного файла
      * не оставляет в хранилище остальных. Срок Задания на приём не влияет:
      * Работа с опозданием принимается (ADR-0016).
      *
@@ -133,7 +137,7 @@ public class StudentWorkService {
         if (!assignment.problems().contains(problemId)) {
             throw new IllegalArgumentException("Такой Задачи в Задании нет");
         }
-        List<UploadedWorkFile> accepted = accepted(files);
+        List<UploadedWorkFile> accepted = typed(files);
         LocalDate received = receivedOn == null ? LocalDate.now(clock) : receivedOn;
         List<FileKey> keys = stored(accepted);
         try {
@@ -192,15 +196,19 @@ public class StudentWorkService {
 
     /**
      * Добавляет файлы в конец своей Работы — повторная присылка по той же
-     * Задаче (ADR-0038). Порядок тот же, что у приёма: проверки, укладка,
-     * запись, уборка при неудаче.
+     * Задаче (ADR-0038) и приложение файлов к Работе без файла (ADR-0063).
+     * Дополнение пустым набором отклоняется — добавлять нечего. Порядок
+     * тот же, что у приёма: проверки, укладка, запись, уборка при неудаче.
      */
     @PreAuthorize("hasRole('TEACHER')")
     @Transactional
     public void addFiles(StudentWorkId id, List<UploadedWorkFile> files) {
         UserId owner = owner();
         StudentWork work = existing(owner, id);
-        List<UploadedWorkFile> accepted = accepted(files);
+        List<UploadedWorkFile> accepted = typed(files);
+        if (accepted.isEmpty()) {
+            throw new IllegalArgumentException("Нужен хотя бы один файл");
+        }
         List<FileKey> keys = stored(accepted);
         try {
             works.addFiles(owner, work.id(), keys);
@@ -211,8 +219,10 @@ public class StudentWorkService {
     }
 
     /**
-     * Удаляет один файл своей Работы — кроме последнего: Работа без файла
-     * не существует, удаляется Работа целиком (ADR-0015, ADR-0038).
+     * Удаляет один файл своей Работы — кроме последнего: у Работы с файлами
+     * хотя бы один остаётся, ошибочная загрузка исправляется удалением Работы
+     * целиком (ADR-0038, ADR-0063). Снять файл, оставив запись, — выдать
+     * прежнее основание отметки за отсутствующее.
      * Строка уходит первой, затем ключ: забытый файл в хранилище никому
      * не мешает, а запись без файла выглядела бы настоящей.
      */
@@ -226,7 +236,7 @@ public class StudentWorkService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Такого файла у Работы нет"));
         if (work.files().size() == 1) {
-            throw new IllegalArgumentException("Работа без файла не существует: удалите Работу целиком");
+            throw new IllegalArgumentException("Последний файл не удаляется: удалите Работу целиком");
         }
         works.deleteFile(owner, work.id(), file.id());
         storage.delete(file.key());
@@ -280,16 +290,14 @@ public class StudentWorkService {
 
     /**
      * Пустые файлы отброшены — это поля формы без выбранного файла;
-     * остаток непуст, и у каждого тип — изображение или PDF. Всё —
-     * до первого обращения к хранилищу.
+     * у каждого оставшегося тип — изображение или PDF. Остаток может быть
+     * пуст: приём без файла законен (ADR-0063), а непустоту дополнения
+     * требует {@link #addFiles}. Всё — до первого обращения к хранилищу.
      */
-    private static List<UploadedWorkFile> accepted(List<UploadedWorkFile> files) {
+    private static List<UploadedWorkFile> typed(List<UploadedWorkFile> files) {
         List<UploadedWorkFile> accepted = files == null
                 ? List.of()
                 : files.stream().filter(file -> !file.isEmpty()).toList();
-        if (accepted.isEmpty()) {
-            throw new IllegalArgumentException("Нужен хотя бы один файл");
-        }
         for (UploadedWorkFile file : accepted) {
             if (!FileType.isImage(file.contentType()) && !FileType.PDF.equals(file.contentType())) {
                 throw new IllegalArgumentException("Принимаются изображения и PDF");

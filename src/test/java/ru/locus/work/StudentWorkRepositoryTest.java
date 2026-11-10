@@ -180,6 +180,32 @@ class StudentWorkRepositoryTest extends IntegrationTest {
         assertThat(works.findByStudent(bob, student)).as("чужой Ученик — пусто").isEmpty();
     }
 
+    /**
+     * Работа без файла (ADR-0063) пишется и читается всеми тремя чтениями
+     * с пустым списком файлов, а дополнение начинает позиции с 1.
+     */
+    @Test
+    void workWithoutFilesIsReadBackEverywhereAndTakesFilesLater() {
+        Issued issued = issue(alice, 1);
+
+        StudentWorkId id = works.create(alice, issued.assignment(), issued.problems().get(0), RECEIVED,
+                Verdict.CORRECT, "", List.of());
+
+        assertThat(works.findById(alice, id).orElseThrow().files()).isEmpty();
+        assertThat(works.findByAssignment(alice, issued.assignment()))
+                .singleElement().satisfies(work -> assertThat(work.hasFiles()).isFalse());
+        assertThat(works.findByStudent(alice, issued.student()))
+                .singleElement().satisfies(work -> assertThat(work.hasFiles()).isFalse());
+
+        FileKey first = key("jpg");
+        works.addFiles(alice, id, List.of(first));
+
+        StudentWork found = works.findById(alice, id).orElseThrow();
+        assertThat(found.files()).extracting(StudentWorkFile::key).containsExactly(first);
+        assertThat(found.files()).extracting(StudentWorkFile::position).containsExactly(1);
+        assertThat(found.verdict()).isEqualTo(Verdict.CORRECT);
+    }
+
     @Test
     void addedFilesContinueThePositions() {
         Issued issued = issue(alice, 1);
