@@ -81,6 +81,24 @@ class ProblemScreenTest extends IntegrationTest {
                 .contains("Завести Задачу");
     }
 
+    /**
+     * Список Темы идёт по убыванию номера (ADR-0064): свежезаведённая
+     * Задача — вверху, где её ищут сразу после заведения.
+     */
+    @Test
+    void topicListGoesByDescendingNumber() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId older = library.problem(topic);
+        ProblemId newer = library.problem(topic);
+
+        String page = administrator().get("/taxonomy?node=" + topic.value()).body();
+
+        assertThat(ProblemSearchScreenTest.position(page, newer))
+                .as("новая Задача выше прежней")
+                .isPositive()
+                .isLessThan(ProblemSearchScreenTest.position(page, older));
+    }
+
     /** Сценарий «Тема без Задач». */
     @Test
     void topicWithoutProblemsSaysSoAndStillOffersToCreateOne() {

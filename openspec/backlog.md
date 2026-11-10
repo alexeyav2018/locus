@@ -109,7 +109,7 @@
 | `warmup` | — | `work-mastery-at-receipt` | — | L | нет | личное | на стенде |
 | `assistant-availability-recheck` | Б | — | — | S | нет | не затрагивает | ✅ |
 | `issue-button-label` | Т | — | — | XS | нет | не затрагивает | ✅ |
-| `problem-search-by-numbers` | Т | `library-search` | — | M | нет | общее | |
+| `problem-search-by-numbers` | Т | `library-search` | — | M | нет | общее | ✅ |
 | `backfill-skill` | Д | `intake-skill` | — | S | нет | общее | |
 
 ## 4. Карточки
@@ -2823,6 +2823,8 @@ refresh`, необязательный параметр у `shell :: head`), п�
 ---
 
 ### `problem-search-by-numbers` · Т · M · не ломает
+
+> ✅ Выполнено 10.11.2026, версия 3.21.0. Change: [2026-11-10-problem-search-by-numbers](changes/archive/2026-11-10-problem-search-by-numbers/). Номера — прямой выбор своей формой, отменяющий условия разметки ([ADR-0064](context/adr/0064-nomera-zadach-pryamoj-vybor-v-poiske.md), заменила ADR-0031); `find_problems` отвечает объектом `{problems, missing}`; поиск и список Темы — по убыванию номера.
 
 **Зачем.** Отзыв владельца 09.11.2026: у учителя есть список номеров
 («3, 5, 7, 12» — с бумаги, из прошлого варианта), а экран поиска

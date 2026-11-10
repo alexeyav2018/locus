@@ -50,6 +50,11 @@ import ru.locus.user.Role;
  * показываются отметки и переход к выдаче Задания, прочим — нет
  * (спека assignments, «Выдача начинается с поиска по библиотеке»).
  * Это признак роли, а не владелец: сам поиск от него не меняется.
+ *
+ * Вторая форма того же экрана — «Номера Задач» (ADR-0064): параметр
+ * {@code numbers} — прямой выбор, отменяющий условия разметки. Это
+ * не пятое условие фильтра, а другой способ сказать, какие Задачи нужны,
+ * поэтому при нём фильтр пуст, а разметка из того же адреса не читается.
  */
 @Controller
 public class ProblemSearchController {
@@ -89,7 +94,11 @@ public class ProblemSearchController {
                          @RequestParam(name = "characteristic", required = false) List<Long> characteristicIds,
                          @RequestParam(required = false) MatchMode characteristicMode,
                          @RequestParam(required = false) ExamPart part,
+                         @RequestParam(required = false) String numbers,
                          Model model) {
+        if (numbers != null) {
+            return byNumbers(numbers, model);
+        }
         ProblemFilter filter = new ProblemFilter(
                 node == null ? null : new TaxonomyNodeId(node),
                 methodIds(methodIds), methodMode,
@@ -99,15 +108,44 @@ public class ProblemSearchController {
         model.addAttribute("filter", filter);
         model.addAttribute("teacher", currentUser.account().hasRole(Role.TEACHER));
         try {
-            List<FoundProblem> found = problems.search(filter);
-            model.addAttribute("found", found);
-            model.addAttribute("foundCount", found.size());
-            model.addAttribute("textlessCount",
-                    found.stream().filter(problem -> !problem.hasText()).count());
+            showFound(problems.search(filter), model);
         } catch (IllegalArgumentException refusal) {
             model.addAttribute("error", refusal.getMessage());
         }
         return "problem/search";
+    }
+
+    /**
+     * Прямой выбор по номерам (ADR-0064): ровно эти Задачи, условия
+     * разметки не действуют — форма разметки показывается пустой, чтобы
+     * не утверждать, будто результат ими отобран.
+     *
+     * Пустое поле — отказ, а не вся библиотека: отправив форму номеров,
+     * учитель просил выбор, и вся библиотека на его месте выглядела бы
+     * правдоподобным ответом. Ненайденные номера называются отдельно
+     * и найденных не отменяют.
+     */
+    private String byNumbers(String numbers, Model model) {
+        fillChoices(model);
+        model.addAttribute("filter", ProblemFilter.empty());
+        model.addAttribute("numbers", numbers);
+        model.addAttribute("teacher", currentUser.account().hasRole(Role.TEACHER));
+        try {
+            NumberedProblems result = problems.byNumbers(ProblemNumbers.parse(numbers));
+            showFound(result.found(), model);
+            model.addAttribute("missing", result.missing());
+        } catch (IllegalArgumentException refusal) {
+            model.addAttribute("error", refusal.getMessage());
+        }
+        return "problem/search";
+    }
+
+    /** Найденное одинаково показывается при любом способе поиска. */
+    private static void showFound(List<FoundProblem> found, Model model) {
+        model.addAttribute("found", found);
+        model.addAttribute("foundCount", found.size());
+        model.addAttribute("textlessCount",
+                found.stream().filter(problem -> !problem.hasText()).count());
     }
 
     /**

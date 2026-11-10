@@ -467,6 +467,7 @@ a.selected { background: var(--shared-soft); color: var(--shared); font-weight: 
 /* Поиск: панель условий слева, найденное справа */
 .filters fieldset { background: var(--surface); }
 .filters.sticky { position: static; max-height: none; }
+.filters > form + form { margin-top: 1rem; }
 .filters select[multiple] { max-width: none; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.5rem; }
 .modes { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin: 0.5rem 0 0; }

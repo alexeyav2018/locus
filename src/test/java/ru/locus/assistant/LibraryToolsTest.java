@@ -112,10 +112,12 @@ class LibraryToolsTest extends IntegrationTest {
         library.problem(topic);                    // та же Тема, другой Метод
         library.problem(library.topic(), method);  // тот же Метод, другая ветка
 
-        JsonNode found = tools.json(tools.call(teacher, "find_problems",
+        JsonNode answer = tools.json(tools.call(teacher, "find_problems",
                 Map.of("node", section.value(), "methods", List.of(method.value()))));
+        JsonNode found = answer.get("problems");
 
         assertThat(numbers(found)).containsExactly(wanted.value());
+        assertThat(answer.get("missing").size()).as("без номеров ненайденных нет").isZero();
         JsonNode row = found.get(0);
         assertThat(row.get("part").asString()).isEqualTo("SECOND");
         assertThat(row.get("topics").get(0).asString())
@@ -135,12 +137,41 @@ class LibraryToolsTest extends IntegrationTest {
         List<Long> chosen = List.of(first.value(), second.value());
 
         JsonNode all = tools.json(tools.call(teacher, "find_problems",
-                Map.of("node", topic.value(), "methods", chosen, "methods_match", "all")));
+                Map.of("node", topic.value(), "methods", chosen, "methods_match", "all"))).get("problems");
         JsonNode any = tools.json(tools.call(teacher, "find_problems",
-                Map.of("node", topic.value(), "methods", chosen, "methods_match", "any")));
+                Map.of("node", topic.value(), "methods", chosen, "methods_match", "any"))).get("problems");
 
         assertThat(numbers(all)).containsExactly(both.value());
         assertThat(numbers(any)).containsExactlyInAnyOrder(both.value(), onlyFirst.value());
+    }
+
+    /**
+     * Сценарий «Поиск по номерам» (ADR-0064): номера отменяют условия
+     * разметки — узел, под которым лежит одна из трёх, не сужает выбор;
+     * найденные идут по убыванию номера, ненайденный назван.
+     */
+    @Test
+    void findProblemsByNumbersIgnoresMarkupAndNamesTheMissing() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId low = library.problem(topic);
+        ProblemId middle = library.problem(library.topic());
+        ProblemId high = library.problem(library.topic());
+        long absent = 999_999_999L;
+
+        JsonNode answer = tools.json(tools.call(teacher, "find_problems", Map.of(
+                "numbers", List.of(high.value(), low.value(), middle.value(), absent, low.value()),
+                "node", topic.value())));
+
+        assertThat(numbers(answer.get("problems")))
+                .containsExactly(high.value(), middle.value(), low.value());
+        assertThat(stream(answer.get("missing")).map(JsonNode::asLong).toList()).containsExactly(absent);
+    }
+
+    /** Пустой список номеров — отказ, а не вся библиотека. */
+    @Test
+    void emptyNumbersIsARefusal() {
+        assertThat(ToolCalls.refusal(tools.call(teacher, "find_problems", Map.of("numbers", List.of()))))
+                .contains("Не задано ни одного номера");
     }
 
     /** Сценарий «Чтение Задачи». */
@@ -207,7 +238,7 @@ class LibraryToolsTest extends IntegrationTest {
         McpSchema.CallToolResult mine = tools.call(teacher, "find_problems", arguments);
         McpSchema.CallToolResult theirs = tools.call(another, "find_problems", arguments);
 
-        assertThat(numbers(tools.json(mine))).hasSize(2);
+        assertThat(numbers(tools.json(mine).get("problems"))).hasSize(2);
         assertThat(ToolCalls.text(theirs)).isEqualTo(ToolCalls.text(mine));
     }
 

@@ -2,6 +2,7 @@ package ru.locus.problem;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -147,6 +148,34 @@ public class ProblemService {
                 filter.characteristics(), filter.characteristicMode(),
                 filter.part());
         return named(found);
+    }
+
+    /**
+     * Прямой выбор по номерам (ADR-0064): ровно Задачи с этими номерами,
+     * условий разметки здесь нет вовсе — номера их отменяют.
+     *
+     * <p>Отличие от {@link #problems} намеренное, и смешивать их нельзя:
+     * тот проверяет состав Задания или Разминки перед записью и потому
+     * отказывает на отсутствующем номере, а здесь учитель ищет —
+     * опечатка в одном номере не должна прятать остальные. Ненайденные
+     * возвращаются рядом с найденными, чтобы потеря была названа,
+     * а не молча проглочена.
+     *
+     * <p>Найденные и ненайденные — по убыванию номера, как весь результат
+     * поиска: строка «Нет в библиотеке» читается в том же порядке, что
+     * список над ней.
+     *
+     * <p>Без {@code @PreAuthorize} и без фильтра по владельцу — как всё
+     * чтение общей библиотеки (ADR-0027).
+     */
+    public NumberedProblems byNumbers(ProblemNumbers numbers) {
+        List<Problem> found = problems.findByIds(numbers.ids());
+        Set<Long> present = found.stream().map(problem -> problem.id().value()).collect(Collectors.toSet());
+        List<Long> missing = numbers.values().stream()
+                .filter(value -> !present.contains(value))
+                .sorted(Comparator.reverseOrder())
+                .toList();
+        return new NumberedProblems(named(found), missing);
     }
 
     /** Узел и всё его поддерево — идентификаторами, как их ждёт отбор. */

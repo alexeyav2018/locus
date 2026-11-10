@@ -264,7 +264,7 @@ class ProblemServiceTest extends IntegrationTest {
 
         problems.rehomeTopic(from, to);
 
-        assertThat(problems.problemsOf(to)).extracting(Problem::id).containsExactly(first, second);
+        assertThat(problems.problemsOf(to)).extracting(Problem::id).containsExactly(second, first);
         assertThat(problems.problemsOf(from)).isEmpty();
         assertThat(problems.problem(first).methods()).as("Методы не задеты").isEqualTo(firstMethods);
     }
@@ -296,7 +296,7 @@ class ProblemServiceTest extends IntegrationTest {
 
         problems.distribute(from, Map.of(first, left, second, right, third, left));
 
-        assertThat(problems.problemsOf(left)).extracting(Problem::id).containsExactly(first, third);
+        assertThat(problems.problemsOf(left)).extracting(Problem::id).containsExactly(third, first);
         assertThat(problems.problemsOf(right)).extracting(Problem::id).containsExactly(second);
         assertThat(problems.problemsOf(from)).isEmpty();
     }
@@ -314,7 +314,7 @@ class ProblemServiceTest extends IntegrationTest {
                 .hasMessageContaining("неполно")
                 .hasMessageContaining(String.valueOf(forgotten.value()));
 
-        assertThat(problems.problemsOf(from)).extracting(Problem::id).containsExactly(named, forgotten);
+        assertThat(problems.problemsOf(from)).extracting(Problem::id).containsExactly(forgotten, named);
         assertThat(problems.problemsOf(to)).isEmpty();
     }
 

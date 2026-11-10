@@ -56,15 +56,28 @@ public class ProblemTools implements Tools {
         return List.of(findProblems(), getProblem(), getProblemPage(), createProblem());
     }
 
-    /** Поиск — те же условия и те же правила соединения, что у страницы поиска (ADR-0031). */
+    /**
+     * Поиск — те же два способа, что у страницы поиска (ADR-0064): по
+     * разметке с теми же правилами соединения либо по списку номеров,
+     * который условия разметки отменяет. Ответ всегда объект
+     * {@code {problems, missing}}: одна форма на оба способа, чтобы
+     * Помощник не гадал, что пришло (design.md).
+     */
     private Tool findProblems() {
         return new Tool("find_problems",
-                "Найти Задачи общей библиотеки по разметке: узел рубрикатора (с обходом всего "
-                        + "его поддерева), Методы, Характеристики и Часть ЕГЭ. Каждое условие "
-                        + "необязательно, заданные соединяются по «и»; без условий — вся библиотека. "
-                        + "Ответ — список Задач: номер, Часть, Темы полными путями, имена Методов "
-                        + "и Характеристик. Подробности одной Задачи — get_problem.",
+                "Найти Задачи общей библиотеки одним из двух способов. По разметке: узел "
+                        + "рубрикатора (с обходом всего его поддерева), Методы, Характеристики "
+                        + "и Часть ЕГЭ; каждое условие необязательно, заданные соединяются по «и»; "
+                        + "без условий — вся библиотека. По номерам: аргумент numbers — ровно Задачи "
+                        + "с этими номерами; при нём условия разметки не действуют. Ответ — объект: "
+                        + "problems — Задачи по убыванию номера (номер, Часть, Темы полными путями, "
+                        + "имена Методов и Характеристик), missing — номера из numbers, которых "
+                        + "в библиотеке нет (без numbers пуст). Подробности одной Задачи — get_problem.",
                 Schema.object()
+                        .property("numbers", Schema.array(
+                                "номера Задач для прямого выбора; при них прочие условия не действуют, "
+                                        + "повтор считается один раз, пустой список — отказ",
+                                Schema.integer("номер Задачи")))
                         .property("node", Schema.integer(
                                 "идентификатор узла рубрикатора — Темы из list_topics или Раздела над ней; "
                                         + "ищется всё его поддерево"))
@@ -84,6 +97,11 @@ public class ProblemTools implements Tools {
                         .property("part", part())
                         .build(),
                 arguments -> {
+                    if (arguments.has("numbers")) {
+                        NumberedProblems result = problems.byNumbers(ProblemNumbers.of(arguments.longs("numbers")));
+                        return ToolResult.json(new Search(
+                                result.found().stream().map(ProblemTools::found).toList(), result.missing()));
+                    }
                     ProblemFilter filter = new ProblemFilter(
                             arguments.optionalLong("node").map(TaxonomyNodeId::new).orElse(null),
                             methodIds(arguments),
@@ -91,7 +109,8 @@ public class ProblemTools implements Tools {
                             characteristicIds(arguments),
                             arguments.optionalEnum("characteristics_match", MatchMode.class).orElse(null),
                             arguments.optionalEnum("part", ExamPart.class).orElse(null));
-                    return ToolResult.json(problems.search(filter).stream().map(ProblemTools::found).toList());
+                    return ToolResult.json(new Search(
+                            problems.search(filter).stream().map(ProblemTools::found).toList(), List.of()));
                 });
     }
 
@@ -246,6 +265,10 @@ public class ProblemTools implements Tools {
         FileKey fileOf(Problem problem) {
             return this == CONDITION ? problem.conditionFile() : problem.solutionFile();
         }
+    }
+
+    /** Ответ поиска: найденные Задачи и номера, которых нет (только при поиске по номерам). */
+    public record Search(List<Found> problems, List<Long> missing) {
     }
 
     /** Строка результата поиска: номер, Часть и разметка именами. */

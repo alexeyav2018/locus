@@ -150,9 +150,9 @@ class ProblemSearchRepositoryTest extends IntegrationTest {
                 .hasMessageContaining("поддерево");
     }
 
-    /** Сценарий «Порядок результата». */
+    /** Сценарий «Порядок результата»: по убыванию номера. */
     @Test
-    void theResultIsOrderedByNumber() {
+    void theResultIsOrderedByDescendingNumber() {
         TaxonomyNodeId topic = library.topic();
         ProblemId earlier = library.problem(List.of(topic), List.of(library.method()), List.of(), ExamPart.SECOND);
         ProblemId later = library.problem(List.of(topic), List.of(library.method()), List.of(), ExamPart.SECOND);
@@ -160,7 +160,7 @@ class ProblemSearchRepositoryTest extends IntegrationTest {
         List<Problem> found =
                 problems.search(List.of(topic), List.of(), MatchMode.ANY, List.of(), MatchMode.ANY, null);
 
-        assertThat(ids(found)).containsExactly(earlier, later);
+        assertThat(ids(found)).containsExactly(later, earlier);
     }
 
     /** Сценарий «Все сразу». */
@@ -192,7 +192,7 @@ class ProblemSearchRepositoryTest extends IntegrationTest {
 
         assertThat(ids(found))
                 .as("Задача с обоими Методами приходит один раз, а не дважды")
-                .containsExactly(both, onlyOne);
+                .containsExactly(onlyOne, both);
     }
 
     /** Сценарий «Способы у Методов и Характеристик независимы». */
@@ -285,8 +285,8 @@ class ProblemSearchRepositoryTest extends IntegrationTest {
                 problems.search(List.of(topic), List.of(), MatchMode.ANY, List.of(), MatchMode.ANY, null);
 
         assertThat(found).hasSize(2);
-        Problem readBare = found.get(0);
-        Problem readMarked = found.get(1);
+        Problem readMarked = found.get(0);
+        Problem readBare = found.get(1);
         assertThat(readBare.id()).isEqualTo(bare);
         assertThat(readBare.methods()).containsExactly(firstMethod);
         assertThat(readBare.characteristics()).isEmpty();
