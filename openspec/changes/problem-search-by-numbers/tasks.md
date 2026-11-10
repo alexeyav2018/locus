@@ -72,15 +72,15 @@
 
 ## 4. Документы, версия, приёмка
 
-- [ ] 4.1 `scenarios.md` С4 — подбор по номерам, ссылка ADR-0064 вместо
+- [x] 4.1 `scenarios.md` С4 — подбор по номерам, ссылка ADR-0064 вместо
   ADR-0031; `glossary.md` — ссылки на ADR-0031 заменить на ADR-0064.
   Проверка: `grep -rn "0031-uslovija" openspec/context openspec/specs
   CLAUDE.md` — остались только исторические упоминания.
-- [ ] 4.2 Приёмка: `mvn clean package` зелёная;
+- [x] 4.2 Приёмка: `mvn clean package` зелёная;
   `python3 openspec/context/adr/build_index.py --check` проходит;
   `npx -y @fission-ai/openspec@latest validate problem-search-by-numbers`
   проходит.
-- [ ] 4.3 Версия: `pom.xml` 3.20.1 → 3.21.0; в `CHANGELOG.md` сверху
+- [x] 4.3 Версия: `pom.xml` 3.20.1 → 3.21.0; в `CHANGELOG.md` сверху
   запись `## 3.21.0 — <дата>` со строкой из proposal.md.
 
 ## Workflow follow-up
