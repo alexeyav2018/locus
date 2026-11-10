@@ -303,7 +303,7 @@ class ProblemSearchScreenTest extends IntegrationTest {
                 .contains("value=\"" + first.value() + "\"")
                 .contains("value=\"" + second.value() + "\"")
                 .contains("action=\"/assignments/new\"")
-                .contains("Выдать отмеченные");
+                .contains("Выдать ДЗ");
     }
 
     /**
@@ -324,7 +324,7 @@ class ProblemSearchScreenTest extends IntegrationTest {
                 .contains("№ " + problem.value())
                 .doesNotContain("name=\"problem\"")
                 .doesNotContain("/assignments/new")
-                .doesNotContain("Выдать отмеченные");
+                .doesNotContain("Выдать ДЗ");
     }
 
     /**
