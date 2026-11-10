@@ -63,16 +63,16 @@
 
 ## 3. Документы, версия, приёмка
 
-- [ ] 3.1 `glossary.md` (Работа: «скан или фотография, если есть»),
+- [x] 3.1 `glossary.md` (Работа: «скан или фотография, если есть»),
   `domain-model.md` (Работа; удаление Работы — «последний файл
   не удаляется у Работы с файлами»; обзорные схемы), `scenarios.md`
   (С5, шаг 2 — загрузка необязательна, ссылка на ADR-0063). Проверка:
   `grep -rn "0015-skany" openspec/context openspec/specs` — остались
   только исторические упоминания в записях журнала.
-- [ ] 3.2 Приёмка: `mvn clean package` зелёная;
+- [x] 3.2 Приёмка: `mvn clean package` зелёная;
   `python3 openspec/context/adr/build_index.py --check` проходит;
   `npx -y @fission-ai/openspec@latest validate work-without-file` проходит.
-- [ ] 3.3 Версия: `pom.xml` 3.19.0 → 3.20.0; в `CHANGELOG.md` сверху
+- [x] 3.3 Версия: `pom.xml` 3.19.0 → 3.20.0; в `CHANGELOG.md` сверху
   запись `## 3.20.0 — <дата>` со строкой из proposal.md. Проверка:
   подвал страницы в `EveryPageShowsTheVersionTest` проходит.
 
