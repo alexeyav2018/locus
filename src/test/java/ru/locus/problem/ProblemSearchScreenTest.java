@@ -354,9 +354,110 @@ class ProblemSearchScreenTest extends IntegrationTest {
                 .contains("href=\"/problems\"");
     }
 
+    /** Обе формы левой колонки — номеров и разметки: возврат несут обе. */
     private static String filterForm(String page) {
         int start = page.indexOf("class=\"filters");
-        return page.substring(start, page.indexOf("</form>", start));
+        int numbersEnd = page.indexOf("</form>", start);
+        return page.substring(start, page.indexOf("</form>", numbersEnd + 1));
+    }
+
+    /**
+     * Сценарий «Номера в любой смеси разделителей» (ADR-0064): Задачи
+     * по убыванию номера, поле номеров заполнено, форма разметки пуста.
+     */
+    @Test
+    void numbersInAnyMixOfSeparatorsFindExactlyThoseProblemsDescending() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId low = library.problem(topic);
+        ProblemId middle = library.problem(topic);
+        ProblemId high = library.problem(topic);
+        String typed = high.value() + ", " + low.value() + ";" + middle.value();
+
+        String page = teacher().get("/problems?numbers=" + encoded(typed)).body();
+
+        assertThat(page).contains("Найдено Задач: 3");
+        assertDescending(page, high, middle, low);
+        assertThat(page).as("поле номеров заполнено тем, что ввели").contains(">" + typed + "</textarea>");
+        assertThat(selected(page, "node")).as("форма разметки пуста").isEmpty();
+        assertThat(selected(page, "method")).isEmpty();
+    }
+
+    /** Сценарий «Номера отменяют условия разметки»: узел из того же адреса не действует. */
+    @Test
+    void numbersOverrideMarkupConditionsInTheSameAddress() {
+        TaxonomyNodeId narrow = library.topic();
+        ProblemId inside = library.problem(narrow);
+        ProblemId outsideFirst = library.problem(library.topic());
+        ProblemId outsideSecond = library.problem(library.topic());
+
+        String page = teacher().get("/problems?node=" + narrow.value() + "&numbers="
+                + encoded(inside.value() + " " + outsideFirst.value() + " " + outsideSecond.value())).body();
+
+        assertThat(page).contains("Найдено Задач: 3");
+        assertDescending(page, outsideSecond, outsideFirst, inside);
+    }
+
+    /** Сценарий «Номера нет в библиотеке»: найденное показано, пропавший назван. */
+    @Test
+    void missingNumberIsNamedAndDoesNotHideTheFound() {
+        ProblemId present = library.problem(library.topic());
+        long absent = present.value() + 1_000_000;
+
+        String page = teacher().get("/problems?numbers=" + encoded(present.value() + ", " + absent)).body();
+
+        assertThat(page)
+                .contains("№ " + present.value())
+                .contains("Найдено Задач: 1")
+                .contains("Нет в библиотеке: " + absent);
+    }
+
+    /** Сценарий «Посторонний кусок»: отказ называет его, результата нет. */
+    @Test
+    void foreignPieceIsRefusedByName() {
+        String page = teacher().get("/problems?numbers=" + encoded("3, пять")).body();
+
+        assertThat(page).contains("Не разобрано: «пять»").doesNotContain("Найдено Задач:")
+                .doesNotContain("По этим условиям Задач нет.");
+    }
+
+    /** Сценарий «Пустое поле номеров»: отказ, а не вся библиотека. */
+    @Test
+    void emptyNumbersFieldIsRefused() {
+        library.problem(library.topic());
+
+        String page = teacher().get("/problems?numbers=").body();
+
+        assertThat(page).contains("Не задано ни одного номера").doesNotContain("Найдено Задач:");
+    }
+
+    /** Поиск по условиям разметки тоже идёт по убыванию номера (ADR-0064). */
+    @Test
+    void markupSearchGoesByDescendingNumber() {
+        TaxonomyNodeId topic = library.topic();
+        ProblemId older = library.problem(topic);
+        ProblemId newer = library.problem(topic);
+
+        String page = teacher().get("/problems?node=" + topic.value()).body();
+
+        assertDescending(page, newer, older);
+    }
+
+    private static void assertDescending(String page, ProblemId... expected) {
+        List<Integer> positions = java.util.Arrays.stream(expected)
+                .map(problem -> position(page, problem))
+                .toList();
+        assertThat(positions).as("каждая Задача показана").doesNotContain(-1);
+        assertThat(positions).as("по убыванию номера").isSorted();
+    }
+
+    /** Место номера на странице; граница после числа — чтобы «№ 10» не нашлось внутри «№ 105». */
+    static int position(String page, ProblemId problem) {
+        Matcher number = Pattern.compile("№ " + problem.value() + "(?!\\d)").matcher(page);
+        return number.find() ? number.start() : -1;
+    }
+
+    private static String encoded(String text) {
+        return java.net.URLEncoder.encode(text, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     /**

@@ -18,6 +18,12 @@
         (FoundProblem), число найденных передано моделью. В шаблоне
         вычислений не бывает (standards.md, «Слои и границы»).
 
+        Форм две, и каждая отправляет только свои поля (ADR-0064): «Номера
+        Задач» — прямой выбор, отменяющий условия разметки, поэтому
+        в одну форму с ними поле номеров не кладётся — иначе по адресу
+        нельзя было бы сказать, чем отобран результат. Заполнена та форма,
+        которой искали: при поиске по номерам фильтр пуст.
+
         Комментарий в форме Thymeleaf, а не обычный HTML: он объясняет
         решение разработчику и в выдачу попадать не должен.
     */-->
@@ -40,7 +46,20 @@
 <p class="alert" role="alert" th:if="${error}" th:text="${error}">Узла не существует</p>
 
 <div class="split">
-<form class="filters card sticky" method="get" th:action="@{/problems}">
+<div class="filters sticky">
+<form class="card" method="get" th:action="@{/problems}">
+    <input type="hidden" name="from" th:if="${shell.back}" th:value="${shell.back}">
+    <!--/* Номера — через запятую, пробел, точку с запятой или с новой строки:
+           список обычно копируют из чужого документа как есть (ADR-0064). */-->
+    <label>Номера Задач
+        <textarea name="numbers" rows="2"
+                  placeholder="12, 3, 7"
+                  th:text="${numbers}"></textarea>
+    </label>
+    <button type="submit" class="btn-primary">Поиск</button>
+</form>
+
+<form class="card" method="get" th:action="@{/problems}">
     <input type="hidden" name="from" th:if="${shell.back}" th:value="${shell.back}">
     <fieldset>
         <legend>Где искать</legend>
@@ -108,9 +127,15 @@
     <button type="submit" class="btn-primary">Искать</button>
     <a class="btn btn-sm" th:href="@{${shell.carried('/problems')}}">Сбросить</a>
 </form>
+</div>
 
 <div class="found" th:if="${found != null}">
     <h2 style="margin-top:0">Найденное</h2>
+
+    <!--/* Ненайденный номер не отменяет найденных, но и не теряется
+           молча: опечатку в одном номере учитель видит здесь (ADR-0064). */-->
+    <p class="alert" role="alert" th:if="${not #lists.isEmpty(missing)}"
+       th:text="'Нет в библиотеке: ' + ${#strings.listJoin(missing, ', ')}">Нет в библиотеке: 999</p>
 
     <!--/* Пустой результат называется словами, а не пустотой под заголовком:
            «все сразу» на двух Методах законно возвращает пусто, и учитель

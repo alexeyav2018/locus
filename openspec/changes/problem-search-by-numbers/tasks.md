@@ -37,17 +37,17 @@
 
 ## 2. Экран поиска
 
-- [ ] 2.1 `ProblemSearchController.search`: параметр `numbers`;
+- [x] 2.1 `ProblemSearchController.search`: параметр `numbers`;
   есть — `ProblemNumbers.parse` и `byNumbers`, `filter` =
   `ProblemFilter.empty()`, в модель `numbers` (текст) и `missing`;
   нет — прежняя ветка. Отказ разбора — `error`. Javadoc — ADR-0064.
-- [ ] 2.2 `templates/problem/search.html`: левая колонка —
+- [x] 2.2 `templates/problem/search.html`: левая колонка —
   `<div class="sticky">` с формой «Номера Задач» (`textarea
   name="numbers"`, кнопка «Поиск», скрытый `from`) над прежней формой;
   строка «Нет в библиотеке: …» (`alert`) над «Найдено Задач»;
   комментарии шаблона — ADR-0064. CSS — только если `.filters.sticky`
   перестанет подходить, в `locus.css`.
-- [ ] 2.3 `ProblemSearchScreenTest`: `?numbers=12, 3;7` — Задачи
+- [x] 2.3 `ProblemSearchScreenTest`: `?numbers=12, 3;7` — Задачи
   12, 7, 3 в этом порядке, поле заполнено, форма разметки без выбранного;
   с `node` в том же адресе — те же три; несуществующий номер —
   «Нет в библиотеке: …»; `?numbers=3, пять` — отказ с «пять»;
